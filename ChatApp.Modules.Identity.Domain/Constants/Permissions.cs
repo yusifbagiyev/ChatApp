@@ -50,16 +50,6 @@ namespace ChatApp.Modules.Identity.Domain.Constants
         }
 
         /// <summary>
-        /// Gets all permissions grouped by module
-        /// </summary>
-        public static Dictionary<string, List<string>> GetGroupedByModule()
-        {
-            return GetAll()
-                .GroupBy(p => p.Split('.')[0])
-                .ToDictionary(g => g.Key, g => g.ToList());
-        }
-
-        /// <summary>
         /// Gets default permissions for a specific role.
         /// Administrator gets all permissions, User gets basic permissions.
         /// </summary>

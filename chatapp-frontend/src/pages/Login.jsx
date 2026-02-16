@@ -1,18 +1,21 @@
-import { useState  } from "react"
+import { useState, useContext } from "react"
+import { AuthContext } from "../context/AuthContext"
 import './Login.css'
 
 function Login() {
-    const [email, setEmail]=useState('')
-    const [password, setPassword]=useState('')
-    const [rememberMe, setRememberMe]=useState(false)
-    const [showPassword, setShowPassword]=useState(false)
-    const [isLoading, setIsLoading]=useState(false)
-    const [errorMessage, setErrorMessage]=useState('')
+    const { login } = useContext(AuthContext)
 
-    const handleSubmit=async(e)=>{
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [rememberMe, setRememberMe] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+    const [errorMessage, setErrorMessage] = useState('')
+
+    const handleSubmit = async (e) => {
         e.preventDefault()
 
-        if(!email || !password){
+        if (!email || !password) {
             setErrorMessage('Email and password are required')
             return
         }
@@ -20,28 +23,17 @@ function Login() {
         setIsLoading(true)
         setErrorMessage('')
 
-        try{
-            const response=await fetch('http://localhost:7000/api/auth/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                credentials: 'include',
-                body: JSON.stringify({email, password, rememberMe})
-            })
+        try {
+            await login(email, password, rememberMe)
 
-            if(response.ok){
-                if(rememberMe){
-                    localStorage.setItem('rememberedEmail',email)
-                } else{
-                    localStorage.removeItem('rememberedEmail')
-                }
-                window.location.href='/'
-            } else{
-                const data=await response.json()
-                setErrorMessage(data.error || 'Invalid email or password. Please try again.')
-            } 
-        } catch{
-                setErrorMessage('An error occured during login. Please try again.')
-        } finally{
+            if (rememberMe) {
+                localStorage.setItem('rememberedEmail', email)
+            } else {
+                localStorage.removeItem('rememberedEmail')
+            }
+        } catch (err) {
+            setErrorMessage(err.message || 'An error occurred during login. Please try again.')
+        } finally {
             setIsLoading(false)
         }
     }

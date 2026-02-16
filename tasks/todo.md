@@ -1,8 +1,8 @@
 # React Migration - Progress Tracker
 
-## Current Status: Step 5 COMPLETE — Login Page Done
-**Last Updated:** 2025-02-15
-**Next Step:** Step 6 - Auth Context (useContext, useEffect, shared auth state)
+## Current Status: Step 6 COMPLETE — Auth Context Done
+**Last Updated:** 2026-02-16
+**Next Step:** Step 7 - Routing + Protected Routes (react-router)
 
 ---
 
@@ -14,6 +14,11 @@
 - Form handling — `e.preventDefault()`, `e.target.value`, `e.target.checked`
 - `fetch` API — POST request with `credentials: 'include'` for cookies
 - CSS-only changes don't require JSX changes (separation of concerns)
+- `createContext` — global state yaratmaq (like CascadingAuthenticationState)
+- `useContext` — istənilən komponentdən context-ə daxil olmaq (like @inject)
+- `useEffect(() => {}, [])` — mount olanda 1 dəfə işləyir (like OnInitializedAsync)
+- `children` prop — wrapper komponent patterı (like @Body / RenderFragment)
+- BFF pattern React-də dəyişmir — `credentials: 'include'` cookie-ni avtomatik göndərir
 
 ## What Exists So Far
 ```
@@ -22,7 +27,9 @@ chatapp-frontend/
     pages/
       Login.jsx       ← Login page (useState, fetch, form handling)
       Login.css        ← Modern glassmorphism UI
-    App.jsx            ← Shows Login component
+    context/
+      AuthContext.jsx  ← Global auth state (user, login, logout, checkAuth)
+    App.jsx            ← AuthProvider wrapper + user/login switch
     main.jsx           ← Entry point (untouched)
     index.css          ← CSS reset (minimal)
 ```
@@ -35,7 +42,7 @@ chatapp-frontend/
 - [x] Step 3: Understand project structure (every file explained)
 - [x] Step 4: First component - what is JSX?
 - [x] Step 5: Login Page (props, state, events, forms) ✅
-- [ ] Step 6: Auth Context (shared state, useContext, useEffect)
+- [x] Step 6: Auth Context (shared state, useContext, useEffect) ✅
 - [ ] Step 7: Routing + Protected Routes (`react-router`)
 - [ ] Step 8: API Service Layer (fetch with credentials)
 
@@ -61,13 +68,12 @@ chatapp-frontend/
 
 ---
 
-## Step 6 Plan: Auth Context
+## Step 7 Plan: Routing + Protected Routes
 Next session will build:
-1. `src/context/AuthContext.jsx` — React Context for auth state (like CustomAuthStateProvider in Blazor)
-2. New concepts to teach: `useContext`, `useEffect`, `createContext`
-3. After login success → store user info in context → accessible everywhere
-4. Check auth on app load (call `/api/users/me` with cookie)
-5. Update Login.jsx to use AuthContext instead of direct fetch + window.location
+1. Install `react-router-dom`
+2. `src/App.jsx` — Route setup (Login, Chat layout)
+3. Protected Route component — login olmayan useri Login-ə redirect et
+4. New concepts: `BrowserRouter`, `Routes`, `Route`, `Navigate`, `useNavigate`
 
 ## Decision Log
 | Date | Decision | Reason |

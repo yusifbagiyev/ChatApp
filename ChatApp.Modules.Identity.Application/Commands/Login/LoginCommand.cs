@@ -48,8 +48,6 @@ namespace ChatApp.Modules.Identity.Application.Commands.Login
         {
             try
             {
-                logger?.LogInformation("Login attempt for email: {Email}", command.Email);
-
                 var user = await FindUserWithPermissionsAsync(command.Email, cancellationToken);
 
                 if (user is null)
@@ -108,7 +106,7 @@ namespace ChatApp.Modules.Identity.Application.Commands.Login
             return Result.Success();
         }
 
-        private Task<List<string>> GetUserPermissionsAsync(
+        private static Task<List<string>> GetUserPermissionsAsync(
             User user,
             CancellationToken cancellationToken)
         {

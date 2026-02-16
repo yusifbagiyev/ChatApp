@@ -22,3 +22,4 @@
 | Date | Mistake | Fix | Rule |
 |------|---------|-----|------|
 | 2025-02-15 | Wrote `localhost:5000` for backend API | Correct port is `7000` (from launchSettings.json) | ALWAYS check launchSettings.json before writing any URL |
+| 2026-02-16 | Created files directly instead of letting user type manually | Deleted the file, re-explained code for user to type | NEVER use Write/Edit to create/modify frontend code. ONLY explain — user types manually |
