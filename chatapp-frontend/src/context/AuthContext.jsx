@@ -1,4 +1,6 @@
 import { createContext, useState, useEffect } from "react";
+import { apiGet, apiPost } from "../services/api";
+
 const AuthContext = createContext(null);
 
 function AuthProvider({ children }) {
@@ -11,13 +13,8 @@ function AuthProvider({ children }) {
 
   async function checkAuth() {
     try {
-      const response = await fetch("http://localhost:7000/api/users/me", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data);
-      }
+      const data = await apiGet("/api/users/me");
+      setUser(data);
     } catch (err) {
       console.log("Auth check failed:", err);
     } finally {
@@ -26,25 +23,9 @@ function AuthProvider({ children }) {
   }
 
   async function login(email, password, rememberMe) {
-    const response = await fetch("http://localhost:7000/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password, rememberMe }),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || "Login failed");
-    }
-
-    const meResponse = await fetch("http://localhost:7000/api/users/me", {
-      credentials: "include",
-    });
-    if (meResponse.ok) {
-      const data = await meResponse.json();
-      setUser(data);
-    }
+    await apiPost("/api/auth/login", { email, password, rememberMe });
+    const data = await apiGet("/api/users/me");
+    setUser(data);
   }
 
   function logout() {

@@ -10,7 +10,7 @@
 ## Project Rules
 - Backend is complete and working. Don't modify backend code.
 - Frontend was Blazor WASM, migrating to React due to UI freezing.
-- WhatsApp Web style UI is the target design.
+- **Bitrix24 style UI** is the target design. NOT WhatsApp. Full layout: sol navigation menu + messenger panel.
 
 ## Critical: Backend Configuration
 - **Backend URL: `http://localhost:7000`** — NEVER assume a port. Always check `launchSettings.json` first.
@@ -23,3 +23,9 @@
 |------|---------|-----|------|
 | 2025-02-15 | Wrote `localhost:5000` for backend API | Correct port is `7000` (from launchSettings.json) | ALWAYS check launchSettings.json before writing any URL |
 | 2026-02-16 | Created files directly instead of letting user type manually | Deleted the file, re-explained code for user to type | NEVER use Write/Edit to create/modify frontend code. ONLY explain — user types manually |
+| 2026-02-16 | Said "WhatsApp style" but user wants Bitrix24 style | Updated lessons and todo | ALWAYS confirm design reference with user. Target is Bitrix24, NOT WhatsApp |
+| 2026-02-16 | Made terrible CSS layout — sidebar overlapped content, used fake data | Must rewrite CSS from scratch, use real backend API data | ALWAYS test CSS visually. NEVER use fake/hardcoded data — use real API from day 1. CSS must be pixel-perfect. |
+| 2026-02-17 | Used string comparison for enum types (`chat.type === "Conversation"`) but backend sends numbers (`0, 1, 2`) | Changed to number comparison (`chat.type === 0`) | Backend uses C# enums without JsonStringEnumConverter. ALWAYS check if enum is serialized as string or number. C# default = number. Rule: `0 = Conversation, 1 = Channel, 2 = DepartmentUser` |
+| 2026-02-17 | Wrote JSX code directly with Edit tool instead of explaining to user | User reminded again | CSS-dən başqa HEÇBIR frontend koduna Edit/Write ilə əl vurma. Əvvəlcə izah et, user özü yazsın. Sonra sən yoxla, test et. Bu ƏSAS QAYDADIR. |
+| 2026-02-17 | Infinite scroll up bug — sonsuz request, tullanma, yanlış array sırası | Blazor implementasiyasını araşdırıb həll tapıldı | YENİ funksiya yazmazdan ƏVVƏL: 1) Blazor-da necə edildiyini araşdır 2) Pattern-i React-a uyğunlaşdır. useRef flag, hasMore flag, useLayoutEffect+flushSync scroll bərpası |
+| 2026-02-17 | Yeni kod yazanda user-ə göstərmədən özü yazdı, bug fix zamanı isə izah edib vaxt itirdi | User qaydanı dəqiqləşdirdi | YENİ KOD → user-ə göstər, user yazsın. MÖVCUD KODDA BUG FIX / DƏYİŞİKLİK → birbaşa özün Edit ilə düzəlt. |
