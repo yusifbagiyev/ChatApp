@@ -650,8 +650,8 @@ function Chat() {
     if (!hasMoreRef.current) return;
     if (!selectedChat) return;
 
-    // Blazor pattern: 1 viewport height threshold
-    const threshold = area.clientHeight;
+    // Yarım viewport hündürlüyü threshold
+    const threshold = area.clientHeight / 2;
     if (area.scrollTop > threshold) return;
 
     const oldestMsg = messages[messages.length - 1];
@@ -854,6 +854,8 @@ function Chat() {
                 </div>
               </div>
 
+              {loadingOlder && <div className="loading-older" />}
+
               {pinnedMessages.length > 0 && (
                 <PinnedBar
                   pinnedMessages={pinnedMessages}
@@ -870,12 +872,6 @@ function Chat() {
                   onScrollToMessage={handleScrollToMessage}
                   onUnpin={handlePinMessage}
                 />
-              )}
-
-              {loadingOlder && (
-                <div className="loading-older">
-                  <div className="loading-older-spinner" />
-                </div>
               )}
 
               <div

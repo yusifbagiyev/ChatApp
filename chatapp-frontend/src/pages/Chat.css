@@ -712,28 +712,27 @@
    =================================== */
 
 .loading-older {
-  display: flex;
-  justify-content: center;
-  padding: 8px 0;
+  height: 3px;
+  flex-shrink: 0;
   background: linear-gradient(
-    180deg,
-    rgba(160, 221, 208, 0.4) 0%,
+    90deg,
+    transparent 0%,
+    #00ace3 40%,
+    #46cdf0 50%,
+    #00ace3 60%,
     transparent 100%
   );
+  background-size: 200% 100%;
+  animation: loadingGlow 1.2s ease-in-out infinite;
+  box-shadow: 0 1px 6px rgba(0, 172, 227, 0.5), 0 0 12px rgba(0, 172, 227, 0.25);
 }
 
-.loading-older-spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid rgba(47, 198, 246, 0.2);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+@keyframes loadingGlow {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
   }
 }
 
