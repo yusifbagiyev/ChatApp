@@ -4,6 +4,8 @@ import {
   useLayoutEffect,
   useContext,
   useRef,
+  useMemo,
+  useCallback,
 } from "react";
 
 import {
@@ -15,7 +17,6 @@ import {
   getConnection,
 } from "../services/signalr";
 
-import { flushSync } from "react-dom";
 import { AuthContext } from "../context/AuthContext";
 import { apiGet, apiPost, apiDelete } from "../services/api";
 
@@ -53,7 +54,6 @@ function Chat() {
   const [typingUsers, setTypingUsers] = useState({});
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
-  const [activeMessageId, setActiveMessageId] = useState(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const emojiPanelRef = useRef(null);
   const [replyTo, setReplyTo] = useState(null);
@@ -61,6 +61,7 @@ function Chat() {
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [pinBarExpanded, setPinBarExpanded] = useState(false);
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -243,7 +244,7 @@ function Chat() {
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
       setShouldScrollBottom(false);
     }
-  }, [messages, shouldScrollBottom]);
+  }, [messages, shouldScrollBottom, pinnedMessages]);
 
   // Scroll position restore — paint-dən ƏVVƏL işləyir, tullanma olmur
   useLayoutEffect(() => {
@@ -464,7 +465,7 @@ function Chat() {
     }
   }
 
-  async function handlePinMessage(msg) {
+  const handlePinMessage = useCallback(async (msg) => {
     if (!selectedChat) return;
     try {
       let endpoint = "";
@@ -492,7 +493,7 @@ function Chat() {
     } catch (err) {
       console.error("Failed to pin/unpin message:", err);
     }
-  }
+  }, [selectedChat]);
 
   function handlePinBarClick(messageId) {
     handleScrollToMessage(messageId);
@@ -597,7 +598,7 @@ function Chat() {
     }, 2000);
   }
 
-  async function handleScrollToMessage(messageId) {
+  const handleScrollToMessage = useCallback(async (messageId) => {
     const area = messagesAreaRef.current;
     if (!area || !selectedChat) return;
 
@@ -631,7 +632,7 @@ function Chat() {
     } catch (err) {
       console.error("Failed to load messages around target:", err);
     }
-  }
+  }, [selectedChat]);
 
   function handleKeyDown(e) {
     sendTypingSignal();
@@ -667,6 +668,7 @@ function Chat() {
     if (!endpoint) return;
 
     loadingMoreRef.current = true;
+    setLoadingOlder(true);
 
     try {
       const olderMessages = await apiGet(endpoint);
@@ -676,18 +678,17 @@ function Chat() {
         return;
       }
 
-      // Save scroll position, then update — useLayoutEffect will restore
+      // Save scroll position — useLayoutEffect restore edəcək
       scrollRestoreRef.current = {
         scrollHeight: area.scrollHeight,
         scrollTop: area.scrollTop,
       };
-      flushSync(() => {
-        setMessages((prev) => [...prev, ...olderMessages]);
-      });
+      setMessages((prev) => [...prev, ...olderMessages]);
     } catch (err) {
       console.error("Failed to load older messages:", err);
     } finally {
       loadingMoreRef.current = false;
+      setLoadingOlder(false);
     }
   }
 
@@ -728,9 +729,7 @@ function Chat() {
         return;
       }
 
-      flushSync(() => {
-        setMessages((prev) => [...newerMessages.reverse(), ...prev]);
-      });
+      setMessages((prev) => [...newerMessages.reverse(), ...prev]);
     } catch (err) {
       console.error("Failed to load newer messages:", err);
     } finally {
@@ -742,6 +741,22 @@ function Chat() {
     handleScrollUp();
     handleScrollDown();
   }
+
+  // Memoize: messages array reverse + grouping — yalnız messages dəyişəndə yenidən hesablanır
+  const grouped = useMemo(
+    () => groupMessagesByDate([...messages].reverse()),
+    [messages],
+  );
+
+  // Stabilize callback references — React.memo yenidən render etməsin
+  const handleReply = useCallback((m) => {
+    setReplyTo(m);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, []);
+
+  const handleForwardMsg = useCallback((m) => {
+    setForwardMessage(m);
+  }, []);
 
   return (
     <div className="main-layout">
@@ -852,51 +867,49 @@ function Chat() {
                 />
               )}
 
+              {loadingOlder && (
+                <div className="loading-older">
+                  <div className="loading-older-spinner" />
+                </div>
+              )}
+
               <div
                 className="messages-area"
                 ref={messagesAreaRef}
                 onScroll={handleScroll}
               >
-                {(() => {
-                  const grouped = groupMessagesByDate([...messages].reverse());
-                  return grouped.map((item, index) => {
-                    if (item.type === "date") {
-                      return (
-                        <div key={`date-${index}`} className="date-separator">
-                          <span>{item.label}</span>
-                        </div>
-                      );
-                    }
-                    const msg = item.data;
-                    const isOwn = msg.senderId === user.id;
-
-                    // Avatar yalnız son mesajda görünür (növbəti mesaj fərqli senderId-dən və ya date separator-dursa)
-                    const nextItem = grouped[index + 1];
-                    const showAvatar =
-                      !nextItem ||
-                      nextItem.type === "date" ||
-                      nextItem.data.senderId !== msg.senderId;
-
+                {grouped.map((item, index) => {
+                  if (item.type === "date") {
                     return (
-                      <MessageBubble
-                        key={msg.id}
-                        msg={msg}
-                        isOwn={isOwn}
-                        showAvatar={showAvatar}
-                        selectedChat={selectedChat}
-                        activeMessageId={activeMessageId}
-                        setActiveMessageId={setActiveMessageId}
-                        onReply={(m) => {
-                          setReplyTo(m);
-                          setTimeout(() => inputRef.current?.focus(), 0);
-                        }}
-                        onForward={(m) => setForwardMessage(m)}
-                        onPin={handlePinMessage}
-                        onScrollToMessage={handleScrollToMessage}
-                      />
+                      <div key={`date-${index}`} className="date-separator">
+                        <span>{item.label}</span>
+                      </div>
                     );
-                  });
-                })()}
+                  }
+                  const msg = item.data;
+                  const isOwn = msg.senderId === user.id;
+
+                  // Avatar yalnız son mesajda görünür (növbəti mesaj fərqli senderId-dən və ya date separator-dursa)
+                  const nextItem = grouped[index + 1];
+                  const showAvatar =
+                    !nextItem ||
+                    nextItem.type === "date" ||
+                    nextItem.data.senderId !== msg.senderId;
+
+                  return (
+                    <MessageBubble
+                      key={msg.id}
+                      msg={msg}
+                      isOwn={isOwn}
+                      showAvatar={showAvatar}
+                      chatType={selectedChat.type}
+                      onReply={handleReply}
+                      onForward={handleForwardMsg}
+                      onPin={handlePinMessage}
+                      onScrollToMessage={handleScrollToMessage}
+                    />
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
 

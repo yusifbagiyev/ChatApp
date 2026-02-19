@@ -708,6 +708,36 @@
 }
 
 /* ===================================
+   LOADING OLDER MESSAGES
+   =================================== */
+
+.loading-older {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+  background: linear-gradient(
+    180deg,
+    rgba(160, 221, 208, 0.4) 0%,
+    transparent 100%
+  );
+}
+
+.loading-older-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(47, 198, 246, 0.2);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===================================
    MESSAGES AREA
    =================================== */
 

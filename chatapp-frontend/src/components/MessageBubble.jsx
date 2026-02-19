@@ -1,39 +1,26 @@
-import { useState, useRef, useEffect } from "react";
+import { memo, useState, useRef, useEffect } from "react";
 import {
   getInitials,
   getAvatarColor,
   formatMessageTime,
 } from "../utils/chatUtils";
 
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
   msg,
   isOwn,
   showAvatar,
-  selectedChat,
-  activeMessageId,
-  setActiveMessageId,
+  chatType,
   onReply,
   onForward,
   onPin,
   onScrollToMessage,
 }) {
+  const [showActions, setShowActions] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reactionOpen, setReactionOpen] = useState(false);
   const [reactionExpanded, setReactionExpanded] = useState(false);
   const menuRef = useRef(null);
   const reactionRef = useRef(null);
-
-  // showActions artıq lokal state deyil — activeMessageId-dən derive olunur
-  const showActions = activeMessageId === msg.id;
-
-  // Başqa mesaj aktiv olanda bu mesajın panellərini bağla
-  useEffect(() => {
-    if (activeMessageId && activeMessageId !== msg.id) {
-      setMenuOpen(false);
-      setReactionOpen(false);
-      setReactionExpanded(false);
-    }
-  }, [activeMessageId, msg.id]);
 
   // Kənar tıklandıqda menuları bağla
   useEffect(() => {
@@ -68,17 +55,17 @@ function MessageBubble({
     <div
       className={`message-row ${isOwn ? "own" : ""} ${showAvatar ? "has-avatar" : ""}`}
       data-bubble-id={msg.id}
-      onMouseEnter={() => setActiveMessageId(msg.id)}
+      onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => {
-        if (!menuOpen && !reactionOpen) setActiveMessageId(null);
+        if (!menuOpen && !reactionOpen) setShowActions(false);
       }}
       {...(!isOwn &&
         !msg.isRead && {
           "data-unread": "true",
           "data-msg-id": msg.id,
           "data-conv-id":
-            selectedChat.type === 0 ? msg.conversationId : msg.channelId,
-          "data-conv-type": String(selectedChat.type),
+            chatType === 0 ? msg.conversationId : msg.channelId,
+          "data-conv-type": String(chatType),
         })}
     >
       {!isOwn && (
@@ -162,7 +149,6 @@ function MessageBubble({
               className="bubble-action-btn"
               title="Reactions"
               onClick={() => {
-                setActiveMessageId(msg.id);
                 setReactionOpen(!reactionOpen);
                 setMenuOpen(false);
               }}
@@ -185,7 +171,6 @@ function MessageBubble({
               className="bubble-action-btn"
               title="More"
               onClick={() => {
-                setActiveMessageId(msg.id);
                 setMenuOpen(!menuOpen);
                 setReactionOpen(false);
               }}
@@ -461,6 +446,6 @@ function MessageBubble({
       </div>
     </div>
   );
-}
+});
 
 export default MessageBubble;
