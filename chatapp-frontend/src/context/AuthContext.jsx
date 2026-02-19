@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from "react";
-import { apiGet, apiPost } from "../services/api";
+import { apiGet, apiPost, scheduleRefresh, stopRefreshTimer } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -15,8 +15,12 @@ function AuthProvider({ children }) {
     try {
       const data = await apiGet("/api/users/me");
       setUser(data);
-    } catch (err) {
-      console.log("Auth check failed:", err);
+      // Auth uğurlu — proactive refresh timer başlat
+      scheduleRefresh();
+    } catch {
+      // apiGet artıq 401 olanda auto-refresh edir.
+      // Buraya düşürsə refresh də uğursuz olub — login lazımdır.
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -26,9 +30,18 @@ function AuthProvider({ children }) {
     await apiPost("/api/auth/login", { email, password, rememberMe });
     const data = await apiGet("/api/users/me");
     setUser(data);
+    // Login uğurlu — proactive refresh timer başlat
+    scheduleRefresh();
   }
 
-  function logout() {
+  async function logout() {
+    // Timer-i dayandır
+    stopRefreshTimer();
+    try {
+      await apiPost("/api/auth/logout");
+    } catch {
+      // Logout uğursuz olsa belə, frontend-i təmizlə
+    }
     setUser(null);
   }
 

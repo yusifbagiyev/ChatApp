@@ -28,8 +28,7 @@
   --info-color: #3b82f6;
 
   /* Chat Specific */
-  --chat-bg: #d9e6f2;
-  --bubble-own: #e9fecb;
+  --bubble-own: #E9FECB;
   --bubble-other: #ffffff;
   --selected-chat: #00ace3;
   --unread-badge: #10b981;
@@ -357,7 +356,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--chat-bg);
+  background: linear-gradient(160deg, #a0ddd0 0%, #a5d0e8 25%, #b0d4f0 50%, #c0d6f2 75%, #cdd2f0 100%);
+  position: relative;
 }
 
 /* ===================================
@@ -368,11 +368,12 @@
   height: 56px;
   min-height: 56px;
   background: var(--white);
-  border-bottom: 1px solid var(--gray-200);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
+  z-index: 1;
 }
 
 .chat-header-left {
@@ -477,6 +478,7 @@
 .messages-area {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px 16px;
   display: flex;
   flex-direction: column;
@@ -523,15 +525,18 @@
   max-width: 75%;
   margin-top: 2px;
   position: relative;
-}
-
-.message-row.has-avatar {
-  margin-top: 8px;
+  padding-right: 66px;
 }
 
 .message-row.own {
   align-self: flex-end;
   margin-right: 8px;
+  padding-right: 0;
+  padding-left: 66px;
+}
+
+.message-row.has-avatar {
+  margin-top: 8px;
 }
 
 /* Avatar slot — boş olanda da yer tutur ki bubble-lar düz xətdə qalsın */
@@ -597,10 +602,106 @@
 }
 
 /* ===================================
+   REPLY REFERENCE INSIDE BUBBLE
+   =================================== */
+
+.reply-reference {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.reply-reference:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.message-bubble.own .reply-reference {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.message-bubble.own .reply-reference:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.reply-reference-bar {
+  width: 3px;
+  min-width: 3px;
+  border-radius: 2px;
+  background: #39B9D6;
+  flex-shrink: 0;
+}
+
+.reply-reference-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.reply-reference-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #39B9D6;
+}
+
+.reply-reference-text {
+  font-size: 13px;
+  color: var(--gray-500);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===================================
+   MESSAGE HIGHLIGHT (scroll-to)
+   =================================== */
+
+.message-row.highlight-message::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: -2000px;
+  right: -2000px;
+  animation: messageHighlight 3s ease-out forwards;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.message-row.highlight-message > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes messageHighlight {
+  0% {
+    background: rgba(0, 0, 0, 0.15);
+  }
+  70% {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* ===================================
    BUBBLE HOVER ACTIONS
    =================================== */
 
 .bubble-actions {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: calc(100% + 2px);
   display: flex;
   align-items: center;
   gap: 2px;
@@ -608,12 +709,13 @@
   border-radius: 16px;
   padding: 2px 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-  align-self: center;
-  flex-shrink: 0;
+  z-index: 5;
+  white-space: nowrap;
 }
 
 .bubble-actions.own {
-  order: -1;
+  left: auto;
+  right: calc(100% + 2px);
 }
 
 .bubble-action-btn {
@@ -642,7 +744,8 @@
 .action-menu {
   position: absolute;
   top: calc(100% + 4px);
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   background: var(--white);
   border-radius: 10px;
   padding: 4px 0;
@@ -651,7 +754,7 @@
   min-width: 180px;
 }
 
-/* Bridge — bubble ilə menu arasındakı 4px boşluğu örtür ki mouseLeave tətiklənməsin */
+/* Bridge — bubble-actions ilə menu arasındakı 4px boşluğu örtür */
 .action-menu::before {
   content: "";
   position: absolute;
@@ -663,7 +766,8 @@
 
 .action-menu.own {
   left: auto;
-  right: 0;
+  right: 50%;
+  transform: translateX(50%);
 }
 
 .action-menu.flip-up {
@@ -695,6 +799,14 @@
   background: var(--gray-50);
 }
 
+.action-menu-item:first-child:hover {
+  border-radius: 10px 10px 0 0;
+}
+
+.action-menu-item:last-child:hover {
+  border-radius: 0 0 10px 10px;
+}
+
 .action-menu-item svg {
   color: var(--gray-400);
   flex-shrink: 0;
@@ -714,8 +826,9 @@
 
 .reaction-picker {
   position: absolute;
-  top: -48px;
-  left: 0;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
   background: var(--white);
   border-radius: 12px;
   padding: 6px;
@@ -725,7 +838,8 @@
 
 .reaction-picker.own {
   left: auto;
-  right: 0;
+  right: 50%;
+  transform: translateX(50%);
 }
 
 .reaction-quick {
@@ -786,19 +900,53 @@
    =================================== */
 
 .message-input-area {
-  min-height: 56px;
-  background: var(--white);
-  border-top: 1px solid var(--gray-200);
   display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  gap: 4px;
+  flex-direction: column;
+  padding: 10px 14px;
+  gap: 8px;
 }
 
-.input-action-btn {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+/* Reply preview — input-un üstündə */
+.reply-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--white);
+  border-radius: 22px;
+  padding: 8px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.reply-preview-icon {
+  flex-shrink: 0;
+}
+
+.reply-preview-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reply-preview-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #00ace3;
+}
+
+.reply-preview-text {
+  font-size: 13px;
+  color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reply-preview-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
   border-radius: 50%;
@@ -810,31 +958,71 @@
   transition: all var(--transition-fast);
 }
 
-.input-action-btn:hover {
-  color: var(--gray-600);
+.reply-preview-close:hover {
   background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.message-input-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  background: var(--white);
+  border-radius: 22px;
+  padding: 6px 6px 6px 10px;
+  min-height: 46px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.input-icon-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.input-icon-btn:hover {
+  color: var(--gray-600);
+}
+
+.input-icon-btn.active {
+  color: var(--primary-color);
 }
 
 .message-input {
   flex: 1;
-  height: 40px;
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--gray-900);
   outline: none;
-  padding: 0 8px;
+  padding: 6px 8px;
   font-family: inherit;
+  line-height: 1.4;
+  resize: none;
+  max-height: 120px;
+  overflow-y: auto;
+  height: auto;
 }
 
 .message-input::placeholder {
   color: var(--gray-400);
+  font-size: 14px;
 }
 
 .send-btn {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  flex-shrink: 0;
   border: none;
   background: var(--primary-color);
   border-radius: 50%;
@@ -851,6 +1039,70 @@
   transform: scale(1.05);
 }
 
+.send-btn.disabled {
+  background: #b0dff0;
+  cursor: default;
+  transform: none;
+}
+
+.send-btn.disabled:hover {
+  background: #b0dff0;
+  transform: none;
+}
+
+/* ===================================
+   EMOJI PICKER PANEL
+   =================================== */
+
+.emoji-panel {
+  position: absolute;
+  bottom: 70px;
+  right: 14px;
+  width: 340px;
+  max-height: 360px;
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.emoji-panel-header {
+  padding: 12px 14px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-500);
+}
+
+.emoji-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  padding: 0 8px 10px;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.emoji-panel-btn {
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+}
+
+.emoji-panel-btn:hover {
+  background: var(--gray-100);
+}
+
 /* ===================================
    EMPTY CHAT STATE
    =================================== */
@@ -861,20 +1113,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  color: var(--gray-400);
+  gap: 16px;
+  background: linear-gradient(180deg, #cddcec 0%, #d6dff0 50%, #dde4f3 100%);
 }
 
 .chat-empty h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--gray-600);
-  margin: 0;
-}
-
-.chat-empty p {
-  font-size: 14px;
-  color: var(--gray-400);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--gray-500);
   margin: 0;
 }
 

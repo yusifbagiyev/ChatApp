@@ -68,7 +68,12 @@
       "Bash(MSYS_NO_PATHCONV=1 taskkill:*)",
       "Bash(kill:*)",
       "Bash(curl:*)",
-      "Bash(timeout /t 8 /nobreak)"
+      "Bash(timeout /t 8 /nobreak)",
+      "WebFetch(domain:helpdesk.bitrix24.com)",
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npx vite build:*)"
     ],
     "deny": [],
     "ask": []

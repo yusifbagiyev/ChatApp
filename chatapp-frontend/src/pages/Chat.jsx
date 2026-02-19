@@ -43,6 +43,7 @@ function Chat() {
   const messagesAreaRef = useRef(null);
   const loadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
+  const hasMoreDownRef = useRef(false);
   const scrollRestoreRef = useRef(null);
   const [shouldScrollBottom, setShouldScrollBottom] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
@@ -50,6 +51,10 @@ function Chat() {
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
   const [activeMessageId, setActiveMessageId] = useState(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const emojiPanelRef = useRef(null);
+  const [replyTo, setReplyTo] = useState(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     loadConversations();
@@ -273,6 +278,7 @@ function Chat() {
     setSelectedChat(chat);
     setMessages([]);
     hasMoreRef.current = true;
+    hasMoreDownRef.current = false;
     try {
       let endpoint = "";
       if (chat.type === 0) {
@@ -313,6 +319,8 @@ function Chat() {
       } else if (chat.type === 1) {
         joinChannel(chat.id);
       }
+      // Textarea-ya focus ver
+      setTimeout(() => inputRef.current?.focus(), 0);
     } catch (err) {
       console.error("Failed to load messages:", err);
       setMessages([]);
@@ -324,6 +332,11 @@ function Chat() {
 
     const text = messageText.trim();
     setMessageText("");
+    setReplyTo(null);
+
+    // Textarea hündürlüyünü resetlə
+    const textarea = document.querySelector(".message-input");
+    if (textarea) textarea.style.height = "auto";
 
     try {
       let endpoint = "";
@@ -335,7 +348,10 @@ function Chat() {
         return;
       }
 
-      await apiPost(endpoint, { content: text });
+      await apiPost(endpoint, {
+        content: text,
+        replyToMessageId: replyTo ? replyTo.id : null,
+      });
 
       // Mesajları yenidən yüklə (SignalR fallback)
       const messagesEndpoint =
@@ -343,12 +359,30 @@ function Chat() {
           ? `/api/conversations/${selectedChat.id}/messages?pageSize=30`
           : `/api/channels/${selectedChat.id}/messages?pageSize=30`;
       const data = await apiGet(messagesEndpoint);
+      hasMoreDownRef.current = false;
       setShouldScrollBottom(true);
       setMessages(data);
     } catch (err) {
       console.error("Failed to send message:", err);
     }
   }
+
+  // Emoji panel kənara tıklandıqda bağlansın
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (
+        emojiPanelRef.current &&
+        !emojiPanelRef.current.contains(e.target) &&
+        !e.target.closest(".emoji-btn")
+      ) {
+        setEmojiOpen(false);
+      }
+    }
+    if (emojiOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [emojiOpen]);
 
   function sendTypingSignal() {
     if (!selectedChat || selectedChat.type === 2) return;
@@ -386,6 +420,49 @@ function Chat() {
         conn.invoke("TypingInChannel", selectedChat.id, false);
       }
     }, 2000);
+  }
+
+  async function handleScrollToMessage(messageId) {
+    const area = messagesAreaRef.current;
+    if (!area || !selectedChat) return;
+
+    // Əvvəlcə DOM-da yoxla — mesaj artıq yüklənibsə birbaşa scroll et
+    let el = area.querySelector(`[data-bubble-id="${messageId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("highlight-message");
+      setTimeout(() => el.classList.remove("highlight-message"), 3000);
+      return;
+    }
+
+    // Mesaj DOM-da yoxdur — around endpoint ilə yüklə
+    try {
+      let endpoint = "";
+      if (selectedChat.type === 0) {
+        endpoint = `/api/conversations/${selectedChat.id}/messages/around/${messageId}`;
+      } else if (selectedChat.type === 1) {
+        endpoint = `/api/channels/${selectedChat.id}/messages/around/${messageId}`;
+      } else {
+        return;
+      }
+
+      const data = await apiGet(endpoint);
+      hasMoreRef.current = true;
+      hasMoreDownRef.current = true;
+      setMessages(data);
+
+      // DOM yeniləndikdən sonra scroll et
+      setTimeout(() => {
+        const target = area.querySelector(`[data-bubble-id="${messageId}"]`);
+        if (target) {
+          target.scrollIntoView({ behavior: "instant", block: "center" });
+          target.classList.add("highlight-message");
+          setTimeout(() => target.classList.remove("highlight-message"), 3000);
+        }
+      }, 100);
+    } catch (err) {
+      console.error("Failed to load messages around target:", err);
+    }
   }
 
   function handleKeyDown(e) {
@@ -444,6 +521,58 @@ function Chat() {
     } finally {
       loadingMoreRef.current = false;
     }
+  }
+
+  async function handleScrollDown() {
+    const area = messagesAreaRef.current;
+    if (!area) return;
+    if (loadingMoreRef.current) return;
+    if (!hasMoreDownRef.current) return;
+    if (!selectedChat) return;
+
+    // Aşağıya yaxınlaşanda yüklə (1 viewport threshold)
+    const threshold = area.clientHeight;
+    const distanceFromBottom = area.scrollHeight - area.scrollTop - area.clientHeight;
+    if (distanceFromBottom > threshold) return;
+
+    // messages array-da ən yeni mesaj — index 0 (desc sıralama)
+    const newestMsg = messages[0];
+    if (!newestMsg) return;
+
+    const afterDate = newestMsg.createdAtUtc || newestMsg.sentAt;
+    if (!afterDate) return;
+
+    let endpoint = "";
+    if (selectedChat.type === 0) {
+      endpoint = `/api/conversations/${selectedChat.id}/messages/after?date=${encodeURIComponent(afterDate)}&limit=30`;
+    } else if (selectedChat.type === 1) {
+      endpoint = `/api/channels/${selectedChat.id}/messages/after?date=${encodeURIComponent(afterDate)}&limit=30`;
+    }
+    if (!endpoint) return;
+
+    loadingMoreRef.current = true;
+
+    try {
+      const newerMessages = await apiGet(endpoint);
+
+      if (!newerMessages || newerMessages.length === 0) {
+        hasMoreDownRef.current = false;
+        return;
+      }
+
+      flushSync(() => {
+        setMessages((prev) => [...newerMessages.reverse(), ...prev]);
+      });
+    } catch (err) {
+      console.error("Failed to load newer messages:", err);
+    } finally {
+      loadingMoreRef.current = false;
+    }
+  }
+
+  function handleScroll() {
+    handleScrollUp();
+    handleScrollDown();
   }
 
   return (
@@ -536,7 +665,7 @@ function Chat() {
               <div
                 className="messages-area"
                 ref={messagesAreaRef}
-                onScroll={handleScrollUp}
+                onScroll={handleScroll}
               >
                 {(() => {
                   const grouped = groupMessagesByDate([...messages].reverse());
@@ -567,6 +696,11 @@ function Chat() {
                         selectedChat={selectedChat}
                         activeMessageId={activeMessageId}
                         setActiveMessageId={setActiveMessageId}
+                        onReply={(m) => {
+                          setReplyTo(m);
+                          setTimeout(() => inputRef.current?.focus(), 0);
+                        }}
+                        onScrollToMessage={handleScrollToMessage}
                       />
                     );
                   });
@@ -575,71 +709,156 @@ function Chat() {
               </div>
 
               <div className="message-input-area">
-                <button className="input-action-btn" title="Attach">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
+                {replyTo && (
+                  <div className="reply-preview">
+                    <svg
+                      className="reply-preview-icon"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#00ace3"
+                      strokeWidth="2"
+                    >
+                      <path d="M3 21c0 0 1-6 6-10h4V6l8 8-8 8v-5H9c-3 0-6 4-6 4z" />
+                    </svg>
+                    <div className="reply-preview-body">
+                      <span className="reply-preview-name">
+                        {replyTo.senderFullName}
+                      </span>
+                      <span className="reply-preview-text">
+                        {replyTo.content}
+                      </span>
+                    </div>
+                    <button
+                      className="reply-preview-close"
+                      onClick={() => setReplyTo(null)}
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+                <div className="message-input-wrapper">
+                  <button className="input-icon-btn" title="Attach">
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    >
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                    </svg>
+                  </button>
+                  <textarea
+                    ref={inputRef}
+                    className="message-input"
+                    placeholder="Enter @ to mention a person or chat"
+                    value={messageText}
+                    maxLength={4000}
+                    rows={1}
+                    onChange={(e) => {
+                      setMessageText(e.target.value);
+                      e.target.style.height = "auto";
+                      e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+                    }}
+                    onKeyDown={handleKeyDown}
+                  />
+                  <button
+                    className={`input-icon-btn emoji-btn ${emojiOpen ? "active" : ""}`}
+                    title="Emoji"
+                    onClick={() => setEmojiOpen(!emojiOpen)}
                   >
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
-                </button>
-                <input
-                  type="text"
-                  className="message-input"
-                  placeholder="Enter @ to mention a person or chat"
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                />
-                <button className="input-action-btn" title="Emoji">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                      <line x1="9" y1="9" x2="9.01" y2="9" />
+                      <line x1="15" y1="9" x2="15.01" y2="9" />
+                    </svg>
+                  </button>
+                  <button
+                    className={`send-btn ${messageText.trim() ? "" : "disabled"}`}
+                    title="Send"
+                    onClick={handleSendMessage}
+                    disabled={!messageText.trim()}
                   >
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                    <line x1="9" y1="9" x2="9.01" y2="9" />
-                    <line x1="15" y1="9" x2="15.01" y2="9" />
-                  </svg>
-                </button>
-                <button
-                  className="send-btn"
-                  title="Send"
-                  onClick={handleSendMessage}
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                  </svg>
-                </button>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
+
+              {/* Emoji picker panel */}
+              {emojiOpen && (
+                <div className="emoji-panel" ref={emojiPanelRef}>
+                  <div className="emoji-panel-header">Smileys and people</div>
+                  <div className="emoji-panel-grid">
+                    {[
+                      "😀","😃","😄","😁","😆","😅","🤣","😂",
+                      "🙂","🙃","😉","😊","😇","🥰","😍","🤩",
+                      "😘","😗","😚","😙","😋","😛","😜","🤪",
+                      "😝","🤑","🤗","🤭","🤫","🤔","🤐","🤨",
+                      "😐","😑","😶","😏","😒","🙄","😬","🤥",
+                      "😌","😔","😪","🤤","😴","😷","🤒","🤕",
+                      "🤢","🤮","🥵","🥶","🥴","😵","🤯","🤠",
+                      "🥳","😎","🤓","🧐","😕","😟","🙁","😮",
+                      "😯","😲","😳","🥺","😦","😧","😨","😰",
+                      "😥","😢","😭","😱","😖","😣","😞","😓",
+                      "😩","😫","🥱","😤","😡","😠","🤬","😈",
+                      "👿","💀","👋","👍","👎","👏","🙏","💪",
+                      "🤝","❤️","🔥","💯","⭐","🎉","✅","❌",
+                    ].map((emoji) => (
+                      <button
+                        key={emoji}
+                        className="emoji-panel-btn"
+                        onClick={() => {
+                          setMessageText((prev) => prev + emoji);
+                        }}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="chat-empty">
               <svg
-                width="80"
-                height="80"
+                width="48"
+                height="48"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#c0c0c0"
-                strokeWidth="1"
+                stroke="#8899aa"
+                strokeWidth="1.2"
               >
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              <h2>Select a chat</h2>
-              <p>Choose a conversation from the list to start messaging</p>
+              <h2>Select a chat to start communicating</h2>
             </div>
           )}
         </div>
