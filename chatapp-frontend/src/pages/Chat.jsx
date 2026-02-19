@@ -17,11 +17,13 @@ import {
 
 import { flushSync } from "react-dom";
 import { AuthContext } from "../context/AuthContext";
-import { apiGet, apiPost } from "../services/api";
+import { apiGet, apiPost, apiDelete } from "../services/api";
 
 import Sidebar from "../components/Sidebar";
 import ConversationList from "../components/ConversationList";
 import MessageBubble from "../components/MessageBubble";
+import ForwardPanel from "../components/ForwardPanel";
+import PinnedBar, { PinnedExpanded } from "../components/PinnedBar";
 import {
   getInitials,
   getAvatarColor,
@@ -45,6 +47,7 @@ function Chat() {
   const hasMoreRef = useRef(true);
   const hasMoreDownRef = useRef(false);
   const scrollRestoreRef = useRef(null);
+  const pendingHighlightRef = useRef(null);
   const [shouldScrollBottom, setShouldScrollBottom] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
   const [typingUsers, setTypingUsers] = useState({});
@@ -54,6 +57,10 @@ function Chat() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const emojiPanelRef = useRef(null);
   const [replyTo, setReplyTo] = useState(null);
+  const [forwardMessage, setForwardMessage] = useState(null);
+  const [pinnedMessages, setPinnedMessages] = useState([]);
+  const [pinBarExpanded, setPinBarExpanded] = useState(false);
+  const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -172,6 +179,31 @@ function Chat() {
       });
     }
 
+    // Pin/Unpin SignalR handlers
+    function handleMessagePinned(msgDto) {
+      setPinnedMessages((prev) => {
+        if (prev.some((m) => m.id === msgDto.id)) return prev;
+        return [...prev, msgDto].sort(
+          (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
+        );
+      });
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgDto.id ? { ...m, isPinned: true, pinnedAtUtc: msgDto.pinnedAtUtc } : m)),
+      );
+    }
+
+    function handleMessageUnpinned(msgDto) {
+      setPinnedMessages((prev) => {
+        const next = prev.filter((m) => m.id !== msgDto.id);
+        // currentPinIndex sınırdan çıxmasın
+        setCurrentPinIndex((idx) => (idx >= next.length ? Math.max(0, next.length - 1) : idx));
+        return next;
+      });
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgDto.id ? { ...m, isPinned: false, pinnedAtUtc: null } : m)),
+      );
+    }
+
     startConnection()
       .then((c) => {
         conn = c;
@@ -182,6 +214,10 @@ function Chat() {
         conn.on("UserOffline", handleUserOffline);
         conn.on("UserTypingInConversation", handleUserTypingInConversation);
         conn.on("UserTypingInChannel", handleUserTypingInChannel);
+        conn.on("DirectMessagePinned", handleMessagePinned);
+        conn.on("DirectMessageUnpinned", handleMessageUnpinned);
+        conn.on("ChannelMessagePinned", handleMessagePinned);
+        conn.on("ChannelMessageUnpinned", handleMessageUnpinned);
       })
       .catch((err) => console.error("SignalR connection failed:", err));
 
@@ -194,6 +230,10 @@ function Chat() {
         conn.off("UserOffline", handleUserOffline);
         conn.off("UserTypingInConversation", handleUserTypingInConversation);
         conn.off("UserTypingInChannel", handleUserTypingInChannel);
+        conn.off("DirectMessagePinned", handleMessagePinned);
+        conn.off("DirectMessageUnpinned", handleMessageUnpinned);
+        conn.off("ChannelMessagePinned", handleMessagePinned);
+        conn.off("ChannelMessageUnpinned", handleMessageUnpinned);
       }
     };
   }, [user.id]);
@@ -213,6 +253,23 @@ function Chat() {
       const heightDiff = area.scrollHeight - saved.scrollHeight;
       area.scrollTop = saved.scrollTop + heightDiff;
       scrollRestoreRef.current = null;
+    }
+  }, [messages]);
+
+  // getAround-dan sonra hədəf mesaja scroll + highlight
+  useLayoutEffect(() => {
+    const messageId = pendingHighlightRef.current;
+    if (!messageId) return;
+    pendingHighlightRef.current = null;
+
+    const area = messagesAreaRef.current;
+    if (!area) return;
+
+    const target = area.querySelector(`[data-bubble-id="${messageId}"]`);
+    if (target) {
+      target.scrollIntoView({ behavior: "instant", block: "center" });
+      target.classList.add("highlight-message");
+      setTimeout(() => target.classList.remove("highlight-message"), 3000);
     }
   }, [messages]);
 
@@ -264,6 +321,28 @@ function Chat() {
     }
   }
 
+  async function loadPinnedMessages(chat) {
+    try {
+      let endpoint = "";
+      if (chat.type === 0) {
+        endpoint = `/api/conversations/${chat.id}/messages/pinned`;
+      } else if (chat.type === 1) {
+        endpoint = `/api/channels/${chat.id}/messages/pinned`;
+      } else {
+        return;
+      }
+      const data = await apiGet(endpoint);
+      // Ən sonuncu pinlənmiş birinci görünsün (DESC by pinnedAtUtc)
+      const sorted = (data || []).sort(
+        (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
+      );
+      setPinnedMessages(sorted);
+    } catch (err) {
+      console.error("Failed to load pinned messages:", err);
+      setPinnedMessages([]);
+    }
+  }
+
   // Type enum: 0 = Conversation, 1 = Channel, 2 = DepartmentUser
   async function handleSelectChat(chat) {
     // Leave previous group
@@ -277,20 +356,37 @@ function Chat() {
 
     setSelectedChat(chat);
     setMessages([]);
+    setPinnedMessages([]);
+    setPinBarExpanded(false);
+    setCurrentPinIndex(0);
     hasMoreRef.current = true;
     hasMoreDownRef.current = false;
     try {
-      let endpoint = "";
+      let msgEndpoint = "";
+      let pinEndpoint = "";
       if (chat.type === 0) {
-        endpoint = `/api/conversations/${chat.id}/messages?pageSize=30`;
+        msgEndpoint = `/api/conversations/${chat.id}/messages?pageSize=30`;
+        pinEndpoint = `/api/conversations/${chat.id}/messages/pinned`;
       } else if (chat.type === 1) {
-        endpoint = `/api/channels/${chat.id}/messages?pageSize=30`;
+        msgEndpoint = `/api/channels/${chat.id}/messages?pageSize=30`;
+        pinEndpoint = `/api/channels/${chat.id}/messages/pinned`;
       } else {
         return;
       }
-      const data = await apiGet(endpoint);
+
+      // Mesajlar + pinned mesajları paralel yüklə
+      const [msgData, pinData] = await Promise.all([
+        apiGet(msgEndpoint),
+        apiGet(pinEndpoint).catch(() => []),
+      ]);
+
+      // Pinned mesajları DESC sıralayıb eyni anda set et (bir dəfə scroll)
+      const sortedPins = (pinData || []).sort(
+        (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
+      );
+      setPinnedMessages(sortedPins);
       setShouldScrollBottom(true);
-      setMessages(data);
+      setMessages(msgData);
 
       // Join new group
       if (chat.type === 0) {
@@ -325,6 +421,85 @@ function Chat() {
       console.error("Failed to load messages:", err);
       setMessages([]);
     }
+  }
+
+  async function handleForward(targetChat) {
+    if (!forwardMessage) return;
+
+    const msg = forwardMessage;
+    // Panel dərhal bağlansın (optimistic)
+    setForwardMessage(null);
+
+    try {
+      let endpoint = "";
+      if (targetChat.type === 0) {
+        endpoint = `/api/conversations/${targetChat.id}/messages`;
+      } else if (targetChat.type === 1) {
+        endpoint = `/api/channels/${targetChat.id}/messages`;
+      } else {
+        return;
+      }
+
+      await apiPost(endpoint, {
+        content: msg.content,
+        isForwarded: true,
+      });
+
+      // Conversation list-i yenilə (son mesaj görsənsin)
+      loadConversations();
+
+      // Əgər forward edilən chat açıqdırsa, mesajları da yenilə
+      if (selectedChat && selectedChat.id === targetChat.id) {
+        const messagesEndpoint =
+          selectedChat.type === 0
+            ? `/api/conversations/${selectedChat.id}/messages?pageSize=30`
+            : `/api/channels/${selectedChat.id}/messages?pageSize=30`;
+        const data = await apiGet(messagesEndpoint);
+        hasMoreDownRef.current = false;
+        setShouldScrollBottom(true);
+        setMessages(data);
+      }
+    } catch (err) {
+      console.error("Failed to forward message:", err);
+    }
+  }
+
+  async function handlePinMessage(msg) {
+    if (!selectedChat) return;
+    try {
+      let endpoint = "";
+      if (selectedChat.type === 0) {
+        endpoint = `/api/conversations/${selectedChat.id}/messages/${msg.id}/pin`;
+      } else if (selectedChat.type === 1) {
+        endpoint = `/api/channels/${selectedChat.id}/messages/${msg.id}/pin`;
+      } else {
+        return;
+      }
+
+      if (msg.isPinned) {
+        await apiDelete(endpoint);
+      } else {
+        await apiPost(endpoint);
+      }
+
+      // Pinned messages + messages state yenilə
+      loadPinnedMessages(selectedChat);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msg.id ? { ...m, isPinned: !msg.isPinned } : m,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to pin/unpin message:", err);
+    }
+  }
+
+  function handlePinBarClick(messageId) {
+    handleScrollToMessage(messageId);
+    // Növbəti pinlənmiş mesaja keç
+    setCurrentPinIndex((prev) =>
+      prev >= pinnedMessages.length - 1 ? 0 : prev + 1,
+    );
   }
 
   async function handleSendMessage() {
@@ -449,17 +624,10 @@ function Chat() {
       const data = await apiGet(endpoint);
       hasMoreRef.current = true;
       hasMoreDownRef.current = true;
-      setMessages(data);
 
-      // DOM yeniləndikdən sonra scroll et
-      setTimeout(() => {
-        const target = area.querySelector(`[data-bubble-id="${messageId}"]`);
-        if (target) {
-          target.scrollIntoView({ behavior: "instant", block: "center" });
-          target.classList.add("highlight-message");
-          setTimeout(() => target.classList.remove("highlight-message"), 3000);
-        }
-      }, 100);
+      // Ref ilə scroll+highlight-i saxla — setMessages sonrası useEffect-də icra olunacaq
+      pendingHighlightRef.current = messageId;
+      setMessages(data);
     } catch (err) {
       console.error("Failed to load messages around target:", err);
     }
@@ -646,7 +814,11 @@ function Chat() {
                       <line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
                   </button>
-                  <button className="header-action-btn" title="Pin">
+                  <button
+                    className="header-action-btn"
+                    title="Pin"
+                    onClick={() => pinnedMessages.length > 0 && setPinBarExpanded((v) => !v)}
+                  >
                     <svg
                       width="18"
                       height="18"
@@ -661,6 +833,24 @@ function Chat() {
                   </button>
                 </div>
               </div>
+
+              {pinnedMessages.length > 0 && (
+                <PinnedBar
+                  pinnedMessages={pinnedMessages}
+                  currentPinIndex={currentPinIndex}
+                  onToggleExpand={() => setPinBarExpanded((v) => !v)}
+                  onPinClick={handlePinBarClick}
+                />
+              )}
+
+              {pinBarExpanded && pinnedMessages.length > 0 && (
+                <PinnedExpanded
+                  pinnedMessages={pinnedMessages}
+                  onToggleExpand={() => setPinBarExpanded(false)}
+                  onScrollToMessage={handleScrollToMessage}
+                  onUnpin={handlePinMessage}
+                />
+              )}
 
               <div
                 className="messages-area"
@@ -700,6 +890,8 @@ function Chat() {
                           setReplyTo(m);
                           setTimeout(() => inputRef.current?.focus(), 0);
                         }}
+                        onForward={(m) => setForwardMessage(m)}
+                        onPin={handlePinMessage}
                         onScrollToMessage={handleScrollToMessage}
                       />
                     );
@@ -844,6 +1036,14 @@ function Chat() {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {forwardMessage && (
+                <ForwardPanel
+                  conversations={conversations}
+                  onForward={handleForward}
+                  onClose={() => setForwardMessage(null)}
+                />
               )}
             </>
           ) : (

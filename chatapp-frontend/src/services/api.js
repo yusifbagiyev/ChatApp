@@ -75,6 +75,8 @@ async function apiFetch(endpoint, options = {}) {
       throw new Error(error.error || "Request failed");
     }
 
+    // 204 No Content — boş cavab
+    if (retryResponse.status === 204) return null;
     return retryResponse.json();
   }
 
@@ -83,6 +85,8 @@ async function apiFetch(endpoint, options = {}) {
     throw new Error(error.error || "Request failed");
   }
 
+  // 204 No Content — boş cavab
+  if (response.status === 204) return null;
   return response.json();
 }
 
@@ -98,4 +102,8 @@ function apiPost(endpoint, body) {
   });
 }
 
-export { apiGet, apiPost, scheduleRefresh, stopRefreshTimer };
+function apiDelete(endpoint) {
+  return apiFetch(endpoint, { method: "DELETE" });
+}
+
+export { apiGet, apiPost, apiDelete, scheduleRefresh, stopRefreshTimer };

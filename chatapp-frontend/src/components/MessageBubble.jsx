@@ -13,14 +13,18 @@ function MessageBubble({
   activeMessageId,
   setActiveMessageId,
   onReply,
+  onForward,
+  onPin,
   onScrollToMessage,
 }) {
-  const [showActions, setShowActions] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reactionOpen, setReactionOpen] = useState(false);
   const [reactionExpanded, setReactionExpanded] = useState(false);
   const menuRef = useRef(null);
   const reactionRef = useRef(null);
+
+  // showActions artıq lokal state deyil — activeMessageId-dən derive olunur
+  const showActions = activeMessageId === msg.id;
 
   // Başqa mesaj aktiv olanda bu mesajın panellərini bağla
   useEffect(() => {
@@ -28,7 +32,6 @@ function MessageBubble({
       setMenuOpen(false);
       setReactionOpen(false);
       setReactionExpanded(false);
-      setShowActions(false);
     }
   }, [activeMessageId, msg.id]);
 
@@ -65,12 +68,9 @@ function MessageBubble({
     <div
       className={`message-row ${isOwn ? "own" : ""} ${showAvatar ? "has-avatar" : ""}`}
       data-bubble-id={msg.id}
-      onMouseEnter={() => {
-        setActiveMessageId(msg.id);
-        setShowActions(true);
-      }}
+      onMouseEnter={() => setActiveMessageId(msg.id)}
       onMouseLeave={() => {
-        if (!menuOpen && !reactionOpen) setShowActions(false);
+        if (!menuOpen && !reactionOpen) setActiveMessageId(null);
       }}
       {...(!isOwn &&
         !msg.isRead && {
@@ -96,6 +96,22 @@ function MessageBubble({
         </div>
       )}
       <div className={`message-bubble ${isOwn ? "own" : ""}`}>
+        {msg.isForwarded && (
+          <div className="forwarded-label">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="15 17 20 12 15 7" />
+              <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
+            </svg>
+            <span>Forwarded message</span>
+          </div>
+        )}
         {msg.replyToMessageId && (
           <div
             className="reply-reference"
@@ -252,7 +268,10 @@ function MessageBubble({
                 )}
                 <button
                   className="action-menu-item"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    onForward && onForward(msg);
+                    setMenuOpen(false);
+                  }}
                 >
                   <span>Forward</span>
                   <svg
@@ -269,20 +288,38 @@ function MessageBubble({
                 </button>
                 <button
                   className="action-menu-item"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    onPin && onPin(msg);
+                    setMenuOpen(false);
+                  }}
                 >
-                  <span>Pin</span>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <line x1="12" y1="17" x2="12" y2="22" />
-                    <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
-                  </svg>
+                  <span>{msg.isPinned ? "Unpin" : "Pin"}</span>
+                  {msg.isPinned ? (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <line x1="12" y1="17" x2="12" y2="22" />
+                      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+                      <line x1="2" y1="2" x2="22" y2="22" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <line x1="12" y1="17" x2="12" y2="22" />
+                      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+                    </svg>
+                  )}
                 </button>
                 <button
                   className="action-menu-item"

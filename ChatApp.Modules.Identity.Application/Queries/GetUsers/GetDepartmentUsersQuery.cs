@@ -101,9 +101,9 @@ public class GetDepartmentUsersQueryHandler(
             {
                 var term = query.SearchTerm.ToLower();
                 usersQuery = usersQuery.Where(u =>
-                    u.FirstName.Contains(term, StringComparison.CurrentCultureIgnoreCase) ||
-                    u.LastName.Contains(term, StringComparison.CurrentCultureIgnoreCase) ||
-                    u.Email.Contains(term, StringComparison.CurrentCultureIgnoreCase));
+                    u.FirstName.ToLower().Contains(term) ||
+                    u.LastName.ToLower().Contains(term) ||
+                    u.Email.ToLower().Contains(term));
             }
 
             // Get total count

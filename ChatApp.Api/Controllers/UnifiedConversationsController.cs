@@ -35,6 +35,7 @@ public class UnifiedConversationsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetUnifiedConversationList(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
         CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserId();
@@ -45,7 +46,7 @@ public class UnifiedConversationsController(IMediator mediator) : ControllerBase
 
         if (pageNumber == 1)
         {
-            return await GetFirstPage(userId, pageSize, cancellationToken);
+            return await GetFirstPage(userId, pageSize, search?.Trim(), cancellationToken);
         }
         else
         {
@@ -58,8 +59,10 @@ public class UnifiedConversationsController(IMediator mediator) : ControllerBase
     /// Conversations və channels paralel yüklənir, sonra merge+sort edilir.
     /// Qalan slotlar department users ilə doldurulur.
     /// </summary>
-    private async Task<IActionResult> GetFirstPage(Guid userId, int pageSize, CancellationToken cancellationToken)
+    private async Task<IActionResult> GetFirstPage(Guid userId, int pageSize, string? search, CancellationToken cancellationToken)
     {
+        var hasSearch = !string.IsNullOrEmpty(search) && search.Length >= 2;
+
         // STEP 1: Load ALL conversations and channels in parallel (typically <50 items each)
         var conversationsTask = mediator.Send(
             new GetConversationsPagedQuery(userId, 1, 100), cancellationToken);
@@ -74,11 +77,23 @@ public class UnifiedConversationsController(IMediator mediator) : ControllerBase
         var allConversations = conversationsResult.IsSuccess ? conversationsResult.Value?.Items ?? [] : [];
         var allChannels = channelsResult.IsSuccess ? channelsResult.Value?.Items ?? [] : [];
 
+        // Search filter: conversation və channel-ları ada görə filter et
+        if (hasSearch)
+        {
+            allConversations = allConversations
+                .Where(c => !c.IsNotes && c.OtherUserFullName.Contains(search!, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            allChannels = allChannels
+                .Where(c => c.Name.Contains(search!, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
         // STEP 2: Merge and sort by priority
         var mergedItems = new List<UnifiedChatItemDto>();
 
-        // Priority 1: Notes conversation (always first)
-        mergedItems.AddRange(allConversations.Where(c => c.IsNotes).Select(MapConversation));
+        // Priority 1: Notes conversation (always first) — search zamanı göstərmə
+        if (!hasSearch)
+            mergedItems.AddRange(allConversations.Where(c => c.IsNotes).Select(MapConversation));
 
         // Priority 2+3: Pinned then active — interleave conversations and channels by LastMessageAtUtc
         var nonNotes = allConversations
@@ -108,7 +123,7 @@ public class UnifiedConversationsController(IMediator mediator) : ControllerBase
 
         // Həmişə department users query göndər (hətta deptTake==0 olsa belə totalCount lazımdır)
         var deptResult = await mediator.Send(
-            new GetDepartmentUsersQuery(userId, 1, Math.Max(deptTake, 1), null, conversationUserIds),
+            new GetDepartmentUsersQuery(userId, 1, Math.Max(deptTake, 1), hasSearch ? search : null, conversationUserIds),
             cancellationToken);
 
         if (deptResult.IsSuccess && deptResult.Value != null)
