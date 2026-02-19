@@ -496,6 +496,23 @@ function Chat() {
     }
   }, [selectedChat]);
 
+  const handleFavoriteMessage = useCallback(async (msg) => {
+    if (!selectedChat) return;
+    try {
+      let endpoint = "";
+      if (selectedChat.type === 0) {
+        endpoint = `/api/conversations/${selectedChat.id}/messages/${msg.id}/favorite`;
+      } else if (selectedChat.type === 1) {
+        endpoint = `/api/channels/${selectedChat.id}/messages/${msg.id}/favorite`;
+      } else {
+        return;
+      }
+      await apiPost(endpoint);
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+    }
+  }, [selectedChat]);
+
   function handlePinBarClick(messageId) {
     handleScrollToMessage(messageId);
     // Növbəti pinlənmiş mesaja keç
@@ -907,6 +924,7 @@ function Chat() {
                       onReply={handleReply}
                       onForward={handleForwardMsg}
                       onPin={handlePinMessage}
+                      onFavorite={handleFavoriteMessage}
                       onScrollToMessage={handleScrollToMessage}
                     />
                   );

@@ -539,14 +539,14 @@ namespace ChatApp.Modules.DirectMessages.Api.Controllers
 
 
         /// <summary>
-        /// Toggles a message as favorite for the current user
+        /// Adds a message to favorites for the current user
         /// </summary>
-        [HttpPost("{messageId:guid}/favorite/toggle")]
+        [HttpPost("{messageId:guid}/favorite")]
         [RequirePermission("Messages.Read")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> ToggleFavorite(
+        public async Task<IActionResult> AddFavorite(
             [FromRoute] Guid conversationId,
             [FromRoute] Guid messageId,
             CancellationToken cancellationToken)
@@ -556,13 +556,40 @@ namespace ChatApp.Modules.DirectMessages.Api.Controllers
                 return Unauthorized();
 
             var result = await _mediator.Send(
-                new ToggleFavoriteCommand(conversationId, messageId, userId),
+                new AddFavoriteCommand(conversationId, messageId, userId),
                 cancellationToken);
 
             if (result.IsFailure)
                 return BadRequest(new { error = result.Error });
 
-            return Ok(new { isFavorite = result.Value, message = result.Value ? "Added to favorites" : "Removed from favorites" });
+            return Ok(new { message = "Added to favorites" });
+        }
+
+        /// <summary>
+        /// Removes a message from favorites for the current user
+        /// </summary>
+        [HttpDelete("{messageId:guid}/favorite")]
+        [RequirePermission("Messages.Read")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> RemoveFavorite(
+            [FromRoute] Guid conversationId,
+            [FromRoute] Guid messageId,
+            CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized();
+
+            var result = await _mediator.Send(
+                new RemoveFavoriteCommand(conversationId, messageId, userId),
+                cancellationToken);
+
+            if (result.IsFailure)
+                return BadRequest(new { error = result.Error });
+
+            return Ok(new { message = "Removed from favorites" });
         }
 
 

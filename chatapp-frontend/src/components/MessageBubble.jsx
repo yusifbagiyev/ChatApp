@@ -13,6 +13,7 @@ const MessageBubble = memo(function MessageBubble({
   onReply,
   onForward,
   onPin,
+  onFavorite,
   onScrollToMessage,
 }) {
   const [showActions, setShowActions] = useState(false);
@@ -314,7 +315,10 @@ const MessageBubble = memo(function MessageBubble({
                 </button>
                 <button
                   className="action-menu-item"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    onFavorite && onFavorite(msg);
+                    setMenuOpen(false);
+                  }}
                 >
                   <span>Add to Favorites</span>
                   <svg

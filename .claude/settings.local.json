@@ -73,7 +73,9 @@
       "Bash(npm run dev:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(npx vite build:*)"
+      "Bash(npx vite build:*)",
+      "Bash(del \"C:\\\\Users\\\\ybaghiyev\\\\Desktop\\\\ChatApp\\\\ChatApp.Modules.DirectMessages.Application\\\\Commands\\\\MessageConditions\\\\ToggleFavoriteCommand.cs\")",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": []
