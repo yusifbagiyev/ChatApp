@@ -62,6 +62,7 @@ function Chat() {
   const [pinBarExpanded, setPinBarExpanded] = useState(false);
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const scrollRafRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -738,8 +739,12 @@ function Chat() {
   }
 
   function handleScroll() {
-    handleScrollUp();
-    handleScrollDown();
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      handleScrollUp();
+      handleScrollDown();
+    });
   }
 
   // Memoize: messages array reverse + grouping — yalnız messages dəyişəndə yenidən hesablanır
