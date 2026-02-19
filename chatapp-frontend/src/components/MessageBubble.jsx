@@ -22,13 +22,19 @@ const MessageBubble = memo(function MessageBubble({
   const menuRef = useRef(null);
   const reactionRef = useRef(null);
 
-  // Kənar tıklandıqda menuları bağla
+  // Kənar tıklandıqda menuları + actions panelini bağla
   useEffect(() => {
     function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+      const clickedInsideMenu = menuRef.current && menuRef.current.contains(e.target);
+      const clickedInsideReaction = reactionRef.current && reactionRef.current.contains(e.target);
+      if (!clickedInsideMenu && !clickedInsideReaction) {
         setMenuOpen(false);
-      }
-      if (reactionRef.current && !reactionRef.current.contains(e.target)) {
+        setReactionOpen(false);
+        setReactionExpanded(false);
+        setShowActions(false);
+      } else if (!clickedInsideMenu) {
+        setMenuOpen(false);
+      } else if (!clickedInsideReaction) {
         setReactionOpen(false);
         setReactionExpanded(false);
       }
