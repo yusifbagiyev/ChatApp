@@ -5,6 +5,7 @@ using ChatApp.Modules.Channels.Application.DTOs.Requests;
 using ChatApp.Modules.Channels.Application.DTOs.Responses;
 using ChatApp.Modules.Channels.Application.Queries.GetChannelMessages;
 using ChatApp.Modules.Channels.Application.Queries.GetChannelMessagesAround;
+using ChatApp.Modules.Channels.Application.Queries.GetMessageReactions;
 using ChatApp.Modules.Channels.Application.Queries.GetMessagesBeforeDate;
 using ChatApp.Modules.Channels.Application.Queries.GetMessagesAfterDate;
 using ChatApp.Modules.Channels.Application.Queries.GetFavoriteMessages;
@@ -614,6 +615,33 @@ namespace ChatApp.Modules.Channels.Api.Controllers
                 return BadRequest(new { error = result.Error });
 
             return Ok(new { reactions = result.Value, message = "Reaction toggled successfully" });
+        }
+
+
+        /// <summary>
+        /// Gets detailed reaction info for a message (who reacted with what)
+        /// </summary>
+        [HttpGet("{messageId:guid}/reactions")]
+        [RequirePermission("Messages.Read")]
+        [ProducesResponseType(typeof(List<ChannelMessageReactionDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetReactions(
+            [FromRoute] Guid channelId,
+            [FromRoute] Guid messageId,
+            CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized();
+
+            var result = await _mediator.Send(
+                new GetMessageReactionsQuery(messageId, channelId, userId),
+                cancellationToken);
+
+            if (result.IsFailure)
+                return BadRequest(new { error = result.Error });
+
+            return Ok(result.Value);
         }
 
 

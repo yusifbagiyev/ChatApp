@@ -102,8 +102,16 @@ function apiPost(endpoint, body) {
   });
 }
 
+function apiPut(endpoint, body) {
+  return apiFetch(endpoint, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 function apiDelete(endpoint) {
   return apiFetch(endpoint, { method: "DELETE" });
 }
 
-export { apiGet, apiPost, apiDelete, scheduleRefresh, stopRefreshTimer };
+export { apiGet, apiPost, apiPut, apiDelete, scheduleRefresh, stopRefreshTimer };

@@ -18,7 +18,7 @@ import {
 } from "../services/signalr";
 
 import { AuthContext } from "../context/AuthContext";
-import { apiGet, apiPost, apiDelete } from "../services/api";
+import { apiGet, apiPost, apiPut, apiDelete } from "../services/api";
 
 import Sidebar from "../components/Sidebar";
 import ConversationList from "../components/ConversationList";
@@ -57,11 +57,15 @@ function Chat() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const emojiPanelRef = useRef(null);
   const [replyTo, setReplyTo] = useState(null);
+  const [editMessage, setEditMessage] = useState(null);
   const [forwardMessage, setForwardMessage] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState(new Set());
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [pinBarExpanded, setPinBarExpanded] = useState(false);
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const scrollRafRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -181,6 +185,38 @@ function Chat() {
       });
     }
 
+    // Delete SignalR handlers
+    function handleMessageDeleted(deletedMsg) {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === deletedMsg.id ? { ...m, isDeleted: true } : m)),
+      );
+    }
+
+    // Edit SignalR handlers
+    function handleMessageEdited(editedMsg) {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id === editedMsg.id) {
+            return { ...m, content: editedMsg.content, isEdited: true, editedAtUtc: editedMsg.editedAtUtc };
+          }
+          // Reply reference yenilə
+          if (m.replyToMessageId === editedMsg.id) {
+            return { ...m, replyToContent: editedMsg.content };
+          }
+          return m;
+        }),
+      );
+    }
+
+    // Reaction SignalR handlers
+    function handleReactionsUpdated(data) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === data.messageId ? { ...m, reactions: data.reactions } : m,
+        ),
+      );
+    }
+
     // Pin/Unpin SignalR handlers
     function handleMessagePinned(msgDto) {
       setPinnedMessages((prev) => {
@@ -220,6 +256,12 @@ function Chat() {
         conn.on("DirectMessageUnpinned", handleMessageUnpinned);
         conn.on("ChannelMessagePinned", handleMessagePinned);
         conn.on("ChannelMessageUnpinned", handleMessageUnpinned);
+        conn.on("DirectMessageDeleted", handleMessageDeleted);
+        conn.on("ChannelMessageDeleted", handleMessageDeleted);
+        conn.on("DirectMessageEdited", handleMessageEdited);
+        conn.on("ChannelMessageEdited", handleMessageEdited);
+        conn.on("ChannelMessageReactionsUpdated", handleReactionsUpdated);
+        conn.on("DirectMessageReactionToggled", handleReactionsUpdated);
       })
       .catch((err) => console.error("SignalR connection failed:", err));
 
@@ -236,6 +278,12 @@ function Chat() {
         conn.off("DirectMessageUnpinned", handleMessageUnpinned);
         conn.off("ChannelMessagePinned", handleMessagePinned);
         conn.off("ChannelMessageUnpinned", handleMessageUnpinned);
+        conn.off("DirectMessageDeleted", handleMessageDeleted);
+        conn.off("ChannelMessageDeleted", handleMessageDeleted);
+        conn.off("DirectMessageEdited", handleMessageEdited);
+        conn.off("ChannelMessageEdited", handleMessageEdited);
+        conn.off("ChannelMessageReactionsUpdated", handleReactionsUpdated);
+        conn.off("DirectMessageReactionToggled", handleReactionsUpdated);
       }
     };
   }, [user.id]);
@@ -361,6 +409,13 @@ function Chat() {
     setPinnedMessages([]);
     setPinBarExpanded(false);
     setCurrentPinIndex(0);
+    setSelectMode(false);
+    setSelectedMessages(new Set());
+    setReplyTo(null);
+    setEditMessage(null);
+    setForwardMessage(null);
+    setEmojiOpen(false);
+    setDeleteConfirmOpen(false);
     hasMoreRef.current = true;
     hasMoreDownRef.current = false;
     try {
@@ -428,7 +483,7 @@ function Chat() {
   async function handleForward(targetChat) {
     if (!forwardMessage) return;
 
-    const msg = forwardMessage;
+    const fwd = forwardMessage;
     // Panel dərhal bağlansın (optimistic)
     setForwardMessage(null);
 
@@ -442,10 +497,17 @@ function Chat() {
         return;
       }
 
-      await apiPost(endpoint, {
-        content: msg.content,
-        isForwarded: true,
-      });
+      if (fwd.isMultiSelect) {
+        // Çoxlu mesaj forward — hər birini ardıcıl göndər
+        const allMessages = [...messages].reverse(); // chronological order
+        const selectedMsgs = allMessages.filter((m) => fwd.ids.includes(m.id));
+        for (const m of selectedMsgs) {
+          await apiPost(endpoint, { content: m.content, isForwarded: true });
+        }
+        handleExitSelectMode();
+      } else {
+        await apiPost(endpoint, { content: fwd.content, isForwarded: true });
+      }
 
       // Conversation list-i yenilə (son mesaj görsənsin)
       loadConversations();
@@ -513,6 +575,76 @@ function Chat() {
     }
   }, [selectedChat]);
 
+  // Select mode handlers
+  const handleEnterSelectMode = useCallback((msgId) => {
+    setSelectMode(true);
+    setSelectedMessages(new Set([msgId]));
+  }, []);
+
+  const handleToggleSelect = useCallback((msgId) => {
+    setSelectedMessages((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) {
+        next.delete(msgId);
+      } else {
+        next.add(msgId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleExitSelectMode = useCallback(() => {
+    setSelectMode(false);
+    setSelectedMessages(new Set());
+  }, []);
+
+  const handleForwardSelected = useCallback(() => {
+    if (selectedMessages.size === 0) return;
+    // Forward panel-i açmaq üçün ilk seçilmiş mesajı set edirik
+    // Sonra ForwardPanel-dən chat seçildikdə bütün mesajları forward edəcəyik
+    setForwardMessage({ isMultiSelect: true, ids: [...selectedMessages] });
+  }, [selectedMessages]);
+
+  // Bubble action-dan tək mesaj silmə (təsdiq olmadan)
+  const handleDeleteMessage = useCallback(async (msg) => {
+    if (!selectedChat) return;
+    try {
+      const endpoint = selectedChat.type === 0
+        ? `/api/conversations/${selectedChat.id}/messages/${msg.id}`
+        : `/api/channels/${selectedChat.id}/messages/${msg.id}`;
+      await apiDelete(endpoint);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, isDeleted: true } : m)),
+      );
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+    }
+  }, [selectedChat]);
+
+  // Select mode-da seçilmiş mesajları silmə (təsdiq formasından sonra çağırılır)
+  const handleDeleteSelected = useCallback(async () => {
+    if (!selectedChat || selectedMessages.size === 0) return;
+    try {
+      const ids = [...selectedMessages];
+      const base = selectedChat.type === 0
+        ? `/api/conversations/${selectedChat.id}/messages`
+        : `/api/channels/${selectedChat.id}/messages`;
+
+      if (ids.length > 5) {
+        await apiPost(`${base}/batch-delete`, { messageIds: ids });
+      } else {
+        await Promise.all(ids.map((id) => apiDelete(`${base}/${id}`)));
+      }
+
+      setMessages((prev) =>
+        prev.map((m) => (ids.includes(m.id) ? { ...m, isDeleted: true } : m)),
+      );
+      handleExitSelectMode();
+    } catch (err) {
+      console.error("Failed to delete selected messages:", err);
+    }
+  }, [selectedChat, selectedMessages, handleExitSelectMode]);
+
   function handlePinBarClick(messageId) {
     handleScrollToMessage(messageId);
     // Növbəti pinlənmiş mesaja keç
@@ -526,11 +658,39 @@ function Chat() {
 
     const text = messageText.trim();
     setMessageText("");
-    setReplyTo(null);
 
     // Textarea hündürlüyünü resetlə
     const textarea = document.querySelector(".message-input");
     if (textarea) textarea.style.height = "auto";
+
+    // Edit mode — mesajı redaktə et
+    if (editMessage) {
+      const editingMsg = editMessage;
+      setEditMessage(null);
+      try {
+        const endpoint = selectedChat.type === 0
+          ? `/api/conversations/${selectedChat.id}/messages/${editingMsg.id}`
+          : `/api/channels/${selectedChat.id}/messages/${editingMsg.id}`;
+        await apiPut(endpoint, { newContent: text });
+        // Optimistic UI — həm mesajın content-i, həm reply reference-ları yenilə
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id === editingMsg.id) {
+              return { ...m, content: text, isEdited: true, editedAtUtc: new Date().toISOString() };
+            }
+            if (m.replyToMessageId === editingMsg.id) {
+              return { ...m, replyToContent: text };
+            }
+            return m;
+          }),
+        );
+      } catch (err) {
+        console.error("Failed to edit message:", err);
+      }
+      return;
+    }
+
+    setReplyTo(null);
 
     try {
       let endpoint = "";
@@ -770,6 +930,15 @@ function Chat() {
     [messages],
   );
 
+  // Seçilmiş mesajlardan hər hansı biri başqasınındırsa Delete disable olsun
+  const hasOthersSelected = useMemo(() => {
+    if (selectedMessages.size === 0) return false;
+    return [...selectedMessages].some((id) => {
+      const m = messages.find((msg) => msg.id === id);
+      return m && m.senderId !== user.id;
+    });
+  }, [selectedMessages, messages, user.id]);
+
   // Stabilize callback references — React.memo yenidən render etməsin
   const handleReply = useCallback((m) => {
     setReplyTo(m);
@@ -779,6 +948,64 @@ function Chat() {
   const handleForwardMsg = useCallback((m) => {
     setForwardMessage(m);
   }, []);
+
+  const handleEditMsg = useCallback((m) => {
+    setEditMessage(m);
+    setReplyTo(null);
+    setMessageText(m.content);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, []);
+
+  const handleReaction = useCallback(async (msg, emoji) => {
+    if (!selectedChat) return;
+    try {
+      let result;
+      if (selectedChat.type === 0) {
+        result = await apiPut(
+          `/api/conversations/${selectedChat.id}/messages/${msg.id}/reactions/toggle`,
+          { reaction: emoji },
+        );
+      } else if (selectedChat.type === 1) {
+        result = await apiPost(
+          `/api/channels/${selectedChat.id}/messages/${msg.id}/reactions/toggle`,
+          { reaction: emoji },
+        );
+      } else {
+        return;
+      }
+      // Optimistic UI — API response-dan reactions-ı al
+      const reactions = result.reactions || result;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, reactions } : m)),
+      );
+    } catch (err) {
+      console.error("Failed to toggle reaction:", err);
+    }
+  }, [selectedChat]);
+
+  // Reaction badge-ə klik edildikdə detail-ləri (kim react edib) yüklə
+  const handleLoadReactionDetails = useCallback(async (messageId) => {
+    if (!selectedChat) return null;
+    try {
+      let endpoint = "";
+      if (selectedChat.type === 0) {
+        endpoint = `/api/conversations/${selectedChat.id}/messages/${messageId}/reactions`;
+      } else if (selectedChat.type === 1) {
+        endpoint = `/api/channels/${selectedChat.id}/messages/${messageId}/reactions`;
+      } else {
+        return null;
+      }
+      const details = await apiGet(endpoint);
+      // Messages state-ində reaction-ları detail ilə yenilə
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, reactions: details } : m)),
+      );
+      return details;
+    } catch (err) {
+      console.error("Failed to load reaction details:", err);
+      return null;
+    }
+  }, [selectedChat]);
 
   return (
     <div className="main-layout">
@@ -921,17 +1148,99 @@ function Chat() {
                       isOwn={isOwn}
                       showAvatar={showAvatar}
                       chatType={selectedChat.type}
+                      selectMode={selectMode}
+                      isSelected={selectedMessages.has(msg.id)}
                       onReply={handleReply}
                       onForward={handleForwardMsg}
                       onPin={handlePinMessage}
                       onFavorite={handleFavoriteMessage}
+                      onSelect={handleEnterSelectMode}
+                      onToggleSelect={handleToggleSelect}
                       onScrollToMessage={handleScrollToMessage}
+                      onDelete={handleDeleteMessage}
+                      onEdit={handleEditMsg}
+                      onReaction={handleReaction}
+                      onLoadReactionDetails={handleLoadReactionDetails}
                     />
                   );
                 })}
                 <div ref={messagesEndRef} />
               </div>
 
+              {selectMode ? (
+                <>
+                  <div className="select-toolbar">
+                    <div className="select-toolbar-inner">
+                      <div className="select-toolbar-left">
+                        <button className="select-toolbar-close" onClick={handleExitSelectMode}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                        <span className="select-toolbar-count">
+                          Messages ({selectedMessages.size})
+                        </span>
+                      </div>
+                      <div className="select-toolbar-divider" />
+                      <div className="select-toolbar-right">
+                        <button
+                          className="select-delete-btn"
+                          disabled={selectedMessages.size === 0 || hasOthersSelected}
+                          onClick={() => setDeleteConfirmOpen(true)}
+                          title={hasOthersSelected ? "You cannot delete someone else's message" : ""}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                          <span>Delete</span>
+                        </button>
+                        <button
+                          className="select-forward-btn"
+                          disabled={selectedMessages.size === 0}
+                          onClick={handleForwardSelected}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="15 17 20 12 15 7" />
+                            <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
+                          </svg>
+                          <span>Forward</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  {deleteConfirmOpen && (
+                    <div className="delete-confirm-overlay" onClick={() => setDeleteConfirmOpen(false)}>
+                      <div className="delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="delete-confirm-header">
+                          <span>Do you want to delete the selected messages ({selectedMessages.size})?</span>
+                          <button className="delete-confirm-close" onClick={() => setDeleteConfirmOpen(false)}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="delete-confirm-actions">
+                          <button
+                            className="delete-confirm-btn"
+                            onClick={() => {
+                              setDeleteConfirmOpen(false);
+                              handleDeleteSelected();
+                            }}
+                          >
+                            DELETE
+                          </button>
+                          <button className="delete-cancel-btn" onClick={() => setDeleteConfirmOpen(false)}>
+                            CANCEL
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
               <div className="message-input-area">
                 {replyTo && (
                   <div className="reply-preview">
@@ -957,6 +1266,45 @@ function Chat() {
                     <button
                       className="reply-preview-close"
                       onClick={() => setReplyTo(null)}
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+                {editMessage && (
+                  <div className="edit-preview">
+                    <svg
+                      className="edit-preview-icon"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#00ace3"
+                      strokeWidth="2"
+                    >
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    <div className="edit-preview-body">
+                      <span className="edit-preview-name">Edit message</span>
+                      <span className="edit-preview-text">{editMessage.content}</span>
+                    </div>
+                    <button
+                      className="edit-preview-close"
+                      onClick={() => {
+                        setEditMessage(null);
+                        setMessageText("");
+                      }}
                     >
                       <svg
                         width="18"
@@ -1035,6 +1383,7 @@ function Chat() {
                   </button>
                 </div>
               </div>
+              )}
 
               {/* Emoji picker panel */}
               {emojiOpen && (

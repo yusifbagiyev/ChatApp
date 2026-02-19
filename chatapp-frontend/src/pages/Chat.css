@@ -724,7 +724,9 @@
   );
   background-size: 200% 100%;
   animation: loadingGlow 1.2s ease-in-out infinite;
-  box-shadow: 0 1px 6px rgba(0, 172, 227, 0.5), 0 0 12px rgba(0, 172, 227, 0.25);
+  box-shadow:
+    0 1px 6px rgba(0, 172, 227, 0.5),
+    0 0 12px rgba(0, 172, 227, 0.25);
 }
 
 @keyframes loadingGlow {
@@ -771,7 +773,7 @@
 }
 
 .date-separator span {
-  background: rgba(0, 0, 0, 0.12);
+  background: #7695ba;
   color: var(--white);
   font-size: 12px;
   font-weight: 500;
@@ -855,6 +857,12 @@
   justify-content: flex-end;
   gap: 3px;
   margin-top: 4px;
+}
+
+.message-modified {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.3);
+  font-style: italic;
 }
 
 .message-time {
@@ -1037,6 +1045,7 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   z-index: 100;
   min-width: 180px;
+  overflow: hidden;
 }
 
 /* Bridge — bubble-actions ilə menu arasındakı 4px boşluğu örtür */
@@ -1084,13 +1093,6 @@
   background: var(--gray-50);
 }
 
-.action-menu-item:first-child:hover {
-  border-radius: 10px 10px 0 0;
-}
-
-.action-menu-item:last-child:hover {
-  border-radius: 0 0 10px 10px;
-}
 
 .action-menu-item svg {
   color: var(--gray-400);
@@ -1127,10 +1129,26 @@
   transform: translateX(50%);
 }
 
+.reaction-picker.flip-down {
+  bottom: auto;
+  top: calc(100% + 4px);
+}
+
+.reaction-picker.flip-down::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
 .reaction-quick {
   display: flex;
   align-items: center;
   gap: 2px;
+  flex-wrap: wrap;
+  width: 228px;
 }
 
 .reaction-emoji-btn {
@@ -1171,13 +1189,103 @@
   color: var(--gray-700);
 }
 
-.reaction-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 36px);
-  gap: 2px;
-  padding-top: 6px;
-  border-top: 1px solid var(--gray-100);
-  margin-top: 6px;
+/* ===================================
+   REACTION BADGES (on message bubble)
+   =================================== */
+
+.reaction-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+
+.reaction-badge-wrapper {
+  position: relative;
+}
+
+.reaction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.reaction-badge:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.reaction-badge-emoji {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.reaction-badge-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-600);
+  line-height: 1;
+}
+
+/* Reaction tooltip — klik ilə açılır */
+.reaction-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: var(--white);
+  border-radius: 10px;
+  padding: 6px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 110;
+  min-width: 180px;
+  white-space: nowrap;
+}
+
+/* Öz mesajlarda tooltip sola açılsın (sağ kənardan çıxmasın) */
+.message-row.own .reaction-tooltip {
+  left: auto;
+  right: 0;
+}
+
+.reaction-tooltip.visible {
+  display: block;
+}
+
+.reaction-tooltip-loading {
+  color: var(--gray-400);
+  font-style: italic;
+}
+
+.reaction-tooltip-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+}
+
+.reaction-tooltip-avatar {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.reaction-tooltip-name {
+  font-size: 13px;
+  color: var(--gray-800);
+  font-weight: 500;
 }
 
 /* ===================================
@@ -1244,6 +1352,63 @@
 }
 
 .reply-preview-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+/* Edit Preview — reply preview ilə eyni struktur */
+.edit-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--white);
+  border-radius: 22px;
+  padding: 8px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.edit-preview-icon {
+  flex-shrink: 0;
+}
+
+.edit-preview-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edit-preview-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #00ace3;
+}
+
+.edit-preview-text {
+  font-size: 13px;
+  color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edit-preview-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.edit-preview-close:hover {
   background: var(--gray-100);
   color: var(--gray-600);
 }
@@ -1598,6 +1763,283 @@
   font-weight: 500;
   color: var(--gray-500);
   margin: 0;
+}
+
+/* ===================================
+   SELECT MODE
+   =================================== */
+
+/* Select modunda — row tam genişlik olur ki checkbox sol kənarda qalsın */
+.message-row:has(.select-checkbox) {
+  cursor: pointer;
+  align-self: stretch;
+  max-width: none;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* Own mesajlarda bubble sağa itələnir */
+.message-row.own:has(.select-checkbox) {
+  margin-right: 0;
+}
+
+.message-row.own:has(.select-checkbox) .message-bubble {
+  margin-left: auto;
+}
+
+/* Checkbox — sol kənarda flex child */
+.select-checkbox {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--gray-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  align-self: center;
+  margin-right: 10px;
+}
+
+.select-checkbox:hover {
+  border-color: #23b0d8;
+}
+
+.select-checkbox.checked {
+  background: #23b0d8;
+  border-color: #23b0d8;
+}
+
+/* Seçilmiş mesaj — Bitrix24 stili: tam genişlikdə ağ highlight */
+.message-row.selected {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Select Toolbar — chat-panel-in altında mərkəzdə */
+.select-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  margin: 10px auto;
+  border-radius: 20px;
+  background: var(--white);
+  border-top: 1px solid var(--gray-200);
+}
+
+.select-toolbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.select-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.select-toolbar-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.select-toolbar-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.select-toolbar-count {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+.select-toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--gray-200);
+}
+
+.select-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.select-delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.select-delete-btn:hover:not(:disabled) {
+  color: var(--error-color);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.select-delete-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.select-forward-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #23b0d8;
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.select-forward-btn:hover:not(:disabled) {
+  background: #008dba;
+}
+
+.select-forward-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Deleted message text */
+.deleted-message-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gray-400);
+  font-style: italic;
+  font-size: 14px;
+}
+
+.deleted-message-text svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* Delete Confirm Modal */
+.delete-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.delete-confirm-modal {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 20px 24px;
+  min-width: 340px;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.delete-confirm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.delete-confirm-header span {
+  font-size: 14px;
+  color: var(--gray-700);
+  line-height: 1.4;
+}
+
+.delete-confirm-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--gray-400);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  transition: all var(--transition-fast);
+}
+
+.delete-confirm-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.delete-confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.delete-confirm-btn {
+  padding: 8px 24px;
+  border-radius: 8px;
+  border: none;
+  background: #23B0D8;
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.delete-confirm-btn:hover {
+  background: #008dba;
+}
+
+.delete-cancel-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.delete-cancel-btn:hover {
+  color: var(--gray-700);
+  background: var(--gray-100);
 }
 
 /* ===================================

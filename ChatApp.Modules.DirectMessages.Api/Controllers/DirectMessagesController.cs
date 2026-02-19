@@ -6,6 +6,7 @@ using ChatApp.Modules.DirectMessages.Application.DTOs.Request;
 using ChatApp.Modules.DirectMessages.Application.DTOs.Response;
 using ChatApp.Modules.DirectMessages.Application.Queries;
 using ChatApp.Modules.DirectMessages.Application.Queries.GetFavoriteMessages;
+using ChatApp.Modules.DirectMessages.Application.Queries.GetMessageReactions;
 using ChatApp.Modules.DirectMessages.Application.Queries.GetPinnedMessages;
 using ChatApp.Shared.Infrastructure.Authorization;
 using MediatR;
@@ -27,8 +28,7 @@ namespace ChatApp.Modules.DirectMessages.Api.Controllers
     {
         private readonly IMediator _mediator;
 
-        public DirectMessagesController(
-            IMediator mediator)
+        public DirectMessagesController(IMediator mediator)
         {
             _mediator = mediator;
         }
@@ -506,6 +506,32 @@ namespace ChatApp.Modules.DirectMessages.Api.Controllers
             return Ok(result.Value);
         }
 
+
+        /// <summary>
+        /// Gets detailed reaction info for a message (who reacted with what)
+        /// </summary>
+        [HttpGet("{messageId:guid}/reactions")]
+        [RequirePermission("Messages.Read")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetReactions(
+            [FromRoute] Guid conversationId,
+            [FromRoute] Guid messageId,
+            CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized();
+
+            var result = await _mediator.Send(
+                new GetMessageReactionsQuery(messageId, conversationId, userId),
+                cancellationToken);
+
+            if (result.IsFailure)
+                return BadRequest(new { error = result.Error });
+
+            return Ok(result.Value);
+        }
 
 
         /// <summary>
