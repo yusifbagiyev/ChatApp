@@ -26,25 +26,23 @@ export async function startConnection() {
         accessTokenFactory: () => token,
       })
       .withAutomaticReconnect([0, 1000, 2000, 5000, 10000, 30000])
-      .configureLogging(LogLevel.Information)
+      .configureLogging(LogLevel.Warning)
       .build();
 
     conn.onreconnecting(() => {
-      console.log("SignalR reconnecting...");
+      connection = null;
     });
 
     conn.onreconnected(() => {
-      console.log("SignalR reconnected!");
+      connection = conn;
     });
 
     conn.onclose(() => {
-      console.log("SignalR connection closed.");
       connection = null;
       connectionPromise = null;
     });
 
     await conn.start();
-    console.log("SignalR connected!");
 
     connection = conn;
     connectionPromise = null;

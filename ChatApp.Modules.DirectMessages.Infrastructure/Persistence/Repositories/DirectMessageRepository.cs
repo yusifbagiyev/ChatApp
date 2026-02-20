@@ -1,10 +1,11 @@
-﻿using ChatApp.Modules.DirectMessages.Application.DTOs.Request;
+using ChatApp.Modules.DirectMessages.Application.DTOs.Request;
 using ChatApp.Modules.DirectMessages.Application.DTOs.Response;
 using ChatApp.Modules.DirectMessages.Application.Interfaces;
 using ChatApp.Modules.DirectMessages.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using ChatApp.Shared.Kernel;
 using ChatApp.Shared.Kernel.Common;
+using ChatApp.Modules.Files.Domain.Entities;
 
 namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
 {
@@ -61,112 +62,17 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
 
         public async Task<DirectMessageDto?> GetByIdAsDtoAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var result = await (from message in _context.DirectMessages
-                        join sender in _context.Set<UserReadModel>() on message.SenderId equals sender.Id
-                        join file in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on message.FileId equals file.Id.ToString() into fileJoin
-                        from file in fileJoin.DefaultIfEmpty()
-                        join repliedMessage in _context.DirectMessages on message.ReplyToMessageId equals repliedMessage.Id into replyJoin
-                        from repliedMessage in replyJoin.DefaultIfEmpty()
-                        join repliedSender in _context.Set<UserReadModel>() on repliedMessage.SenderId equals repliedSender.Id into repliedSenderJoin
-                        from repliedSender in repliedSenderJoin.DefaultIfEmpty()
-                        join repliedFile in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on repliedMessage.FileId equals repliedFile.Id.ToString() into repliedFileJoin
-                        from repliedFile in repliedFileJoin.DefaultIfEmpty()
-                        where message.Id == id
-                        select new
-                        {
-                            message.Id,
-                            message.ConversationId,
-                            message.SenderId,
-                            SenderEmail = sender.Email,
-                            SenderFullName = sender.FullName,
-                            sender.AvatarUrl,
-                            message.ReceiverId,
-                            message.Content,
-                            message.FileId,
-                            FileName = file != null ? file.OriginalFileName : null,
-                            FileContentType = file != null ? file.ContentType : null,
-                            FileSizeInBytes = file != null ? (long?)file.FileSizeInBytes : null,
-                            FileStoragePath = file != null ? file.StoragePath : null,
-                            FileThumbnailPath = file != null ? file.ThumbnailPath : null,
-                            message.IsEdited,
-                            message.IsDeleted,
-                            message.IsRead,
-                            message.IsPinned,
-                            message.CreatedAtUtc,
-                            message.EditedAtUtc,
-                            message.PinnedAtUtc,
-                            // REMOVED: ReactionCount N+1 query - now batched below
-                            message.ReplyToMessageId,
-                            ReplyToContent = repliedMessage != null && !repliedMessage.IsDeleted ? repliedMessage.Content : null,
-                            ReplyToIsDeleted = repliedMessage != null && repliedMessage.IsDeleted,
-                            ReplyToSenderName = repliedSender != null ? repliedSender.FullName : null,
-                            ReplyToFileId = repliedMessage != null ? repliedMessage.FileId : null,
-                            ReplyToFileName = repliedFile != null ? repliedFile.OriginalFileName : null,
-                            ReplyToFileContentType = repliedFile != null ? repliedFile.ContentType : null,
-                            ReplyToFileStoragePath = repliedFile != null ? repliedFile.StoragePath : null,
-                            ReplyToFileThumbnailPath = repliedFile != null ? repliedFile.ThumbnailPath : null,
-                            message.IsForwarded
-                        }).FirstOrDefaultAsync(cancellationToken);
+            var result = await BuildBaseQuery()
+                        .Where(r => r.Id == id)
+                        .FirstOrDefaultAsync(cancellationToken);
 
             if (result == null)
                 return null;
 
-            // Load reactions for this message
-            var reactions = await _context.DirectMessageReactions
-                .Where(r => r.MessageId == id)
-                .GroupBy(r => r.Reaction)
-                .Select(rg => new DirectMessageReactionDto(
-                    rg.Key,
-                    rg.Count(),
-                    rg.Select(r => r.UserId).ToList()
-                ))
-                .ToListAsync(cancellationToken);
+            var messageIds = new List<Guid> { id };
+            var (reactionCounts, reactions, mentions) = await LoadRelatedDataAsync(messageIds, cancellationToken);
 
-            // PERFORMANCE FIX: Calculate reaction count from loaded reactions (eliminates N+1 query)
-            var reactionCount = reactions.Sum(r => r.Count);
-
-            // Load mentions for this message
-            var mentions = await _context.DirectMessageMentions
-                .Where(m => m.MessageId == id)
-                .Select(m => new MessageMentionDto(m.MentionedUserId, m.MentionedUserFullName))
-                .ToListAsync(cancellationToken);
-
-            return new DirectMessageDto(
-                result.Id,
-                result.ConversationId,
-                result.SenderId,
-                result.SenderEmail,
-                result.SenderFullName,
-                result.AvatarUrl,
-                result.ReceiverId,
-                result.IsDeleted ? "This message was deleted" : result.Content, // SECURITY: Sanitize deleted content
-                result.FileId,
-                result.FileName,
-                result.FileContentType,
-                result.FileSizeInBytes,
-                FileUrlHelper.ToUrl(result.FileStoragePath),      // FileUrl
-                FileUrlHelper.ToUrl(result.FileThumbnailPath), // ThumbnailUrl
-                result.IsEdited,
-                result.IsDeleted,
-                result.IsRead,
-                result.IsPinned,
-                reactionCount,
-                result.CreatedAtUtc,
-                result.EditedAtUtc,
-                result.PinnedAtUtc,
-                result.ReplyToMessageId,
-                result.ReplyToIsDeleted ? "This message was deleted" : result.ReplyToContent, // SECURITY: Sanitize deleted reply content
-                result.ReplyToSenderName,
-                result.ReplyToFileId,
-                result.ReplyToFileName,
-                result.ReplyToFileContentType,
-                FileUrlHelper.ToUrl(result.ReplyToFileStoragePath),      // ReplyToFileUrl
-                FileUrlHelper.ToUrl(result.ReplyToFileThumbnailPath), // ReplyToThumbnailUrl
-                result.IsForwarded,
-                reactions.Count > 0 ? reactions : null,
-                mentions.Count > 0 ? mentions : null,
-                result.IsRead ? MessageStatus.Read : MessageStatus.Sent // Set Status based on IsRead
-            );
+            return MapToDto(result, reactionCounts, reactions, mentions, sanitizeContent: true);
         }
 
 
@@ -177,52 +83,8 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
             CancellationToken cancellationToken = default)
         {
             // Real database join with users table
-            var query = from message in _context.DirectMessages
-                        join sender in _context.Set<UserReadModel>() on message.SenderId equals sender.Id
-                        join file in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on message.FileId equals file.Id.ToString() into fileJoin
-                        from file in fileJoin.DefaultIfEmpty()
-                        join repliedMessage in _context.DirectMessages on message.ReplyToMessageId equals repliedMessage.Id into replyJoin
-                        from repliedMessage in replyJoin.DefaultIfEmpty()
-                        join repliedSender in _context.Set<UserReadModel>() on repliedMessage.SenderId equals repliedSender.Id into repliedSenderJoin
-                        from repliedSender in repliedSenderJoin.DefaultIfEmpty()
-                        join repliedFile in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on repliedMessage.FileId equals repliedFile.Id.ToString() into repliedFileJoin
-                        from repliedFile in repliedFileJoin.DefaultIfEmpty()
-                        where message.ConversationId == conversationId // Removed IsDeleted filter - show deleted messages as "This message was deleted"
-                        select new
-                        {
-                            message.Id,
-                            message.ConversationId,
-                            message.SenderId,
-                            SenderEmail = sender.Email,
-                            SenderFullName = sender.FullName,
-                            sender.AvatarUrl,
-                            message.ReceiverId,
-                            message.Content,
-                            message.FileId,
-                            FileName = file != null ? file.OriginalFileName : null,
-                            FileContentType = file != null ? file.ContentType : null,
-                            FileSizeInBytes = file != null ? (long?)file.FileSizeInBytes : null,
-                            FileStoragePath = file != null ? file.StoragePath : null,
-                            FileThumbnailPath = file != null ? file.ThumbnailPath : null,
-                            message.IsEdited,
-                            message.IsDeleted,
-                            message.IsRead,
-                            message.IsPinned,
-                            message.CreatedAtUtc,
-                            message.EditedAtUtc,
-                            message.PinnedAtUtc,
-                            // REMOVED: ReactionCount N+1 query - now batched below
-                            message.ReplyToMessageId,
-                            ReplyToContent = repliedMessage != null && !repliedMessage.IsDeleted ? repliedMessage.Content : null,
-                            ReplyToIsDeleted = repliedMessage != null && repliedMessage.IsDeleted,
-                            ReplyToSenderName = repliedSender != null ? repliedSender.FullName : null,
-                            ReplyToFileId = repliedMessage != null ? repliedMessage.FileId : null,
-                            ReplyToFileName = repliedFile != null ? repliedFile.OriginalFileName : null,
-                            ReplyToFileContentType = repliedFile != null ? repliedFile.ContentType : null,
-                            ReplyToFileStoragePath = repliedFile != null ? repliedFile.StoragePath : null,
-                            ReplyToFileThumbnailPath = repliedFile != null ? repliedFile.ThumbnailPath : null,
-                            message.IsForwarded
-                        };
+            var query = BuildBaseQuery()
+                .Where(r => r.ConversationId == conversationId); // Removed IsDeleted filter - show deleted messages as "This message was deleted"
 
             if (beforeUtc.HasValue)
             {
@@ -234,80 +96,7 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 .Take(pageSize)
                 .ToListAsync(cancellationToken);
 
-            // Get message IDs for reactions and mentions lookup
-            var messageIds = results.Select(r => r.Id).ToList();
-
-            // PERFORMANCE FIX: Batch load reaction counts (was N+1 query in line 193)
-            // This eliminates "Count(r => r.MessageId == message.Id)" subquery per message
-            var reactionCounts = await _context.DirectMessageReactions
-                .Where(r => messageIds.Contains(r.MessageId))
-                .GroupBy(r => r.MessageId)
-                .Select(g => new { MessageId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Count, cancellationToken);
-
-            // Load reactions grouped by message
-            var reactions = await _context.DirectMessageReactions
-                .Where(r => messageIds.Contains(r.MessageId))
-                .GroupBy(r => r.MessageId)
-                .Select(g => new
-                {
-                    MessageId = g.Key,
-                    Reactions = g.GroupBy(r => r.Reaction)
-                        .Select(rg => new DirectMessageReactionDto(
-                            rg.Key,
-                            rg.Count(),
-                            rg.Select(r => r.UserId).ToList()
-                        )).ToList()
-                })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Reactions, cancellationToken);
-
-            // Load mentions grouped by message
-            var mentions = await _context.DirectMessageMentions
-                .Where(m => messageIds.Contains(m.MessageId))
-                .GroupBy(m => m.MessageId)
-                .Select(g => new
-                {
-                    MessageId = g.Key,
-                    Mentions = g.Select(m => new MessageMentionDto(m.MentionedUserId, m.MentionedUserFullName)).ToList()
-                })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Mentions, cancellationToken);
-
-            return results.Select(r => new DirectMessageDto(
-                r.Id,
-                r.ConversationId,
-                r.SenderId,
-                r.SenderEmail,
-                r.SenderFullName,
-                r.AvatarUrl,
-                r.ReceiverId,
-                r.IsDeleted ? "This message was deleted" : r.Content, // SECURITY: Sanitize deleted content
-                r.FileId,
-                r.FileName,
-                r.FileContentType,
-                r.FileSizeInBytes,
-                FileUrlHelper.ToUrl(r.FileStoragePath),      // FileUrl
-                FileUrlHelper.ToUrl(r.FileThumbnailPath), // ThumbnailUrl
-                r.IsEdited,
-                r.IsDeleted,
-                r.IsRead,
-                r.IsPinned,
-                reactionCounts.TryGetValue(r.Id, out var count) ? count : 0, // PERFORMANCE FIX: Use batched count instead of r.ReactionCount
-                r.CreatedAtUtc,
-                r.EditedAtUtc,
-                r.PinnedAtUtc,
-                r.ReplyToMessageId,
-                r.ReplyToIsDeleted ? "This message was deleted" : r.ReplyToContent, // SECURITY: Sanitize deleted reply content
-                r.ReplyToSenderName,
-                r.ReplyToFileId,
-                r.ReplyToFileName,
-                r.ReplyToFileContentType,
-                FileUrlHelper.ToUrl(r.ReplyToFileStoragePath),      // ReplyToFileUrl
-                FileUrlHelper.ToUrl(r.ReplyToFileThumbnailPath), // ReplyToThumbnailUrl
-                r.IsForwarded,
-                reactions.TryGetValue(r.Id, out List<DirectMessageReactionDto>? value) ? value : null,
-                mentions.TryGetValue(r.Id, out List<MessageMentionDto>? value1) ? value1 : null,
-                r.IsRead ? MessageStatus.Read : MessageStatus.Sent // Set Status based on IsRead
-            )).ToList();
+            return await MapResultsAsync(results, sanitizeContent: true, cancellationToken);
         }
 
 
@@ -330,52 +119,8 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
             var halfCount = count / 2;
 
             // 2. Base query (projection)
-            var baseQuery = from message in _context.DirectMessages
-                           join sender in _context.Set<UserReadModel>() on message.SenderId equals sender.Id
-                           join file in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on message.FileId equals file.Id.ToString() into fileJoin
-                           from file in fileJoin.DefaultIfEmpty()
-                           join repliedMessage in _context.DirectMessages on message.ReplyToMessageId equals repliedMessage.Id into replyJoin
-                           from repliedMessage in replyJoin.DefaultIfEmpty()
-                           join repliedSender in _context.Set<UserReadModel>() on repliedMessage.SenderId equals repliedSender.Id into repliedSenderJoin
-                           from repliedSender in repliedSenderJoin.DefaultIfEmpty()
-                           join repliedFile in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on repliedMessage.FileId equals repliedFile.Id.ToString() into repliedFileJoin
-                           from repliedFile in repliedFileJoin.DefaultIfEmpty()
-                           where message.ConversationId == conversationId
-                           select new
-                           {
-                               message.Id,
-                               message.ConversationId,
-                               message.SenderId,
-                               SenderEmail = sender.Email,
-                               SenderFullName = sender.FullName,
-                               sender.AvatarUrl,
-                               message.ReceiverId,
-                               message.Content,
-                               message.FileId,
-                               FileName = file != null ? file.OriginalFileName : null,
-                               FileContentType = file != null ? file.ContentType : null,
-                               FileSizeInBytes = file != null ? (long?)file.FileSizeInBytes : null,
-                               FileStoragePath = file != null ? file.StoragePath : null,
-                               FileThumbnailPath = file != null ? file.ThumbnailPath : null,
-                               message.IsEdited,
-                               message.IsDeleted,
-                               message.IsRead,
-                               message.IsPinned,
-                               message.CreatedAtUtc,
-                               message.EditedAtUtc,
-                               message.PinnedAtUtc,
-                               // REMOVED: ReactionCount N+1 query - now batched below
-                               message.ReplyToMessageId,
-                               ReplyToContent = repliedMessage != null && !repliedMessage.IsDeleted ? repliedMessage.Content : null,
-                               ReplyToIsDeleted = repliedMessage != null && repliedMessage.IsDeleted,
-                               ReplyToSenderName = repliedSender != null ? repliedSender.FullName : null,
-                               ReplyToFileId = repliedMessage != null ? repliedMessage.FileId : null,
-                               ReplyToFileName = repliedFile != null ? repliedFile.OriginalFileName : null,
-                               ReplyToFileContentType = repliedFile != null ? repliedFile.ContentType : null,
-                               ReplyToFileStoragePath = repliedFile != null ? repliedFile.StoragePath : null,
-                               ReplyToFileThumbnailPath = repliedFile != null ? repliedFile.ThumbnailPath : null,
-                               message.IsForwarded
-                           };
+            var baseQuery = BuildBaseQuery()
+                .Where(r => r.ConversationId == conversationId);
 
             // 3. Hədəf mesajdan ƏVVƏL olan mesajlar (hədəf daxil)
             var beforeMessages = await baseQuery
@@ -396,79 +141,7 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 .OrderBy(m => m.CreatedAtUtc)
                 .ToList();
 
-            // Get message IDs for reactions lookup
-            var messageIds = results.Select(r => r.Id).ToList();
-
-            // PERFORMANCE FIX: Batch load reaction counts (eliminates N+1 query)
-            var reactionCounts = await _context.DirectMessageReactions
-                .Where(r => messageIds.Contains(r.MessageId))
-                .GroupBy(r => r.MessageId)
-                .Select(g => new { MessageId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Count, cancellationToken);
-
-            // Load reactions grouped by message
-            var reactions = await _context.DirectMessageReactions
-                .Where(r => messageIds.Contains(r.MessageId))
-                .GroupBy(r => r.MessageId)
-                .Select(g => new
-                {
-                    MessageId = g.Key,
-                    Reactions = g.GroupBy(r => r.Reaction)
-                        .Select(rg => new DirectMessageReactionDto(
-                            rg.Key,
-                            rg.Count(),
-                            rg.Select(r => r.UserId).ToList()
-                        )).ToList()
-                })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Reactions, cancellationToken);
-
-            // Load mentions grouped by message
-            var mentions = await _context.DirectMessageMentions
-                .Where(m => messageIds.Contains(m.MessageId))
-                .GroupBy(m => m.MessageId)
-                .Select(g => new
-                {
-                    MessageId = g.Key,
-                    Mentions = g.Select(m => new MessageMentionDto(m.MentionedUserId, m.MentionedUserFullName)).ToList()
-                })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Mentions, cancellationToken);
-
-            return results.Select(r => new DirectMessageDto(
-                r.Id,
-                r.ConversationId,
-                r.SenderId,
-                r.SenderEmail,
-                r.SenderFullName,
-                r.AvatarUrl,
-                r.ReceiverId,
-                r.IsDeleted ? "This message was deleted" : r.Content,
-                r.FileId,
-                r.FileName,
-                r.FileContentType,
-                r.FileSizeInBytes,
-                FileUrlHelper.ToUrl(r.FileStoragePath),      // FileUrl
-                FileUrlHelper.ToUrl(r.FileThumbnailPath), // ThumbnailUrl
-                r.IsEdited,
-                r.IsDeleted,
-                r.IsRead,
-                r.IsPinned,
-                reactionCounts.TryGetValue(r.Id, out var count) ? count : 0, // PERFORMANCE FIX: Use batched count
-                r.CreatedAtUtc,
-                r.EditedAtUtc,
-                r.PinnedAtUtc,
-                r.ReplyToMessageId,
-                r.ReplyToIsDeleted ? "This message was deleted" : r.ReplyToContent,
-                r.ReplyToSenderName,
-                r.ReplyToFileId,
-                r.ReplyToFileName,
-                r.ReplyToFileContentType,
-                FileUrlHelper.ToUrl(r.ReplyToFileStoragePath),      // ReplyToFileUrl
-                FileUrlHelper.ToUrl(r.ReplyToFileThumbnailPath), // ReplyToThumbnailUrl
-                r.IsForwarded,
-                reactions.TryGetValue(r.Id, out List<DirectMessageReactionDto>? value) ? value : null,
-                mentions.TryGetValue(r.Id, out List<MessageMentionDto>? value1) ? value1 : null,
-                r.IsRead ? MessageStatus.Read : MessageStatus.Sent // Set Status based on IsRead
-            )).ToList();
+            return await MapResultsAsync(results, sanitizeContent: true, cancellationToken);
         }
 
 
@@ -479,132 +152,14 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
             CancellationToken cancellationToken = default)
         {
             // Base query with all joins
-            var query = from message in _context.DirectMessages
-                        join sender in _context.Set<UserReadModel>() on message.SenderId equals sender.Id
-                        join file in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on message.FileId equals file.Id.ToString() into fileJoin
-                        from file in fileJoin.DefaultIfEmpty()
-                        join repliedMessage in _context.DirectMessages on message.ReplyToMessageId equals repliedMessage.Id into replyJoin
-                        from repliedMessage in replyJoin.DefaultIfEmpty()
-                        join repliedSender in _context.Set<UserReadModel>() on repliedMessage.SenderId equals repliedSender.Id into repliedSenderJoin
-                        from repliedSender in repliedSenderJoin.DefaultIfEmpty()
-                        join repliedFile in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on repliedMessage.FileId equals repliedFile.Id.ToString() into repliedFileJoin
-                        from repliedFile in repliedFileJoin.DefaultIfEmpty()
-                        where message.ConversationId == conversationId
-                           && message.CreatedAtUtc < beforeUtc
-                        select new
-                        {
-                            message.Id,
-                            message.ConversationId,
-                            message.SenderId,
-                            SenderEmail = sender.Email,
-                            SenderFullName = sender.FullName,
-                            sender.AvatarUrl,
-                            message.ReceiverId,
-                            message.Content,
-                            message.FileId,
-                            FileName = file != null ? file.OriginalFileName : null,
-                            FileContentType = file != null ? file.ContentType : null,
-                            FileSizeInBytes = file != null ? (long?)file.FileSizeInBytes : null,
-                            FileStoragePath = file != null ? file.StoragePath : null,
-                            FileThumbnailPath = file != null ? file.ThumbnailPath : null,
-                            message.IsEdited,
-                            message.IsDeleted,
-                            message.IsRead,
-                            message.IsPinned,
-                            message.CreatedAtUtc,
-                            message.EditedAtUtc,
-                            message.PinnedAtUtc,
-                            // REMOVED: ReactionCount N+1 query - now batched below
-                            message.ReplyToMessageId,
-                            ReplyToContent = repliedMessage != null && !repliedMessage.IsDeleted ? repliedMessage.Content : null,
-                            ReplyToIsDeleted = repliedMessage != null && repliedMessage.IsDeleted,
-                            ReplyToSenderName = repliedSender != null ? repliedSender.FullName : null,
-                            ReplyToFileId = repliedMessage != null ? repliedMessage.FileId : null,
-                            ReplyToFileName = repliedFile != null ? repliedFile.OriginalFileName : null,
-                            ReplyToFileContentType = repliedFile != null ? repliedFile.ContentType : null,
-                            ReplyToFileStoragePath = repliedFile != null ? repliedFile.StoragePath : null,
-                            ReplyToFileThumbnailPath = repliedFile != null ? repliedFile.ThumbnailPath : null,
-                            message.IsForwarded
-                        };
-
-            var results = await query
+            var results = await BuildBaseQuery()
+                .Where(r => r.ConversationId == conversationId
+                         && r.CreatedAtUtc < beforeUtc)
                 .OrderByDescending(m => m.CreatedAtUtc)
                 .Take(limit)
                 .ToListAsync(cancellationToken);
 
-            // Get message IDs for reactions lookup
-            var messageIds = results.Select(r => r.Id).ToList();
-
-            // PERFORMANCE FIX: Batch load reaction counts (eliminates N+1 query)
-            var reactionCounts = await _context.DirectMessageReactions
-                .Where(r => messageIds.Contains(r.MessageId))
-                .GroupBy(r => r.MessageId)
-                .Select(g => new { MessageId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Count, cancellationToken);
-
-            // Load reactions grouped by message
-            var reactions = await _context.DirectMessageReactions
-                .Where(r => messageIds.Contains(r.MessageId))
-                .GroupBy(r => r.MessageId)
-                .Select(g => new
-                {
-                    MessageId = g.Key,
-                    Reactions = g.GroupBy(r => r.Reaction)
-                        .Select(rg => new DirectMessageReactionDto(
-                            rg.Key,
-                            rg.Count(),
-                            rg.Select(r => r.UserId).ToList()
-                        )).ToList()
-                })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Reactions, cancellationToken);
-
-            // Load mentions grouped by message
-            var mentions = await _context.DirectMessageMentions
-                .Where(m => messageIds.Contains(m.MessageId))
-                .GroupBy(m => m.MessageId)
-                .Select(g => new
-                {
-                    MessageId = g.Key,
-                    Mentions = g.Select(m => new MessageMentionDto(m.MentionedUserId, m.MentionedUserFullName)).ToList()
-                })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Mentions, cancellationToken);
-
-            return results.Select(r => new DirectMessageDto(
-                r.Id,
-                r.ConversationId,
-                r.SenderId,
-                r.SenderEmail,
-                r.SenderFullName,
-                r.AvatarUrl,
-                r.ReceiverId,
-                r.IsDeleted ? "This message was deleted" : r.Content,
-                r.FileId,
-                r.FileName,
-                r.FileContentType,
-                r.FileSizeInBytes,
-                FileUrlHelper.ToUrl(r.FileStoragePath),      // FileUrl
-                FileUrlHelper.ToUrl(r.FileThumbnailPath), // ThumbnailUrl
-                r.IsEdited,
-                r.IsDeleted,
-                r.IsRead,
-                r.IsPinned,
-                reactionCounts.TryGetValue(r.Id, out var count) ? count : 0, // PERFORMANCE FIX: Use batched count
-                r.CreatedAtUtc,
-                r.EditedAtUtc,
-                r.PinnedAtUtc,
-                r.ReplyToMessageId,
-                r.ReplyToIsDeleted ? "This message was deleted" : r.ReplyToContent,
-                r.ReplyToSenderName,
-                r.ReplyToFileId,
-                r.ReplyToFileName,
-                r.ReplyToFileContentType,
-                FileUrlHelper.ToUrl(r.ReplyToFileStoragePath),      // ReplyToFileUrl
-                FileUrlHelper.ToUrl(r.ReplyToFileThumbnailPath), // ReplyToThumbnailUrl
-                r.IsForwarded,
-                reactions.TryGetValue(r.Id, out List<DirectMessageReactionDto>? value) ? value : null,
-                mentions.TryGetValue(r.Id, out List<MessageMentionDto>? value1) ? value1 : null,
-                r.IsRead ? MessageStatus.Read : MessageStatus.Sent // Set Status based on IsRead
-            )).ToList();
+            return await MapResultsAsync(results, sanitizeContent: true, cancellationToken);
         }
 
 
@@ -615,132 +170,14 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
             CancellationToken cancellationToken = default)
         {
             // Base query with all joins
-            var query = from message in _context.DirectMessages
-                        join sender in _context.Set<UserReadModel>() on message.SenderId equals sender.Id
-                        join file in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on message.FileId equals file.Id.ToString() into fileJoin
-                        from file in fileJoin.DefaultIfEmpty()
-                        join repliedMessage in _context.DirectMessages on message.ReplyToMessageId equals repliedMessage.Id into replyJoin
-                        from repliedMessage in replyJoin.DefaultIfEmpty()
-                        join repliedSender in _context.Set<UserReadModel>() on repliedMessage.SenderId equals repliedSender.Id into repliedSenderJoin
-                        from repliedSender in repliedSenderJoin.DefaultIfEmpty()
-                        join repliedFile in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on repliedMessage.FileId equals repliedFile.Id.ToString() into repliedFileJoin
-                        from repliedFile in repliedFileJoin.DefaultIfEmpty()
-                        where message.ConversationId == conversationId
-                           && message.CreatedAtUtc > afterUtc
-                        select new
-                        {
-                            message.Id,
-                            message.ConversationId,
-                            message.SenderId,
-                            SenderEmail = sender.Email,
-                            SenderFullName = sender.FullName,
-                            sender.AvatarUrl,
-                            message.ReceiverId,
-                            message.Content,
-                            message.FileId,
-                            FileName = file != null ? file.OriginalFileName : null,
-                            FileContentType = file != null ? file.ContentType : null,
-                            FileSizeInBytes = file != null ? (long?)file.FileSizeInBytes : null,
-                            FileStoragePath = file != null ? file.StoragePath : null,
-                            FileThumbnailPath = file != null ? file.ThumbnailPath : null,
-                            message.IsEdited,
-                            message.IsDeleted,
-                            message.IsRead,
-                            message.IsPinned,
-                            message.CreatedAtUtc,
-                            message.EditedAtUtc,
-                            message.PinnedAtUtc,
-                            // REMOVED: ReactionCount N+1 query - now batched below
-                            message.ReplyToMessageId,
-                            ReplyToContent = repliedMessage != null && !repliedMessage.IsDeleted ? repliedMessage.Content : null,
-                            ReplyToIsDeleted = repliedMessage != null && repliedMessage.IsDeleted,
-                            ReplyToSenderName = repliedSender != null ? repliedSender.FullName : null,
-                            ReplyToFileId = repliedMessage != null ? repliedMessage.FileId : null,
-                            ReplyToFileName = repliedFile != null ? repliedFile.OriginalFileName : null,
-                            ReplyToFileContentType = repliedFile != null ? repliedFile.ContentType : null,
-                            ReplyToFileStoragePath = repliedFile != null ? repliedFile.StoragePath : null,
-                            ReplyToFileThumbnailPath = repliedFile != null ? repliedFile.ThumbnailPath : null,
-                            message.IsForwarded
-                        };
-
-            var results = await query
+            var results = await BuildBaseQuery()
+                .Where(r => r.ConversationId == conversationId
+                         && r.CreatedAtUtc > afterUtc)
                 .OrderBy(m => m.CreatedAtUtc)
                 .Take(limit)
                 .ToListAsync(cancellationToken);
 
-            // Get message IDs for reactions lookup
-            var messageIds = results.Select(r => r.Id).ToList();
-
-            // PERFORMANCE FIX: Batch load reaction counts (eliminates N+1 query)
-            var reactionCounts = await _context.DirectMessageReactions
-                .Where(r => messageIds.Contains(r.MessageId))
-                .GroupBy(r => r.MessageId)
-                .Select(g => new { MessageId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Count, cancellationToken);
-
-            // Load reactions grouped by message
-            var reactions = await _context.DirectMessageReactions
-                .Where(r => messageIds.Contains(r.MessageId))
-                .GroupBy(r => r.MessageId)
-                .Select(g => new
-                {
-                    MessageId = g.Key,
-                    Reactions = g.GroupBy(r => r.Reaction)
-                        .Select(rg => new DirectMessageReactionDto(
-                            rg.Key,
-                            rg.Count(),
-                            rg.Select(r => r.UserId).ToList()
-                        )).ToList()
-                })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Reactions, cancellationToken);
-
-            // Load mentions grouped by message
-            var mentions = await _context.DirectMessageMentions
-                .Where(m => messageIds.Contains(m.MessageId))
-                .GroupBy(m => m.MessageId)
-                .Select(g => new
-                {
-                    MessageId = g.Key,
-                    Mentions = g.Select(m => new MessageMentionDto(m.MentionedUserId, m.MentionedUserFullName)).ToList()
-                })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Mentions, cancellationToken);
-
-            return results.Select(r => new DirectMessageDto(
-                r.Id,
-                r.ConversationId,
-                r.SenderId,
-                r.SenderEmail,
-                r.SenderFullName,
-                r.AvatarUrl,
-                r.ReceiverId,
-                r.IsDeleted ? "This message was deleted" : r.Content,
-                r.FileId,
-                r.FileName,
-                r.FileContentType,
-                r.FileSizeInBytes,
-                FileUrlHelper.ToUrl(r.FileStoragePath),      // FileUrl
-                FileUrlHelper.ToUrl(r.FileThumbnailPath), // ThumbnailUrl
-                r.IsEdited,
-                r.IsDeleted,
-                r.IsRead,
-                r.IsPinned,
-                reactionCounts.TryGetValue(r.Id, out var count) ? count : 0, // PERFORMANCE FIX: Use batched count
-                r.CreatedAtUtc,
-                r.EditedAtUtc,
-                r.PinnedAtUtc,
-                r.ReplyToMessageId,
-                r.ReplyToIsDeleted ? "This message was deleted" : r.ReplyToContent,
-                r.ReplyToSenderName,
-                r.ReplyToFileId,
-                r.ReplyToFileName,
-                r.ReplyToFileContentType,
-                FileUrlHelper.ToUrl(r.ReplyToFileStoragePath),      // ReplyToFileUrl
-                FileUrlHelper.ToUrl(r.ReplyToFileThumbnailPath), // ReplyToThumbnailUrl
-                r.IsForwarded,
-                reactions.TryGetValue(r.Id, out var rxns) ? rxns : null,
-                mentions.TryGetValue(r.Id, out var mnts) ? mnts : null,
-                r.IsRead ? MessageStatus.Read : MessageStatus.Sent // Set Status based on IsRead
-            )).ToList();
+            return await MapResultsAsync(results, sanitizeContent: true, cancellationToken);
         }
 
 
@@ -797,59 +234,120 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
             CancellationToken cancellationToken = default)
         {
             // Database join to get pinned messages with user details
-            var results = await (from message in _context.DirectMessages
-                          join sender in _context.Set<UserReadModel>() on message.SenderId equals sender.Id
-                          join file in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on message.FileId equals file.Id.ToString() into fileJoin
-                          from file in fileJoin.DefaultIfEmpty()
-                          join repliedMessage in _context.DirectMessages on message.ReplyToMessageId equals repliedMessage.Id into replyJoin
-                          from repliedMessage in replyJoin.DefaultIfEmpty()
-                          join repliedSender in _context.Set<UserReadModel>() on repliedMessage.SenderId equals repliedSender.Id into repliedSenderJoin
-                          from repliedSender in repliedSenderJoin.DefaultIfEmpty()
-                          join repliedFile in _context.Set<ChatApp.Modules.Files.Domain.Entities.FileMetadata>() on repliedMessage.FileId equals repliedFile.Id.ToString() into repliedFileJoin
-                          from repliedFile in repliedFileJoin.DefaultIfEmpty()
-                          where message.ConversationId == conversationId
-                             && message.IsPinned
-                             && !message.IsDeleted
-                          orderby message.PinnedAtUtc ascending
-                          select new
-                          {
-                              message.Id,
-                              message.ConversationId,
-                              message.SenderId,
-                              SenderEmail = sender.Email,
-                              SenderFullName = sender.FullName,
-                              sender.AvatarUrl,
-                              message.ReceiverId,
-                              message.Content,
-                              message.FileId,
-                              FileName = file != null ? file.OriginalFileName : null,
-                              FileContentType = file != null ? file.ContentType : null,
-                              FileSizeInBytes = file != null ? (long?)file.FileSizeInBytes : null,
-                              FileStoragePath = file != null ? file.StoragePath : null,
-                              FileThumbnailPath = file != null ? file.ThumbnailPath : null,
-                              message.IsEdited,
-                              message.IsDeleted,
-                              message.IsRead,
-                              message.IsPinned,
-                              message.CreatedAtUtc,
-                              message.EditedAtUtc,
-                              message.PinnedAtUtc,
-                              // REMOVED: ReactionCount N+1 query - now batched below
-                              message.ReplyToMessageId,
-                              ReplyToContent = repliedMessage != null && !repliedMessage.IsDeleted ? repliedMessage.Content : null,
-                              ReplyToIsDeleted = repliedMessage != null && repliedMessage.IsDeleted,
-                              ReplyToSenderName = repliedSender != null ? repliedSender.FullName : null,
-                              ReplyToFileId = repliedMessage != null ? repliedMessage.FileId : null,
-                              ReplyToFileName = repliedFile != null ? repliedFile.OriginalFileName : null,
-                              ReplyToFileContentType = repliedFile != null ? repliedFile.ContentType : null,
-                              ReplyToFileStoragePath = repliedFile != null ? repliedFile.StoragePath : null,
-                              ReplyToFileThumbnailPath = repliedFile != null ? repliedFile.ThumbnailPath : null,
-                              message.IsForwarded
-                          }).ToListAsync(cancellationToken);
+            var results = await BuildBaseQuery()
+                .Where(r => r.ConversationId == conversationId
+                         && r.IsPinned
+                         && !r.IsDeleted)
+                .OrderBy(r => r.PinnedAtUtc)
+                .ToListAsync(cancellationToken);
 
-            // Get message IDs for reactions lookup
-            var messageIds = results.Select(r => r.Id).ToList();
+            return await MapResultsAsync(results, sanitizeContent: false, cancellationToken); // Pinned messages are not deleted, no sanitization needed
+        }
 
+
+        #region Private Helper Methods
+
+        /// <summary>
+        /// Strongly-typed projection class used by all query methods.
+        /// Uses object initializer syntax (not constructor) so EF Core can translate
+        /// .Where() and .OrderBy() on properties after .Select().
+        /// </summary>
+        private class RawMessageProjection
+        {
+            public Guid Id { get; init; }
+            public Guid ConversationId { get; init; }
+            public Guid SenderId { get; init; }
+            public string SenderEmail { get; init; } = null!;
+            public string SenderFullName { get; init; } = null!;
+            public string? AvatarUrl { get; init; }
+            public Guid ReceiverId { get; init; }
+            public string Content { get; init; } = null!;
+            public string? FileId { get; init; }
+            public string? FileName { get; init; }
+            public string? FileContentType { get; init; }
+            public long? FileSizeInBytes { get; init; }
+            public string? FileStoragePath { get; init; }
+            public string? FileThumbnailPath { get; init; }
+            public bool IsEdited { get; init; }
+            public bool IsDeleted { get; init; }
+            public bool IsRead { get; init; }
+            public bool IsPinned { get; init; }
+            public DateTime CreatedAtUtc { get; init; }
+            public DateTime? EditedAtUtc { get; init; }
+            public DateTime? PinnedAtUtc { get; init; }
+            public Guid? ReplyToMessageId { get; init; }
+            public string? ReplyToContent { get; init; }
+            public bool ReplyToIsDeleted { get; init; }
+            public string? ReplyToSenderName { get; init; }
+            public string? ReplyToFileId { get; init; }
+            public string? ReplyToFileName { get; init; }
+            public string? ReplyToFileContentType { get; init; }
+            public string? ReplyToFileStoragePath { get; init; }
+            public string? ReplyToFileThumbnailPath { get; init; }
+            public bool IsForwarded { get; init; }
+        }
+
+        /// <summary>
+        /// Builds the base LINQ query with all necessary joins (sender, file, reply, reply sender, reply file).
+        /// Each public method calls this then adds its specific .Where(), .OrderBy(), .Take().
+        /// </summary>
+        private IQueryable<RawMessageProjection> BuildBaseQuery()
+        {
+            return from message in _context.DirectMessages
+                   join sender in _context.Set<UserReadModel>() on message.SenderId equals sender.Id
+                   join file in _context.Set<FileMetadata>() on message.FileId equals file.Id.ToString() into fileJoin
+                   from file in fileJoin.DefaultIfEmpty()
+                   join repliedMessage in _context.DirectMessages on message.ReplyToMessageId equals repliedMessage.Id into replyJoin
+                   from repliedMessage in replyJoin.DefaultIfEmpty()
+                   join repliedSender in _context.Set<UserReadModel>() on repliedMessage.SenderId equals repliedSender.Id into repliedSenderJoin
+                   from repliedSender in repliedSenderJoin.DefaultIfEmpty()
+                   join repliedFile in _context.Set<FileMetadata>() on repliedMessage.FileId equals repliedFile.Id.ToString() into repliedFileJoin
+                   from repliedFile in repliedFileJoin.DefaultIfEmpty()
+                   select new RawMessageProjection
+                   {
+                       Id = message.Id,
+                       ConversationId = message.ConversationId,
+                       SenderId = message.SenderId,
+                       SenderEmail = sender.Email,
+                       SenderFullName = sender.FullName,
+                       AvatarUrl = sender.AvatarUrl,
+                       ReceiverId = message.ReceiverId,
+                       Content = message.Content,
+                       FileId = message.FileId,
+                       FileName = file != null ? file.OriginalFileName : null,
+                       FileContentType = file != null ? file.ContentType : null,
+                       FileSizeInBytes = file != null ? (long?)file.FileSizeInBytes : null,
+                       FileStoragePath = file != null ? file.StoragePath : null,
+                       FileThumbnailPath = file != null ? file.ThumbnailPath : null,
+                       IsEdited = message.IsEdited,
+                       IsDeleted = message.IsDeleted,
+                       IsRead = message.IsRead,
+                       IsPinned = message.IsPinned,
+                       CreatedAtUtc = message.CreatedAtUtc,
+                       EditedAtUtc = message.EditedAtUtc,
+                       PinnedAtUtc = message.PinnedAtUtc,
+                       ReplyToMessageId = message.ReplyToMessageId,
+                       ReplyToContent = repliedMessage != null && !repliedMessage.IsDeleted ? repliedMessage.Content : null,
+                       ReplyToIsDeleted = repliedMessage != null && repliedMessage.IsDeleted,
+                       ReplyToSenderName = repliedSender != null ? repliedSender.FullName : null,
+                       ReplyToFileId = repliedMessage != null ? repliedMessage.FileId : null,
+                       ReplyToFileName = repliedFile != null ? repliedFile.OriginalFileName : null,
+                       ReplyToFileContentType = repliedFile != null ? repliedFile.ContentType : null,
+                       ReplyToFileStoragePath = repliedFile != null ? repliedFile.StoragePath : null,
+                       ReplyToFileThumbnailPath = repliedFile != null ? repliedFile.ThumbnailPath : null,
+                       IsForwarded = message.IsForwarded
+                   };
+        }
+
+        /// <summary>
+        /// Batch loads reaction counts, reactions, and mentions for a list of message IDs.
+        /// PERFORMANCE FIX: Eliminates N+1 queries by batching all related data loading.
+        /// </summary>
+        private async Task<(Dictionary<Guid, int> reactionCounts,
+                             Dictionary<Guid, List<DirectMessageReactionDto>> reactions,
+                             Dictionary<Guid, List<MessageMentionDto>> mentions)>
+            LoadRelatedDataAsync(List<Guid> messageIds, CancellationToken cancellationToken)
+        {
             // PERFORMANCE FIX: Batch load reaction counts (eliminates N+1 query)
             var reactionCounts = await _context.DirectMessageReactions
                 .Where(r => messageIds.Contains(r.MessageId))
@@ -884,7 +382,29 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 })
                 .ToDictionaryAsync(x => x.MessageId, x => x.Mentions, cancellationToken);
 
-            return results.Select(r => new DirectMessageDto(
+            return (reactionCounts, reactions, mentions);
+        }
+
+        /// <summary>
+        /// Maps a RawMessageProjection to a DirectMessageDto.
+        /// </summary>
+        /// <param name="r">The raw projection from the database query.</param>
+        /// <param name="reactionCounts">Batched reaction counts by message ID.</param>
+        /// <param name="reactions">Batched reactions by message ID.</param>
+        /// <param name="mentions">Batched mentions by message ID.</param>
+        /// <param name="sanitizeContent">
+        /// When true, deleted message content is replaced with "This message was deleted".
+        /// When false (e.g., pinned messages), content is returned as-is.
+        /// Reply content is ALWAYS sanitized regardless of this flag.
+        /// </param>
+        private static DirectMessageDto MapToDto(
+            RawMessageProjection r,
+            Dictionary<Guid, int> reactionCounts,
+            Dictionary<Guid, List<DirectMessageReactionDto>> reactions,
+            Dictionary<Guid, List<MessageMentionDto>> mentions,
+            bool sanitizeContent = true)
+        {
+            return new DirectMessageDto(
                 r.Id,
                 r.ConversationId,
                 r.SenderId,
@@ -892,7 +412,7 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 r.SenderFullName,
                 r.AvatarUrl,
                 r.ReceiverId,
-                r.Content, // Pinned messages are not deleted, no sanitization needed
+                sanitizeContent && r.IsDeleted ? "This message was deleted" : r.Content, // SECURITY: Sanitize deleted content when applicable
                 r.FileId,
                 r.FileName,
                 r.FileContentType,
@@ -916,11 +436,27 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 FileUrlHelper.ToUrl(r.ReplyToFileStoragePath),      // ReplyToFileUrl
                 FileUrlHelper.ToUrl(r.ReplyToFileThumbnailPath), // ReplyToThumbnailUrl
                 r.IsForwarded,
-                reactions.TryGetValue(r.Id, out List<DirectMessageReactionDto>? value) ? value : null,
-                mentions.TryGetValue(r.Id, out List<MessageMentionDto>? value1) ? value1 : null,
+                reactions.TryGetValue(r.Id, out var rxns) ? rxns : null,
+                mentions.TryGetValue(r.Id, out var mnts) ? mnts : null,
                 r.IsRead ? MessageStatus.Read : MessageStatus.Sent // Set Status based on IsRead
-            )).ToList();
+            );
         }
 
+        /// <summary>
+        /// Convenience method: loads related data for a list of projections, then maps them all to DTOs.
+        /// Used by all batch-returning public methods.
+        /// </summary>
+        private async Task<List<DirectMessageDto>> MapResultsAsync(
+            List<RawMessageProjection> results,
+            bool sanitizeContent,
+            CancellationToken cancellationToken)
+        {
+            var messageIds = results.Select(r => r.Id).ToList();
+            var (reactionCounts, reactions, mentions) = await LoadRelatedDataAsync(messageIds, cancellationToken);
+
+            return results.Select(r => MapToDto(r, reactionCounts, reactions, mentions, sanitizeContent)).ToList();
+        }
+
+        #endregion
     }
 }

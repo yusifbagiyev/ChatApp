@@ -9,13 +9,15 @@ import {
 } from "react";
 
 import {
-  startConnection,
   joinConversation,
   leaveConversation,
   joinChannel,
   leaveChannel,
   getConnection,
 } from "../services/signalr";
+
+import useChatSignalR from "../hooks/useChatSignalR";
+import useChatScroll from "../hooks/useChatScroll";
 
 import { AuthContext } from "../context/AuthContext";
 import { apiGet, apiPost, apiPut, apiDelete } from "../services/api";
@@ -24,12 +26,18 @@ import Sidebar from "../components/Sidebar";
 import ConversationList from "../components/ConversationList";
 import MessageBubble from "../components/MessageBubble";
 import ForwardPanel from "../components/ForwardPanel";
+import ChatHeader from "../components/ChatHeader";
+import ChatInputArea from "../components/ChatInputArea";
+import SelectToolbar from "../components/SelectToolbar";
 import PinnedBar, { PinnedExpanded } from "../components/PinnedBar";
 import {
-  getInitials,
-  getAvatarColor,
-  getLastSeenText,
   groupMessagesByDate,
+  getChatEndpoint,
+  MESSAGE_PAGE_SIZE,
+  CONVERSATION_PAGE_SIZE,
+  HIGHLIGHT_DURATION_MS,
+  TYPING_DEBOUNCE_MS,
+  BATCH_DELETE_THRESHOLD,
 } from "../utils/chatUtils";
 
 import "./Chat.css";
@@ -44,10 +52,6 @@ function Chat() {
   const [messageText, setMessageText] = useState("");
   const messagesEndRef = useRef(null);
   const messagesAreaRef = useRef(null);
-  const loadingMoreRef = useRef(false);
-  const hasMoreRef = useRef(true);
-  const hasMoreDownRef = useRef(false);
-  const scrollRestoreRef = useRef(null);
   const pendingHighlightRef = useRef(null);
   const [shouldScrollBottom, setShouldScrollBottom] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
@@ -64,229 +68,16 @@ function Chat() {
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [pinBarExpanded, setPinBarExpanded] = useState(false);
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
-  const [loadingOlder, setLoadingOlder] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const scrollRafRef = useRef(null);
   const inputRef = useRef(null);
+
+  const { handleScroll, hasMoreRef, hasMoreDownRef, loadingOlder, scrollRestoreRef } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages);
 
   useEffect(() => {
     loadConversations();
   }, []);
 
-  useEffect(() => {
-    let conn = null;
-
-    function handleNewDirectMessage(message) {
-      setSelectedChat((current) => {
-        if (
-          current &&
-          current.type === 0 &&
-          current.id === message.conversationId
-        ) {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === message.id)) return prev;
-            setShouldScrollBottom(true);
-            return [message, ...prev];
-          });
-        }
-        return current;
-      });
-
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === message.conversationId) {
-            return {
-              ...c,
-              lastMessage: message.content,
-              lastMessageAtUtc: message.createdAtUtc,
-            };
-          }
-          return c;
-        }),
-      );
-    }
-
-    function handleNewChannelMessage(message) {
-      setSelectedChat((current) => {
-        if (current && current.type === 1 && current.id === message.channelId) {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === message.id)) return prev;
-            setShouldScrollBottom(true);
-            return [message, ...prev];
-          });
-        }
-        return current;
-      });
-
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === message.channelId) {
-            return {
-              ...c,
-              lastMessage: message.content,
-              lastMessageAtUtc: message.createdAtUtc,
-            };
-          }
-          return c;
-        }),
-      );
-    }
-
-    function handleMessageRead(data) {
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (m.id === data.messageId) {
-            return { ...m, isRead: true, status: 3 };
-          }
-          return m;
-        }),
-      );
-    }
-
-    function handleUserOnline(userId) {
-      setOnlineUsers((prev) => {
-        const next = new Set(prev);
-        next.add(userId);
-        return next;
-      });
-    }
-
-    function handleUserOffline(userId) {
-      setOnlineUsers((prev) => {
-        const next = new Set(prev);
-        next.delete(userId);
-        return next;
-      });
-    }
-
-    function handleUserTypingInConversation(conversationId, userId, isTyping) {
-      if (userId === user.id) return;
-      setTypingUsers((prev) => {
-        if (isTyping) {
-          return { ...prev, [conversationId]: true };
-        } else {
-          const next = { ...prev };
-          delete next[conversationId];
-          return next;
-        }
-      });
-    }
-
-    function handleUserTypingInChannel(channelId, userId, fullName, isTyping) {
-      if (userId === user.id) return;
-      setTypingUsers((prev) => {
-        if (isTyping) {
-          return { ...prev, [channelId]: fullName };
-        } else {
-          const next = { ...prev };
-          delete next[channelId];
-          return next;
-        }
-      });
-    }
-
-    // Delete SignalR handlers
-    function handleMessageDeleted(deletedMsg) {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === deletedMsg.id ? { ...m, isDeleted: true } : m)),
-      );
-    }
-
-    // Edit SignalR handlers
-    function handleMessageEdited(editedMsg) {
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (m.id === editedMsg.id) {
-            return { ...m, content: editedMsg.content, isEdited: true, editedAtUtc: editedMsg.editedAtUtc };
-          }
-          // Reply reference yenilə
-          if (m.replyToMessageId === editedMsg.id) {
-            return { ...m, replyToContent: editedMsg.content };
-          }
-          return m;
-        }),
-      );
-    }
-
-    // Reaction SignalR handlers
-    function handleReactionsUpdated(data) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === data.messageId ? { ...m, reactions: data.reactions } : m,
-        ),
-      );
-    }
-
-    // Pin/Unpin SignalR handlers
-    function handleMessagePinned(msgDto) {
-      setPinnedMessages((prev) => {
-        if (prev.some((m) => m.id === msgDto.id)) return prev;
-        return [...prev, msgDto].sort(
-          (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
-        );
-      });
-      setMessages((prev) =>
-        prev.map((m) => (m.id === msgDto.id ? { ...m, isPinned: true, pinnedAtUtc: msgDto.pinnedAtUtc } : m)),
-      );
-    }
-
-    function handleMessageUnpinned(msgDto) {
-      setPinnedMessages((prev) => {
-        const next = prev.filter((m) => m.id !== msgDto.id);
-        // currentPinIndex sınırdan çıxmasın
-        setCurrentPinIndex((idx) => (idx >= next.length ? Math.max(0, next.length - 1) : idx));
-        return next;
-      });
-      setMessages((prev) =>
-        prev.map((m) => (m.id === msgDto.id ? { ...m, isPinned: false, pinnedAtUtc: null } : m)),
-      );
-    }
-
-    startConnection()
-      .then((c) => {
-        conn = c;
-        conn.on("NewDirectMessage", handleNewDirectMessage);
-        conn.on("NewChannelMessage", handleNewChannelMessage);
-        conn.on("MessageRead", handleMessageRead);
-        conn.on("UserOnline", handleUserOnline);
-        conn.on("UserOffline", handleUserOffline);
-        conn.on("UserTypingInConversation", handleUserTypingInConversation);
-        conn.on("UserTypingInChannel", handleUserTypingInChannel);
-        conn.on("DirectMessagePinned", handleMessagePinned);
-        conn.on("DirectMessageUnpinned", handleMessageUnpinned);
-        conn.on("ChannelMessagePinned", handleMessagePinned);
-        conn.on("ChannelMessageUnpinned", handleMessageUnpinned);
-        conn.on("DirectMessageDeleted", handleMessageDeleted);
-        conn.on("ChannelMessageDeleted", handleMessageDeleted);
-        conn.on("DirectMessageEdited", handleMessageEdited);
-        conn.on("ChannelMessageEdited", handleMessageEdited);
-        conn.on("ChannelMessageReactionsUpdated", handleReactionsUpdated);
-        conn.on("DirectMessageReactionToggled", handleReactionsUpdated);
-      })
-      .catch((err) => console.error("SignalR connection failed:", err));
-
-    return () => {
-      if (conn) {
-        conn.off("NewDirectMessage", handleNewDirectMessage);
-        conn.off("NewChannelMessage", handleNewChannelMessage);
-        conn.off("MessageRead", handleMessageRead);
-        conn.off("UserOnline", handleUserOnline);
-        conn.off("UserOffline", handleUserOffline);
-        conn.off("UserTypingInConversation", handleUserTypingInConversation);
-        conn.off("UserTypingInChannel", handleUserTypingInChannel);
-        conn.off("DirectMessagePinned", handleMessagePinned);
-        conn.off("DirectMessageUnpinned", handleMessageUnpinned);
-        conn.off("ChannelMessagePinned", handleMessagePinned);
-        conn.off("ChannelMessageUnpinned", handleMessageUnpinned);
-        conn.off("DirectMessageDeleted", handleMessageDeleted);
-        conn.off("ChannelMessageDeleted", handleMessageDeleted);
-        conn.off("DirectMessageEdited", handleMessageEdited);
-        conn.off("ChannelMessageEdited", handleMessageEdited);
-        conn.off("ChannelMessageReactionsUpdated", handleReactionsUpdated);
-        conn.off("DirectMessageReactionToggled", handleReactionsUpdated);
-      }
-    };
-  }, [user.id]);
+  useChatSignalR(user.id, setSelectedChat, setMessages, setConversations, setShouldScrollBottom, setOnlineUsers, setTypingUsers, setPinnedMessages, setCurrentPinIndex);
 
   useEffect(() => {
     if (shouldScrollBottom) {
@@ -319,7 +110,7 @@ function Chat() {
     if (target) {
       target.scrollIntoView({ behavior: "instant", block: "center" });
       target.classList.add("highlight-message");
-      setTimeout(() => target.classList.remove("highlight-message"), 3000);
+      setTimeout(() => target.classList.remove("highlight-message"), HIGHLIGHT_DURATION_MS);
     }
   }, [messages]);
 
@@ -361,7 +152,7 @@ function Chat() {
   async function loadConversations() {
     try {
       const data = await apiGet(
-        "/api/unified-conversations?pageNumber=1&pageSize=50",
+        `/api/unified-conversations?pageNumber=1&pageSize=${CONVERSATION_PAGE_SIZE}`,
       );
       setConversations(data.items);
     } catch (err) {
@@ -373,14 +164,8 @@ function Chat() {
 
   async function loadPinnedMessages(chat) {
     try {
-      let endpoint = "";
-      if (chat.type === 0) {
-        endpoint = `/api/conversations/${chat.id}/messages/pinned`;
-      } else if (chat.type === 1) {
-        endpoint = `/api/channels/${chat.id}/messages/pinned`;
-      } else {
-        return;
-      }
+      const endpoint = getChatEndpoint(chat.id, chat.type, "/messages/pinned");
+      if (!endpoint) return;
       const data = await apiGet(endpoint);
       // Ən sonuncu pinlənmiş birinci görünsün (DESC by pinnedAtUtc)
       const sorted = (data || []).sort(
@@ -419,17 +204,10 @@ function Chat() {
     hasMoreRef.current = true;
     hasMoreDownRef.current = false;
     try {
-      let msgEndpoint = "";
-      let pinEndpoint = "";
-      if (chat.type === 0) {
-        msgEndpoint = `/api/conversations/${chat.id}/messages?pageSize=30`;
-        pinEndpoint = `/api/conversations/${chat.id}/messages/pinned`;
-      } else if (chat.type === 1) {
-        msgEndpoint = `/api/channels/${chat.id}/messages?pageSize=30`;
-        pinEndpoint = `/api/channels/${chat.id}/messages/pinned`;
-      } else {
-        return;
-      }
+      const msgBase = getChatEndpoint(chat.id, chat.type, "/messages");
+      if (!msgBase) return;
+      const msgEndpoint = `${msgBase}?pageSize=${MESSAGE_PAGE_SIZE}`;
+      const pinEndpoint = `${msgBase}/pinned`;
 
       // Mesajlar + pinned mesajları paralel yüklə
       const [msgData, pinData] = await Promise.all([
@@ -488,14 +266,8 @@ function Chat() {
     setForwardMessage(null);
 
     try {
-      let endpoint = "";
-      if (targetChat.type === 0) {
-        endpoint = `/api/conversations/${targetChat.id}/messages`;
-      } else if (targetChat.type === 1) {
-        endpoint = `/api/channels/${targetChat.id}/messages`;
-      } else {
-        return;
-      }
+      const endpoint = getChatEndpoint(targetChat.id, targetChat.type, "/messages");
+      if (!endpoint) return;
 
       if (fwd.isMultiSelect) {
         // Çoxlu mesaj forward — hər birini ardıcıl göndər
@@ -514,11 +286,7 @@ function Chat() {
 
       // Əgər forward edilən chat açıqdırsa, mesajları da yenilə
       if (selectedChat && selectedChat.id === targetChat.id) {
-        const messagesEndpoint =
-          selectedChat.type === 0
-            ? `/api/conversations/${selectedChat.id}/messages?pageSize=30`
-            : `/api/channels/${selectedChat.id}/messages?pageSize=30`;
-        const data = await apiGet(messagesEndpoint);
+        const data = await apiGet(`${getChatEndpoint(selectedChat.id, selectedChat.type, "/messages")}?pageSize=${MESSAGE_PAGE_SIZE}`);
         hasMoreDownRef.current = false;
         setShouldScrollBottom(true);
         setMessages(data);
@@ -531,14 +299,8 @@ function Chat() {
   const handlePinMessage = useCallback(async (msg) => {
     if (!selectedChat) return;
     try {
-      let endpoint = "";
-      if (selectedChat.type === 0) {
-        endpoint = `/api/conversations/${selectedChat.id}/messages/${msg.id}/pin`;
-      } else if (selectedChat.type === 1) {
-        endpoint = `/api/channels/${selectedChat.id}/messages/${msg.id}/pin`;
-      } else {
-        return;
-      }
+      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}/pin`);
+      if (!endpoint) return;
 
       if (msg.isPinned) {
         await apiDelete(endpoint);
@@ -561,14 +323,8 @@ function Chat() {
   const handleFavoriteMessage = useCallback(async (msg) => {
     if (!selectedChat) return;
     try {
-      let endpoint = "";
-      if (selectedChat.type === 0) {
-        endpoint = `/api/conversations/${selectedChat.id}/messages/${msg.id}/favorite`;
-      } else if (selectedChat.type === 1) {
-        endpoint = `/api/channels/${selectedChat.id}/messages/${msg.id}/favorite`;
-      } else {
-        return;
-      }
+      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}/favorite`);
+      if (!endpoint) return;
       await apiPost(endpoint);
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
@@ -609,9 +365,8 @@ function Chat() {
   const handleDeleteMessage = useCallback(async (msg) => {
     if (!selectedChat) return;
     try {
-      const endpoint = selectedChat.type === 0
-        ? `/api/conversations/${selectedChat.id}/messages/${msg.id}`
-        : `/api/channels/${selectedChat.id}/messages/${msg.id}`;
+      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}`);
+      if (!endpoint) return;
       await apiDelete(endpoint);
       setMessages((prev) =>
         prev.map((m) => (m.id === msg.id ? { ...m, isDeleted: true } : m)),
@@ -626,11 +381,10 @@ function Chat() {
     if (!selectedChat || selectedMessages.size === 0) return;
     try {
       const ids = [...selectedMessages];
-      const base = selectedChat.type === 0
-        ? `/api/conversations/${selectedChat.id}/messages`
-        : `/api/channels/${selectedChat.id}/messages`;
+      const base = getChatEndpoint(selectedChat.id, selectedChat.type, "/messages");
+      if (!base) return;
 
-      if (ids.length > 5) {
+      if (ids.length > BATCH_DELETE_THRESHOLD) {
         await apiPost(`${base}/batch-delete`, { messageIds: ids });
       } else {
         await Promise.all(ids.map((id) => apiDelete(`${base}/${id}`)));
@@ -668,9 +422,7 @@ function Chat() {
       const editingMsg = editMessage;
       setEditMessage(null);
       try {
-        const endpoint = selectedChat.type === 0
-          ? `/api/conversations/${selectedChat.id}/messages/${editingMsg.id}`
-          : `/api/channels/${selectedChat.id}/messages/${editingMsg.id}`;
+        const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${editingMsg.id}`);
         await apiPut(endpoint, { newContent: text });
         // Optimistic UI — həm mesajın content-i, həm reply reference-ları yenilə
         setMessages((prev) =>
@@ -693,14 +445,8 @@ function Chat() {
     setReplyTo(null);
 
     try {
-      let endpoint = "";
-      if (selectedChat.type === 0) {
-        endpoint = `/api/conversations/${selectedChat.id}/messages`;
-      } else if (selectedChat.type === 1) {
-        endpoint = `/api/channels/${selectedChat.id}/messages`;
-      } else {
-        return;
-      }
+      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, "/messages");
+      if (!endpoint) return;
 
       await apiPost(endpoint, {
         content: text,
@@ -708,11 +454,7 @@ function Chat() {
       });
 
       // Mesajları yenidən yüklə (SignalR fallback)
-      const messagesEndpoint =
-        selectedChat.type === 0
-          ? `/api/conversations/${selectedChat.id}/messages?pageSize=30`
-          : `/api/channels/${selectedChat.id}/messages?pageSize=30`;
-      const data = await apiGet(messagesEndpoint);
+      const data = await apiGet(`${endpoint}?pageSize=${MESSAGE_PAGE_SIZE}`);
       hasMoreDownRef.current = false;
       setShouldScrollBottom(true);
       setMessages(data);
@@ -773,7 +515,7 @@ function Chat() {
       } else if (selectedChat.type === 1) {
         conn.invoke("TypingInChannel", selectedChat.id, false);
       }
-    }, 2000);
+    }, TYPING_DEBOUNCE_MS);
   }
 
   const handleScrollToMessage = useCallback(async (messageId) => {
@@ -785,20 +527,14 @@ function Chat() {
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.classList.add("highlight-message");
-      setTimeout(() => el.classList.remove("highlight-message"), 3000);
+      setTimeout(() => el.classList.remove("highlight-message"), HIGHLIGHT_DURATION_MS);
       return;
     }
 
     // Mesaj DOM-da yoxdur — around endpoint ilə yüklə
     try {
-      let endpoint = "";
-      if (selectedChat.type === 0) {
-        endpoint = `/api/conversations/${selectedChat.id}/messages/around/${messageId}`;
-      } else if (selectedChat.type === 1) {
-        endpoint = `/api/channels/${selectedChat.id}/messages/around/${messageId}`;
-      } else {
-        return;
-      }
+      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/around/${messageId}`);
+      if (!endpoint) return;
 
       const data = await apiGet(endpoint);
       hasMoreRef.current = true;
@@ -818,110 +554,6 @@ function Chat() {
       e.preventDefault();
       handleSendMessage();
     }
-  }
-
-  async function handleScrollUp() {
-    const area = messagesAreaRef.current;
-    if (!area) return;
-    if (loadingMoreRef.current) return;
-    if (!hasMoreRef.current) return;
-    if (!selectedChat) return;
-
-    // Yarım viewport hündürlüyü threshold
-    const threshold = area.clientHeight / 2;
-    if (area.scrollTop > threshold) return;
-
-    const oldestMsg = messages[messages.length - 1];
-    if (!oldestMsg) return;
-
-    const beforeDate = oldestMsg.createdAtUtc || oldestMsg.sentAt;
-    if (!beforeDate) return;
-
-    let endpoint = "";
-    if (selectedChat.type === 0) {
-      endpoint = `/api/conversations/${selectedChat.id}/messages?pageSize=30&before=${encodeURIComponent(beforeDate)}`;
-    } else if (selectedChat.type === 1) {
-      endpoint = `/api/channels/${selectedChat.id}/messages?pageSize=30&before=${encodeURIComponent(beforeDate)}`;
-    }
-    if (!endpoint) return;
-
-    loadingMoreRef.current = true;
-    setLoadingOlder(true);
-
-    try {
-      const olderMessages = await apiGet(endpoint);
-
-      if (!olderMessages || olderMessages.length === 0) {
-        hasMoreRef.current = false;
-        return;
-      }
-
-      // Save scroll position — useLayoutEffect restore edəcək
-      scrollRestoreRef.current = {
-        scrollHeight: area.scrollHeight,
-        scrollTop: area.scrollTop,
-      };
-      setMessages((prev) => [...prev, ...olderMessages]);
-    } catch (err) {
-      console.error("Failed to load older messages:", err);
-    } finally {
-      loadingMoreRef.current = false;
-      setLoadingOlder(false);
-    }
-  }
-
-  async function handleScrollDown() {
-    const area = messagesAreaRef.current;
-    if (!area) return;
-    if (loadingMoreRef.current) return;
-    if (!hasMoreDownRef.current) return;
-    if (!selectedChat) return;
-
-    // Aşağıya yaxınlaşanda yüklə (1 viewport threshold)
-    const threshold = area.clientHeight;
-    const distanceFromBottom = area.scrollHeight - area.scrollTop - area.clientHeight;
-    if (distanceFromBottom > threshold) return;
-
-    // messages array-da ən yeni mesaj — index 0 (desc sıralama)
-    const newestMsg = messages[0];
-    if (!newestMsg) return;
-
-    const afterDate = newestMsg.createdAtUtc || newestMsg.sentAt;
-    if (!afterDate) return;
-
-    let endpoint = "";
-    if (selectedChat.type === 0) {
-      endpoint = `/api/conversations/${selectedChat.id}/messages/after?date=${encodeURIComponent(afterDate)}&limit=30`;
-    } else if (selectedChat.type === 1) {
-      endpoint = `/api/channels/${selectedChat.id}/messages/after?date=${encodeURIComponent(afterDate)}&limit=30`;
-    }
-    if (!endpoint) return;
-
-    loadingMoreRef.current = true;
-
-    try {
-      const newerMessages = await apiGet(endpoint);
-
-      if (!newerMessages || newerMessages.length === 0) {
-        hasMoreDownRef.current = false;
-        return;
-      }
-
-      setMessages((prev) => [...newerMessages.reverse(), ...prev]);
-    } catch (err) {
-      console.error("Failed to load newer messages:", err);
-    } finally {
-      loadingMoreRef.current = false;
-    }
-  }
-
-  function handleScroll() {
-    if (scrollRafRef.current) return;
-    scrollRafRef.current = requestAnimationFrame(() => {
-      scrollRafRef.current = null;
-      handleScrollUp();
-      handleScrollDown();
-    });
   }
 
   // Memoize: messages array reverse + grouping — yalnız messages dəyişəndə yenidən hesablanır
@@ -959,20 +591,12 @@ function Chat() {
   const handleReaction = useCallback(async (msg, emoji) => {
     if (!selectedChat) return;
     try {
-      let result;
-      if (selectedChat.type === 0) {
-        result = await apiPut(
-          `/api/conversations/${selectedChat.id}/messages/${msg.id}/reactions/toggle`,
-          { reaction: emoji },
-        );
-      } else if (selectedChat.type === 1) {
-        result = await apiPost(
-          `/api/channels/${selectedChat.id}/messages/${msg.id}/reactions/toggle`,
-          { reaction: emoji },
-        );
-      } else {
-        return;
-      }
+      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}/reactions/toggle`);
+      if (!endpoint) return;
+      // DM uses PUT, Channel uses POST for reaction toggle
+      const result = selectedChat.type === 0
+        ? await apiPut(endpoint, { reaction: emoji })
+        : await apiPost(endpoint, { reaction: emoji });
       // Optimistic UI — API response-dan reactions-ı al
       const reactions = result.reactions || result;
       setMessages((prev) =>
@@ -987,14 +611,8 @@ function Chat() {
   const handleLoadReactionDetails = useCallback(async (messageId) => {
     if (!selectedChat) return null;
     try {
-      let endpoint = "";
-      if (selectedChat.type === 0) {
-        endpoint = `/api/conversations/${selectedChat.id}/messages/${messageId}/reactions`;
-      } else if (selectedChat.type === 1) {
-        endpoint = `/api/channels/${selectedChat.id}/messages/${messageId}/reactions`;
-      } else {
-        return null;
-      }
+      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${messageId}/reactions`);
+      if (!endpoint) return null;
       const details = await apiGet(endpoint);
       // Messages state-ində reaction-ları detail ilə yenilə
       setMessages((prev) =>
@@ -1024,79 +642,13 @@ function Chat() {
         <div className="chat-panel">
           {selectedChat ? (
             <>
-              <div className="chat-header">
-                <div className="chat-header-left">
-                  <div
-                    className="chat-header-avatar"
-                    style={{ background: getAvatarColor(selectedChat.name) }}
-                  >
-                    {getInitials(selectedChat.name)}
-                  </div>
-                  <div className="chat-header-info">
-                    <div className="chat-header-name-row">
-                      <span className="chat-header-name">
-                        {selectedChat.name}
-                      </span>
-                      {!selectedChat.isNotes &&
-                        selectedChat.type === 0 &&
-                        (typingUsers[selectedChat.id] ? (
-                          <span className="status-typing">is typing...</span>
-                        ) : onlineUsers.has(selectedChat.otherUserId) ? (
-                          <span className="status-online">Online</span>
-                        ) : (
-                          <span className="status-offline">
-                            {getLastSeenText(
-                              selectedChat.otherUserLastSeenAtUtc,
-                            )}
-                          </span>
-                        ))}
-                    </div>
-                    <span className="chat-header-status">
-                      {selectedChat.isNotes
-                        ? "Your personal notes"
-                        : selectedChat.type === 0
-                          ? selectedChat.otherUserPosition ||
-                            selectedChat.otherUserRole ||
-                            "User"
-                          : selectedChat.type === 1
-                            ? `${selectedChat.memberCount || 0} members`
-                            : selectedChat.positionName || "User"}
-                    </span>
-                  </div>
-                </div>
-                <div className="chat-header-actions">
-                  <button className="header-action-btn" title="Search">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                  </button>
-                  <button
-                    className="header-action-btn"
-                    title="Pin"
-                    onClick={() => pinnedMessages.length > 0 && setPinBarExpanded((v) => !v)}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <line x1="12" y1="17" x2="12" y2="22" />
-                      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
+              <ChatHeader
+                selectedChat={selectedChat}
+                typingUsers={typingUsers}
+                onlineUsers={onlineUsers}
+                pinnedMessages={pinnedMessages}
+                onTogglePinExpand={() => setPinBarExpanded((v) => !v)}
+              />
 
               {loadingOlder && <div className="loading-older" />}
 
@@ -1168,255 +720,31 @@ function Chat() {
               </div>
 
               {selectMode ? (
-                <>
-                  <div className="select-toolbar">
-                    <div className="select-toolbar-inner">
-                      <div className="select-toolbar-left">
-                        <button className="select-toolbar-close" onClick={handleExitSelectMode}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
-                        <span className="select-toolbar-count">
-                          Messages ({selectedMessages.size})
-                        </span>
-                      </div>
-                      <div className="select-toolbar-divider" />
-                      <div className="select-toolbar-right">
-                        <button
-                          className="select-delete-btn"
-                          disabled={selectedMessages.size === 0 || hasOthersSelected}
-                          onClick={() => setDeleteConfirmOpen(true)}
-                          title={hasOthersSelected ? "You cannot delete someone else's message" : ""}
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
-                          <span>Delete</span>
-                        </button>
-                        <button
-                          className="select-forward-btn"
-                          disabled={selectedMessages.size === 0}
-                          onClick={handleForwardSelected}
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="15 17 20 12 15 7" />
-                            <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
-                          </svg>
-                          <span>Forward</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  {deleteConfirmOpen && (
-                    <div className="delete-confirm-overlay" onClick={() => setDeleteConfirmOpen(false)}>
-                      <div className="delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="delete-confirm-header">
-                          <span>Do you want to delete the selected messages ({selectedMessages.size})?</span>
-                          <button className="delete-confirm-close" onClick={() => setDeleteConfirmOpen(false)}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <line x1="18" y1="6" x2="6" y2="18" />
-                              <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                          </button>
-                        </div>
-                        <div className="delete-confirm-actions">
-                          <button
-                            className="delete-confirm-btn"
-                            onClick={() => {
-                              setDeleteConfirmOpen(false);
-                              handleDeleteSelected();
-                            }}
-                          >
-                            DELETE
-                          </button>
-                          <button className="delete-cancel-btn" onClick={() => setDeleteConfirmOpen(false)}>
-                            CANCEL
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
+                <SelectToolbar
+                  selectedCount={selectedMessages.size}
+                  hasOthersSelected={hasOthersSelected}
+                  onExit={handleExitSelectMode}
+                  onDelete={handleDeleteSelected}
+                  onForward={handleForwardSelected}
+                  deleteConfirmOpen={deleteConfirmOpen}
+                  setDeleteConfirmOpen={setDeleteConfirmOpen}
+                />
               ) : (
-              <div className="message-input-area">
-                {replyTo && (
-                  <div className="reply-preview">
-                    <svg
-                      className="reply-preview-icon"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#00ace3"
-                      strokeWidth="2"
-                    >
-                      <path d="M3 21c0 0 1-6 6-10h4V6l8 8-8 8v-5H9c-3 0-6 4-6 4z" />
-                    </svg>
-                    <div className="reply-preview-body">
-                      <span className="reply-preview-name">
-                        {replyTo.senderFullName}
-                      </span>
-                      <span className="reply-preview-text">
-                        {replyTo.content}
-                      </span>
-                    </div>
-                    <button
-                      className="reply-preview-close"
-                      onClick={() => setReplyTo(null)}
-                    >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-                {editMessage && (
-                  <div className="edit-preview">
-                    <svg
-                      className="edit-preview-icon"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#00ace3"
-                      strokeWidth="2"
-                    >
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    <div className="edit-preview-body">
-                      <span className="edit-preview-name">Edit message</span>
-                      <span className="edit-preview-text">{editMessage.content}</span>
-                    </div>
-                    <button
-                      className="edit-preview-close"
-                      onClick={() => {
-                        setEditMessage(null);
-                        setMessageText("");
-                      }}
-                    >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-                <div className="message-input-wrapper">
-                  <button className="input-icon-btn" title="Attach">
-                    <svg
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                    >
-                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                    </svg>
-                  </button>
-                  <textarea
-                    ref={inputRef}
-                    className="message-input"
-                    placeholder="Enter @ to mention a person or chat"
-                    value={messageText}
-                    maxLength={4000}
-                    rows={1}
-                    onChange={(e) => {
-                      setMessageText(e.target.value);
-                      e.target.style.height = "auto";
-                      e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
-                    }}
-                    onKeyDown={handleKeyDown}
-                  />
-                  <button
-                    className={`input-icon-btn emoji-btn ${emojiOpen ? "active" : ""}`}
-                    title="Emoji"
-                    onClick={() => setEmojiOpen(!emojiOpen)}
-                  >
-                    <svg
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                      <line x1="9" y1="9" x2="9.01" y2="9" />
-                      <line x1="15" y1="9" x2="15.01" y2="9" />
-                    </svg>
-                  </button>
-                  <button
-                    className={`send-btn ${messageText.trim() ? "" : "disabled"}`}
-                    title="Send"
-                    onClick={handleSendMessage}
-                    disabled={!messageText.trim()}
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              )}
-
-              {/* Emoji picker panel */}
-              {emojiOpen && (
-                <div className="emoji-panel" ref={emojiPanelRef}>
-                  <div className="emoji-panel-header">Smileys and people</div>
-                  <div className="emoji-panel-grid">
-                    {[
-                      "😀","😃","😄","😁","😆","😅","🤣","😂",
-                      "🙂","🙃","😉","😊","😇","🥰","😍","🤩",
-                      "😘","😗","😚","😙","😋","😛","😜","🤪",
-                      "😝","🤑","🤗","🤭","🤫","🤔","🤐","🤨",
-                      "😐","😑","😶","😏","😒","🙄","😬","🤥",
-                      "😌","😔","😪","🤤","😴","😷","🤒","🤕",
-                      "🤢","🤮","🥵","🥶","🥴","😵","🤯","🤠",
-                      "🥳","😎","🤓","🧐","😕","😟","🙁","😮",
-                      "😯","😲","😳","🥺","😦","😧","😨","😰",
-                      "😥","😢","😭","😱","😖","😣","😞","😓",
-                      "😩","😫","🥱","😤","😡","😠","🤬","😈",
-                      "👿","💀","👋","👍","👎","👏","🙏","💪",
-                      "🤝","❤️","🔥","💯","⭐","🎉","✅","❌",
-                    ].map((emoji) => (
-                      <button
-                        key={emoji}
-                        className="emoji-panel-btn"
-                        onClick={() => {
-                          setMessageText((prev) => prev + emoji);
-                        }}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <ChatInputArea
+                messageText={messageText}
+                setMessageText={setMessageText}
+                replyTo={replyTo}
+                setReplyTo={setReplyTo}
+                editMessage={editMessage}
+                setEditMessage={setEditMessage}
+                emojiOpen={emojiOpen}
+                setEmojiOpen={setEmojiOpen}
+                emojiPanelRef={emojiPanelRef}
+                inputRef={inputRef}
+                onSend={handleSendMessage}
+                onKeyDown={handleKeyDown}
+                onTyping={sendTypingSignal}
+              />
               )}
 
               {forwardMessage && (

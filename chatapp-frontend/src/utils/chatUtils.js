@@ -1,3 +1,22 @@
+// ─── Constants ───────────────────────────────────────────
+export const MESSAGE_PAGE_SIZE = 30;
+export const CONVERSATION_PAGE_SIZE = 50;
+export const HIGHLIGHT_DURATION_MS = 3000;
+export const TYPING_DEBOUNCE_MS = 2000;
+export const MESSAGE_MAX_LENGTH = 4000;
+export const BATCH_DELETE_THRESHOLD = 5;
+
+/**
+ * Chat tipinə görə API endpoint yaradır.
+ * type 0 = conversation (DM), type 1 = channel
+ */
+export function getChatEndpoint(chatId, chatType, path = "") {
+  if (chatType === 0) return `/api/conversations/${chatId}${path}`;
+  if (chatType === 1) return `/api/channels/${chatId}${path}`;
+  return null;
+}
+
+// ─── Avatar ──────────────────────────────────────────────
 const avatarColors = [
   "#6366f1",
   "#8b5cf6",

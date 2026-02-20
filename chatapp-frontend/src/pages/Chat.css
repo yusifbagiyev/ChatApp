@@ -1880,19 +1880,27 @@
   gap: 6px;
 }
 
-.select-delete-btn {
+.select-action-btn {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 7px 16px;
   border-radius: 8px;
   border: none;
-  background: transparent;
-  color: var(--gray-500);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
+}
+
+.select-action-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.select-delete-btn {
+  background: transparent;
+  color: var(--gray-500);
 }
 
 .select-delete-btn:hover:not(:disabled) {
@@ -1900,33 +1908,14 @@
   background: rgba(239, 68, 68, 0.08);
 }
 
-.select-delete-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
 .select-forward-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   padding: 7px 20px;
-  border-radius: 8px;
-  border: none;
   background: #23b0d8;
   color: var(--white);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
 }
 
 .select-forward-btn:hover:not(:disabled) {
   background: #008dba;
-}
-
-.select-forward-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
 }
 
 /* Deleted message text */
