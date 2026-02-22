@@ -177,11 +177,10 @@ function Chat() {
   useChatSignalR(user.id, setSelectedChat, setMessages, setConversations, setShouldScrollBottom, setOnlineUsers, setTypingUsers, setPinnedMessages, setCurrentPinIndex);
 
   // shouldScrollBottom true olduqda ən alt mesaja scroll et
-  // messages dəyişdikdə (yeni mesaj gəldi) işlə
-  useEffect(() => {
+  // useLayoutEffect — paint-dən ƏVVƏL işləyir → flash yoxdur
+  // useEffect olsaydı: brauzer mesajları yuxarıda çəkib SONRA scroll edərdi (flash)
+  useLayoutEffect(() => {
     if (shouldScrollBottom) {
-      // scrollIntoView — element görünüş sahəsinə gətir
-      // behavior: "instant" — animasiya olmadan (jump)
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
       setShouldScrollBottom(false);
     }
@@ -307,6 +306,12 @@ function Chat() {
   // handleSelectChat — istifadəçi sol siyahıdan bir chata klikləyəndə çağırılır
   // chat.type: 0 = DM Conversation, 1 = Channel, 2 = DepartmentUser
   async function handleSelectChat(chat) {
+    // Eyni conversation-a yenidən klik → yalnız aşağıya scroll et, yenidən yükləmə
+    if (selectedChat && selectedChat.id === chat.id) {
+      setShouldScrollBottom(true);
+      return;
+    }
+
     // Əvvəlki chatın SignalR qrupundan ayrıl
     if (selectedChat) {
       if (selectedChat.type === 0) {
