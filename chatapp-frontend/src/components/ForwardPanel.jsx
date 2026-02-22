@@ -61,9 +61,6 @@ function ForwardPanel({ conversations, onForward, onClose }) {
   // Göstəriləcək siyahı: search varsa search nəticələri, yoxdursa recent chats
   const displayList = searchResults !== null ? searchResults : conversations;
 
-  // Notes-u çıxar (özünə forward etmək mənasızdır)
-  const filteredList = displayList.filter((c) => !c.isNotes);
-
   function getSubtitle(item) {
     if (item.type === 1) return `${item.memberCount || 0} members`;
     if (item.type === 2) return item.positionName || item.departmentName || "User";
@@ -116,14 +113,14 @@ function ForwardPanel({ conversations, onForward, onClose }) {
         <div className="forward-list">
           {isSearching ? (
             <div className="forward-loading">Searching...</div>
-          ) : filteredList.length === 0 ? (
+          ) : displayList.length === 0 ? (
             <div className="forward-empty">No chats found</div>
           ) : (
             <>
               {searchResults === null && (
                 <div className="forward-section-label">Recent chats</div>
               )}
-              {filteredList.map((item) => (
+              {displayList.map((item) => (
                 <div
                   key={item.id}
                   className="forward-item"
