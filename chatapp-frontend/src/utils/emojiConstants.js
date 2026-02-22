@@ -1,7 +1,10 @@
-// Reaction picker — qısa siyahı (MessageBubble)
+// emojiConstants.js — Bütün emoji sabitlər bir yerdə (named export-lar)
+
+// QUICK_REACTION_EMOJIS — mesaj üzərindəki sürətli reaksiya siyahısı
+// MessageBubble-da default 5 emoji göstərilir
 export const QUICK_REACTION_EMOJIS = ["👍", "😂", "❤️", "😟", "🔥"];
 
-// Reaction picker — genişləndirilmiş (MessageBubble)
+// EXPANDED_REACTION_EMOJIS — "⌄" düyməsinə klikləndikdə genişləndirilmiş siyahı
 export const EXPANDED_REACTION_EMOJIS = [
   "👍", "😂", "❤️", "😟", "🔥", "😮",
   "🤝", "💯", "😴", "❌", "✅", "🤓",
@@ -10,7 +13,7 @@ export const EXPANDED_REACTION_EMOJIS = [
   "👎", "😘",
 ];
 
-// Text input emoji panel (ChatInputArea / Chat.jsx)
+// TEXT_INPUT_EMOJIS — ChatInputArea-dakı emoji panel siyahısı
 export const TEXT_INPUT_EMOJIS = [
   "😀", "😃", "😄", "😁", "😆", "😅",
   "🤣", "😂", "🙂", "🙃", "😉", "😊",

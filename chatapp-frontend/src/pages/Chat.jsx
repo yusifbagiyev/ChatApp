@@ -1,3 +1,11 @@
+// React hook-ları import edirik
+// useState    — state yaratmaq (like C# reactive property)
+// useEffect   — side effect (API çağrısı, event listener qeydiyyatı)
+// useLayoutEffect — DOM paint-dən ƏVVƏL işləyir (scroll restore üçün)
+// useContext  — global state-ə daxil olmaq (like @inject)
+// useRef      — re-render etmədən dəyər saxlamaq (like C# field)
+// useMemo     — hesablamanı cache-lər, yalnız dependency dəyişəndə yenidən hesablar
+// useCallback — funksiyanı cache-lər, yalnız dependency dəyişəndə yenidən yaradır
 import {
   useState,
   useEffect,
@@ -8,131 +16,239 @@ import {
   useCallback,
 } from "react";
 
+// SignalR qrup idarəetməsi — conversation/channel-a qoşulma/ayrılma
 import {
   joinConversation,
   leaveConversation,
   joinChannel,
   leaveChannel,
-  getConnection,
+  getConnection, // aktiv SignalR bağlantısını qaytarır
 } from "../services/signalr";
 
-import useChatSignalR from "../hooks/useChatSignalR";
-import useChatScroll from "../hooks/useChatScroll";
+// Custom hook-lar — ayrı fayllarda saxlanılan məntiqi bloklar
+// .NET ekvivalenti: service class-ı inject etmək kimi
+import useChatSignalR from "../hooks/useChatSignalR"; // real-time event handler-lar
+import useChatScroll from "../hooks/useChatScroll";   // infinite scroll + pagination
 
+// Global auth state — user, logout
 import { AuthContext } from "../context/AuthContext";
+
+// API servis — HTTP metodları (GET, POST, PUT, DELETE)
 import { apiGet, apiPost, apiPut, apiDelete } from "../services/api";
 
-import Sidebar from "../components/Sidebar";
-import ConversationList from "../components/ConversationList";
-import MessageBubble from "../components/MessageBubble";
-import ForwardPanel from "../components/ForwardPanel";
-import ChatHeader from "../components/ChatHeader";
-import ChatInputArea from "../components/ChatInputArea";
-import SelectToolbar from "../components/SelectToolbar";
-import PinnedBar, { PinnedExpanded } from "../components/PinnedBar";
+// UI komponentlər — hər biri ayrı bir visual blok
+import Sidebar from "../components/Sidebar";                  // sol nav bar
+import ConversationList from "../components/ConversationList"; // söhbət siyahısı
+import MessageBubble from "../components/MessageBubble";       // tək mesaj balonu
+import ForwardPanel from "../components/ForwardPanel";         // mesaj yönləndir panel
+import ChatHeader from "../components/ChatHeader";             // chat başlığı (ad, status)
+import ChatInputArea from "../components/ChatInputArea";       // mesaj yazma sahəsi
+import SelectToolbar from "../components/SelectToolbar";       // çox mesaj seç toolbar
+import PinnedBar, { PinnedExpanded } from "../components/PinnedBar"; // pinlənmiş mesajlar
+
+// Util-lər və sabitlər
 import {
-  groupMessagesByDate,
-  getChatEndpoint,
-  MESSAGE_PAGE_SIZE,
-  CONVERSATION_PAGE_SIZE,
-  HIGHLIGHT_DURATION_MS,
-  TYPING_DEBOUNCE_MS,
-  BATCH_DELETE_THRESHOLD,
+  groupMessagesByDate,        // mesajları tarixə görə qruplaşdır
+  getChatEndpoint,            // chat tipinə görə doğru API endpoint-i qaytar
+  MESSAGE_PAGE_SIZE,          // bir dəfədə neçə mesaj yükləmək
+  CONVERSATION_PAGE_SIZE,     // söhbət siyahısı səhifə ölçüsü
+  HIGHLIGHT_DURATION_MS,      // mesaj vurğulama müddəti (millisaniyə)
+  TYPING_DEBOUNCE_MS,         // typing siqnalı debounce müddəti
+  BATCH_DELETE_THRESHOLD,     // batch delete üçün minimum mesaj sayı
 } from "../utils/chatUtils";
 
 import "./Chat.css";
 
+// Chat komponenti — əsas chat səhifəsi
+// .NET ekvivalenti: @page "/" ilə ChatPage.razor
 function Chat() {
+  // --- AUTH ---
+  // useContext ilə AuthContext-dən user və logout al
   const { user, logout } = useContext(AuthContext);
+
+  // --- STATE DEĞİŞƏNLƏRİ ---
+
+  // Söhbət siyahısı — sol paneldəki bütün chatlar
   const [conversations, setConversations] = useState([]);
+
+  // Seçilmiş chat — sağ paneldə açıq olan söhbət
+  // null olduqda "Select a chat" boş ekranı görünür
   const [selectedChat, setSelectedChat] = useState(null);
+
+  // Mesajlar siyahısı — aktiv chatın mesajları
+  // Backend DESC qaytarır (yeni → köhnə), biz tersine çeviririk
   const [messages, setMessages] = useState([]);
+
+  // Söhbət siyahısı yüklənirkən true — LoadingState göstərmək üçün
   const [isLoading, setIsLoading] = useState(true);
+
+  // Axtarış mətni — ConversationList filtri üçün
   const [searchText, setSearchText] = useState("");
+
+  // Mesaj yazma sahəsinin dəyəri
   const [messageText, setMessageText] = useState("");
+
+  // messagesEndRef — mesaj siyahısının ən sonuna yerləşdirilmiş gizli div
+  // scrollIntoView() ilə ən yeni mesaja scroll etmək üçün
   const messagesEndRef = useRef(null);
+
+  // messagesAreaRef — scroll container-i (messages-area div-i)
+  // handleScroll, IntersectionObserver üçün lazımdır
   const messagesAreaRef = useRef(null);
+
+  // pendingHighlightRef — around endpoint-dən sonra vurğulanacaq mesajın id-si
+  // useLayoutEffect-də istifadə olunur
   const pendingHighlightRef = useRef(null);
+
+  // shouldScrollBottom — yeni mesaj gəldikdə / chat seçildikdə aşağıya scroll et
   const [shouldScrollBottom, setShouldScrollBottom] = useState(false);
+
+  // onlineUsers — Set<userId> — online olan istifadəçilərin id-ləri
+  // Set — unikal dəyərlər (dublikat yoxdur), like HashSet<T> in C#
   const [onlineUsers, setOnlineUsers] = useState(new Set());
+
+  // typingUsers — { conversationId: true } — yazma indicator-u
+  // key: conversationId, value: true (yazır), undefined (yazmır)
   const [typingUsers, setTypingUsers] = useState({});
+
+  // Typing debounce üçün — son typing siqnalından 2 saniyə sonra "stopped typing" göndər
   const typingTimeoutRef = useRef(null);
+
+  // isTypingRef — hazırda typing siqnalı göndərilib-göndərilmədiyi
+  // useRef istifadə olunur çünki dəyişmə re-render etməməlidir
   const isTypingRef = useRef(false);
+
+  // Emoji picker açıq/bağlı
   const [emojiOpen, setEmojiOpen] = useState(false);
+
+  // emojiPanelRef — emoji panel-i (kənar klik bağlama üçün)
   const emojiPanelRef = useRef(null);
+
+  // replyTo — reply ediləcək mesaj (null = reply yoxdur)
   const [replyTo, setReplyTo] = useState(null);
+
+  // editMessage — redaktə ediləcək mesaj (null = edit mode yox)
   const [editMessage, setEditMessage] = useState(null);
+
+  // forwardMessage — yönləndirilən mesaj (null = forward panel bağlı)
   const [forwardMessage, setForwardMessage] = useState(null);
+
+  // selectMode — çox mesaj seçmə rejimi (true = SelectToolbar görünür)
   const [selectMode, setSelectMode] = useState(false);
+
+  // selectedMessages — seçilmiş mesajların id-ləri (Set<messageId>)
   const [selectedMessages, setSelectedMessages] = useState(new Set());
+
+  // pinnedMessages — aktiv chatda pinlənmiş mesajların siyahısı
   const [pinnedMessages, setPinnedMessages] = useState([]);
+
+  // pinBarExpanded — pinlənmiş mesajlar siyahısı genişlənib (PinnedExpanded görünür)
   const [pinBarExpanded, setPinBarExpanded] = useState(false);
+
+  // currentPinIndex — PinnedBar-da hazırda göstərilən pin-in indeksi
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
+
+  // deleteConfirmOpen — "Delete messages?" modal-ı açıq/bağlı
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  // inputRef — textarea element-i (focus vermək üçün)
   const inputRef = useRef(null);
 
+  // --- CUSTOM HOOKS ---
+
+  // useChatScroll — infinite scroll (yuxarı scroll → köhnə mesajlar yüklə)
+  // handleScroll — scroll event handler (throttled)
+  // hasMoreRef — daha köhnə mesaj varmı? false → daha yükləmə
+  // hasMoreDownRef — around mode-da altda mesaj varmı?
+  // loadingOlder — köhnə mesajlar yüklənirkən true (spinner)
+  // scrollRestoreRef — scroll bərpası üçün əvvəlki scroll vəziyyəti
   const { handleScroll, hasMoreRef, hasMoreDownRef, loadingOlder, scrollRestoreRef } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages);
 
+  // --- EFFECT-LƏR ---
+
+  // Mount olduqda bir dəfə söhbət siyahısını yüklə
+  // [] — boş dependency array = yalnız ilk render-də işlə (like OnInitializedAsync)
   useEffect(() => {
     loadConversations();
   }, []);
 
+  // useChatSignalR — real-time event-ləri dinlə (NewMessage, UserOnline, Typing, etc.)
+  // Bu hook içəridə useEffect ilə SignalR event handler-larını qeydiyyata alır
   useChatSignalR(user.id, setSelectedChat, setMessages, setConversations, setShouldScrollBottom, setOnlineUsers, setTypingUsers, setPinnedMessages, setCurrentPinIndex);
 
+  // shouldScrollBottom true olduqda ən alt mesaja scroll et
+  // messages dəyişdikdə (yeni mesaj gəldi) işlə
   useEffect(() => {
     if (shouldScrollBottom) {
+      // scrollIntoView — element görünüş sahəsinə gətir
+      // behavior: "instant" — animasiya olmadan (jump)
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
       setShouldScrollBottom(false);
     }
   }, [messages, shouldScrollBottom, pinnedMessages]);
 
-  // Scroll position restore — paint-dən ƏVVƏL işləyir, tullanma olmur
+  // Scroll position restore — yuxarı scroll edib köhnə mesaj yüklənəndə
+  // useLayoutEffect — brauzer paint etməzdən əvvəl işlə
+  // Bu sayədə scroll pozisyonu qorunur, mesajlar "tullanmır"
   useLayoutEffect(() => {
     const area = messagesAreaRef.current;
     const saved = scrollRestoreRef.current;
     if (area && saved) {
+      // Yeni scrollHeight - əvvəlki scrollHeight = yeni mesajların hündürlüyü
+      // Köhnə scrollTop + bu fərq = mesajlar yuxarı tullanmır
       const heightDiff = area.scrollHeight - saved.scrollHeight;
       area.scrollTop = saved.scrollTop + heightDiff;
       scrollRestoreRef.current = null;
     }
   }, [messages]);
 
-  // getAround-dan sonra hədəf mesaja scroll + highlight
+  // getAround endpoint-dən mesajlar yükləndikdən sonra
+  // hədəf mesaja scroll et + highlight et
   useLayoutEffect(() => {
     const messageId = pendingHighlightRef.current;
     if (!messageId) return;
-    pendingHighlightRef.current = null;
+    pendingHighlightRef.current = null; // Bir dəfə işlə, sıfırla
 
     const area = messagesAreaRef.current;
     if (!area) return;
 
+    // DOM-da data-bubble-id={messageId} olan elementi tap
     const target = area.querySelector(`[data-bubble-id="${messageId}"]`);
     if (target) {
       target.scrollIntoView({ behavior: "instant", block: "center" });
+      // CSS class əlavə et → highlight animasiyası başlar
       target.classList.add("highlight-message");
+      // HIGHLIGHT_DURATION_MS ms sonra class sil (animasiya biter)
       setTimeout(() => target.classList.remove("highlight-message"), HIGHLIGHT_DURATION_MS);
     }
   }, [messages]);
 
-  // Mark visible messages as read (IntersectionObserver)
+  // IntersectionObserver — görünüş sahəsinə girən oxunmamış mesajları "read" et
+  // .NET ekvivalenti: element viewport-a girəndə API çağrısı
   useEffect(() => {
     const area = messagesAreaRef.current;
     if (!area || !selectedChat) return;
 
+    // IntersectionObserver — element viewport-a girəndə callback çağırır
+    // root: area — scroll container-i viewport kimi istifadə et
+    // threshold: 0.5 — elementin 50%-i görünəndə işlə
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
+            // data-* attribut-lardan məlumat al (MessageBubble-da set edilib)
             const msgId = entry.target.dataset.msgId;
             const convId = entry.target.dataset.convId;
             const convType = entry.target.dataset.convType;
 
+            // Chat tipinə görə doğru "mark as read" API-ni çağır
             if (convType === "0") {
               apiPost(`/api/conversations/${convId}/messages/${msgId}/read`);
             } else if (convType === "1") {
               apiPost(`/api/channels/${convId}/messages/${msgId}/mark-as-read`);
             }
 
+            // Bu elementi artıq izləmə (bir dəfə kifayətdir)
             observer.unobserve(entry.target);
           }
         }
@@ -143,31 +259,41 @@ function Chat() {
       },
     );
 
+    // data-unread="true" olan bütün mesajları izlə
     const unreadElements = area.querySelectorAll("[data-unread='true']");
     unreadElements.forEach((el) => observer.observe(el));
 
+    // Cleanup — component unmount olduqda / messages dəyişdikdə observer-i dayandır
+    // like IDisposable.Dispose() in C#
     return () => observer.disconnect();
   }, [messages, selectedChat]);
 
+  // --- API FUNKSIYALARI ---
+
+  // loadConversations — bütün söhbətləri backend-dən yüklə
+  // GET /api/unified-conversations?pageNumber=1&pageSize=50
   async function loadConversations() {
     try {
       const data = await apiGet(
         `/api/unified-conversations?pageNumber=1&pageSize=${CONVERSATION_PAGE_SIZE}`,
       );
+      // data.items — paged response-dan items array
       setConversations(data.items);
     } catch (err) {
       console.error("Failed to load conversations:", err);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Yüklənmə bitdi (uğurlu olsa da olmasada)
     }
   }
 
+  // loadPinnedMessages — seçilmiş chatın pinlənmiş mesajlarını yüklə
+  // Yalnız handleSelectChat-dan sonra çağırılır
   async function loadPinnedMessages(chat) {
     try {
       const endpoint = getChatEndpoint(chat.id, chat.type, "/messages/pinned");
       if (!endpoint) return;
       const data = await apiGet(endpoint);
-      // Ən sonuncu pinlənmiş birinci görünsün (DESC by pinnedAtUtc)
+      // DESC sıralama — ən son pinlənmiş birinci görünsün
       const sorted = (data || []).sort(
         (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
       );
@@ -178,9 +304,10 @@ function Chat() {
     }
   }
 
-  // Type enum: 0 = Conversation, 1 = Channel, 2 = DepartmentUser
+  // handleSelectChat — istifadəçi sol siyahıdan bir chata klikləyəndə çağırılır
+  // chat.type: 0 = DM Conversation, 1 = Channel, 2 = DepartmentUser
   async function handleSelectChat(chat) {
-    // Leave previous group
+    // Əvvəlki chatın SignalR qrupundan ayrıl
     if (selectedChat) {
       if (selectedChat.type === 0) {
         leaveConversation(selectedChat.id);
@@ -189,6 +316,7 @@ function Chat() {
       }
     }
 
+    // State sıfırla — yeni chat seçildi
     setSelectedChat(chat);
     setMessages([]);
     setPinnedMessages([]);
@@ -201,41 +329,46 @@ function Chat() {
     setForwardMessage(null);
     setEmojiOpen(false);
     setDeleteConfirmOpen(false);
-    hasMoreRef.current = true;
-    hasMoreDownRef.current = false;
+    hasMoreRef.current = true;      // Yenidən köhnə mesaj yükləmək mümkündür
+    hasMoreDownRef.current = false; // Around mode yox
+
     try {
       const msgBase = getChatEndpoint(chat.id, chat.type, "/messages");
       if (!msgBase) return;
       const msgEndpoint = `${msgBase}?pageSize=${MESSAGE_PAGE_SIZE}`;
       const pinEndpoint = `${msgBase}/pinned`;
 
-      // Mesajlar + pinned mesajları paralel yüklə
+      // Promise.all — iki API çağrısını paralel icra et (daha sürətli)
+      // .NET ekvivalenti: await Task.WhenAll(task1, task2)
       const [msgData, pinData] = await Promise.all([
         apiGet(msgEndpoint),
-        apiGet(pinEndpoint).catch(() => []),
+        apiGet(pinEndpoint).catch(() => []), // Pin yükləmə uğursuz olsa boş array
       ]);
 
-      // Pinned mesajları DESC sıralayıb eyni anda set et (bir dəfə scroll)
+      // Pinlənmiş mesajları DESC sırala
       const sortedPins = (pinData || []).sort(
         (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
       );
       setPinnedMessages(sortedPins);
-      setShouldScrollBottom(true);
+      setShouldScrollBottom(true); // Yeni chat seçildikdə ən aşağıya scroll et
       setMessages(msgData);
 
-      // Join new group
+      // Yeni chatın SignalR qrupuna qoşul
       if (chat.type === 0) {
         joinConversation(chat.id);
 
-        // Check online status of other user
+        // DM — digər istifadəçinin online status-unu SignalR hub-dan al
+        // conn.invoke("GetOnlineStatus", [...]) — hub metodu çağır
         if (chat.otherUserId) {
           const conn = getConnection();
           if (conn) {
             try {
+              // Hub metodu: GetOnlineStatus(List<string> userIds) → Dictionary<string,bool>
               const statusMap = await conn.invoke("GetOnlineStatus", [
                 chat.otherUserId,
               ]);
               if (statusMap && statusMap[chat.otherUserId]) {
+                // Functional update — prev state əsasında yeni Set yarat
                 setOnlineUsers((prev) => {
                   const next = new Set(prev);
                   next.add(chat.otherUserId);
@@ -250,7 +383,9 @@ function Chat() {
       } else if (chat.type === 1) {
         joinChannel(chat.id);
       }
-      // Textarea-ya focus ver
+
+      // setTimeout(..., 0) — bir sonraki event loop-da textarea-ya focus ver
+      // Birbaşa çağırsaq, DOM hazır olmaya bilər
       setTimeout(() => inputRef.current?.focus(), 0);
     } catch (err) {
       console.error("Failed to load messages:", err);
@@ -258,11 +393,12 @@ function Chat() {
     }
   }
 
+  // handleForward — ForwardPanel-dan chat seçilib, mesajı ora göndər
   async function handleForward(targetChat) {
     if (!forwardMessage) return;
 
     const fwd = forwardMessage;
-    // Panel dərhal bağlansın (optimistic)
+    // Optimistic close — API cavabını gözləmədən paneli bağla (sürətli UI)
     setForwardMessage(null);
 
     try {
@@ -270,21 +406,22 @@ function Chat() {
       if (!endpoint) return;
 
       if (fwd.isMultiSelect) {
-        // Çoxlu mesaj forward — hər birini ardıcıl göndər
-        const allMessages = [...messages].reverse(); // chronological order
+        // Çoxlu mesaj forward — seçilmiş hər mesajı ardıcıl göndər
+        const allMessages = [...messages].reverse(); // chronological order (köhnə → yeni)
         const selectedMsgs = allMessages.filter((m) => fwd.ids.includes(m.id));
         for (const m of selectedMsgs) {
           await apiPost(endpoint, { content: m.content, isForwarded: true });
         }
-        handleExitSelectMode();
+        handleExitSelectMode(); // Select mode-dan çıx
       } else {
+        // Tək mesaj forward
         await apiPost(endpoint, { content: fwd.content, isForwarded: true });
       }
 
-      // Conversation list-i yenilə (son mesaj görsənsin)
+      // Söhbət siyahısını yenilə (son mesaj dəyişdi)
       loadConversations();
 
-      // Əgər forward edilən chat açıqdırsa, mesajları da yenilə
+      // Əgər forward edilən chat hazırda açıqdırsa, mesajları da yenilə
       if (selectedChat && selectedChat.id === targetChat.id) {
         const data = await apiGet(`${getChatEndpoint(selectedChat.id, selectedChat.type, "/messages")}?pageSize=${MESSAGE_PAGE_SIZE}`);
         hasMoreDownRef.current = false;
@@ -296,19 +433,23 @@ function Chat() {
     }
   }
 
+  // handlePinMessage — mesajı pin/unpin et
+  // useCallback — selectedChat dəyişmədikdə eyni funksiya referansı saxla
+  // Bu sayədə MessageBubble yenidən render olmur (React.memo ilə birlikdə)
   const handlePinMessage = useCallback(async (msg) => {
     if (!selectedChat) return;
     try {
       const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}/pin`);
       if (!endpoint) return;
 
+      // isPinned true → DELETE (unpin), false → POST (pin)
       if (msg.isPinned) {
         await apiDelete(endpoint);
       } else {
         await apiPost(endpoint);
       }
 
-      // Pinned messages + messages state yenilə
+      // Pin siyahısını yenilə + mesajın isPinned flag-ini dəyiş
       loadPinnedMessages(selectedChat);
       setMessages((prev) =>
         prev.map((m) =>
@@ -318,8 +459,9 @@ function Chat() {
     } catch (err) {
       console.error("Failed to pin/unpin message:", err);
     }
-  }, [selectedChat]);
+  }, [selectedChat]); // Dependency: selectedChat dəyişdikdə funksiyanı yenilə
 
+  // handleFavoriteMessage — mesajı favorilərə əlavə et / çıxar
   const handleFavoriteMessage = useCallback(async (msg) => {
     if (!selectedChat) return;
     try {
@@ -331,13 +473,26 @@ function Chat() {
     }
   }, [selectedChat]);
 
-  // Select mode handlers
+  // --- SELECT MODE HANDLER-LƏRI ---
+
+  // handleEnterSelectMode — ilk mesajı seçdikdə select mode başlasın
+  // useCallback([]) — heç bir dependency yoxdur, funksiya heç vaxt dəyişmir
   const handleEnterSelectMode = useCallback((msgId) => {
     setSelectMode(true);
-    setSelectedMessages(new Set([msgId]));
+    setSelectedMessages(new Set([msgId])); // İlk seçilmiş mesaj
   }, []);
 
+  // handleToggleSelect — mesajı seç / seçimi ləğv et
   const handleToggleSelect = useCallback((msgId) => {
+    setMessages((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) {
+        next.delete(msgId); // Artıq seçilibsə çıxar
+      } else {
+        next.add(msgId);    // Seçilməyibsə əlavə et
+      }
+      return next;
+    });
     setSelectedMessages((prev) => {
       const next = new Set(prev);
       if (next.has(msgId)) {
@@ -349,25 +504,28 @@ function Chat() {
     });
   }, []);
 
+  // handleExitSelectMode — select mode-dan çıx, seçimləri sıfırla
   const handleExitSelectMode = useCallback(() => {
     setSelectMode(false);
     setSelectedMessages(new Set());
   }, []);
 
+  // handleForwardSelected — seçilmiş mesajları forward et
   const handleForwardSelected = useCallback(() => {
     if (selectedMessages.size === 0) return;
-    // Forward panel-i açmaq üçün ilk seçilmiş mesajı set edirik
-    // Sonra ForwardPanel-dən chat seçildikdə bütün mesajları forward edəcəyik
+    // isMultiSelect:true + ids — ForwardPanel-ə çoxlu mesaj forwardı bildir
     setForwardMessage({ isMultiSelect: true, ids: [...selectedMessages] });
   }, [selectedMessages]);
 
-  // Bubble action-dan tək mesaj silmə (təsdiq olmadan)
+  // handleDeleteMessage — tək mesajı sil (action menu-dan çağırılır)
   const handleDeleteMessage = useCallback(async (msg) => {
     if (!selectedChat) return;
     try {
       const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}`);
       if (!endpoint) return;
       await apiDelete(endpoint);
+      // Soft delete — mesajı array-dən çıxarmırıq, isDeleted: true edirik
+      // UI-da "This message was deleted." göstəriləcək
       setMessages((prev) =>
         prev.map((m) => (m.id === msg.id ? { ...m, isDeleted: true } : m)),
       );
@@ -376,20 +534,24 @@ function Chat() {
     }
   }, [selectedChat]);
 
-  // Select mode-da seçilmiş mesajları silmə (təsdiq formasından sonra çağırılır)
+  // handleDeleteSelected — seçilmiş bütün mesajları sil (SelectToolbar-dan)
   const handleDeleteSelected = useCallback(async () => {
     if (!selectedChat || selectedMessages.size === 0) return;
     try {
-      const ids = [...selectedMessages];
+      const ids = [...selectedMessages]; // Set → Array
       const base = getChatEndpoint(selectedChat.id, selectedChat.type, "/messages");
       if (!base) return;
 
+      // Çox mesaj varsa batch delete, azdırsa paralel individual delete
+      // BATCH_DELETE_THRESHOLD — konfiqurasiya edilə bilən limit
       if (ids.length > BATCH_DELETE_THRESHOLD) {
         await apiPost(`${base}/batch-delete`, { messageIds: ids });
       } else {
+        // Promise.all — bütün silmə request-lərini paralel göndər
         await Promise.all(ids.map((id) => apiDelete(`${base}/${id}`)));
       }
 
+      // Soft delete — hamısını isDeleted: true et
       setMessages((prev) =>
         prev.map((m) => (ids.includes(m.id) ? { ...m, isDeleted: true } : m)),
       );
@@ -399,37 +561,45 @@ function Chat() {
     }
   }, [selectedChat, selectedMessages, handleExitSelectMode]);
 
+  // handlePinBarClick — PinnedBar-a klik edildikdə
+  // 1) Həmin mesaja scroll et, 2) Növbəti pin-ə keç
   function handlePinBarClick(messageId) {
     handleScrollToMessage(messageId);
-    // Növbəti pinlənmiş mesaja keç
+    // Modulo əməliyyatı — axırıncı pin-dən sonra birinciyə qayıt (circular)
     setCurrentPinIndex((prev) =>
       prev >= pinnedMessages.length - 1 ? 0 : prev + 1,
     );
   }
 
+  // handleSendMessage — mesaj göndər (Enter / Send button)
   async function handleSendMessage() {
+    // Boş mesaj göndərmə
     if (!messageText.trim() || !selectedChat) return;
 
     const text = messageText.trim();
-    setMessageText("");
+    setMessageText(""); // Yazma sahəsini dərhal sıfırla (UI cavabdehliyi)
 
-    // Textarea hündürlüyünü resetlə
+    // Textarea hündürlüyünü yenidən başlanğıc ölçüyə gətir
     const textarea = document.querySelector(".message-input");
     if (textarea) textarea.style.height = "auto";
 
-    // Edit mode — mesajı redaktə et
+    // --- EDIT MODE ---
     if (editMessage) {
       const editingMsg = editMessage;
-      setEditMessage(null);
+      setEditMessage(null); // Edit mode-dan çıx
       try {
         const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${editingMsg.id}`);
+        // PUT /api/conversations/{id}/messages/{msgId} — mesajı redaktə et
         await apiPut(endpoint, { newContent: text });
-        // Optimistic UI — həm mesajın content-i, həm reply reference-ları yenilə
+
+        // Optimistic UI — API cavabı gözləmədən state-i güncəllə
         setMessages((prev) =>
           prev.map((m) => {
             if (m.id === editingMsg.id) {
+              // Mesajın content-ini, isEdited və editedAtUtc-ni yenilə
               return { ...m, content: text, isEdited: true, editedAtUtc: new Date().toISOString() };
             }
+            // Bu mesajı reply etmiş mesajların preview-unu da yenilə
             if (m.replyToMessageId === editingMsg.id) {
               return { ...m, replyToContent: text };
             }
@@ -439,37 +609,40 @@ function Chat() {
       } catch (err) {
         console.error("Failed to edit message:", err);
       }
-      return;
+      return; // Edit-dən sonra normal send etmə
     }
 
-    setReplyTo(null);
+    setReplyTo(null); // Reply-ı sıfırla
 
     try {
       const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, "/messages");
       if (!endpoint) return;
 
+      // POST /api/conversations/{id}/messages — yeni mesaj göndər
       await apiPost(endpoint, {
         content: text,
-        replyToMessageId: replyTo ? replyTo.id : null,
+        replyToMessageId: replyTo ? replyTo.id : null, // Reply varsa id-ni göndər
       });
 
-      // Mesajları yenidən yüklə (SignalR fallback)
+      // Mesajları yenidən yüklə (SignalR yoksa fallback)
       const data = await apiGet(`${endpoint}?pageSize=${MESSAGE_PAGE_SIZE}`);
       hasMoreDownRef.current = false;
-      setShouldScrollBottom(true);
+      setShouldScrollBottom(true); // Yeni mesajdan sonra aşağıya scroll et
       setMessages(data);
     } catch (err) {
       console.error("Failed to send message:", err);
     }
   }
 
-  // Emoji panel kənara tıklandıqda bağlansın
+  // Emoji panelinin kənarına klikləndikdə bağla
+  // emojiOpen=true olduqda event listener-i qeydiyyata al,
+  // emojiOpen=false olduqda yenidən sil (cleanup funksiyası)
   useEffect(() => {
     function handleClickOutside(e) {
       if (
         emojiPanelRef.current &&
-        !emojiPanelRef.current.contains(e.target) &&
-        !e.target.closest(".emoji-btn")
+        !emojiPanelRef.current.contains(e.target) && // Klik panelin içərisindədirsə bağlama
+        !e.target.closest(".emoji-btn")               // Emoji button-una klik → toggle edir
       ) {
         setEmojiOpen(false);
       }
@@ -480,11 +653,15 @@ function Chat() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [emojiOpen]);
 
+  // sendTypingSignal — istifadəçi yazarkən SignalR hub-a "typing" siqnalı göndər
+  // Debounce pattern: TYPING_DEBOUNCE_MS sonra "stopped typing" göndər
   function sendTypingSignal() {
+    // DepartmentUser (type=2) üçün typing yoxdur
     if (!selectedChat || selectedChat.type === 2) return;
     const conn = getConnection();
     if (!conn) return;
 
+    // İlk dəfə yazılır — "isTyping: true" siqnalı göndər
     if (!isTypingRef.current) {
       isTypingRef.current = true;
       if (selectedChat.type === 0) {
@@ -492,17 +669,19 @@ function Chat() {
           "TypingInConversation",
           selectedChat.id,
           selectedChat.otherUserId,
-          true,
+          true, // isTyping = true
         );
       } else if (selectedChat.type === 1) {
         conn.invoke("TypingInChannel", selectedChat.id, true);
       }
     }
 
+    // Əvvəlki timeout-u sil (debounce reset)
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
+    // TYPING_DEBOUNCE_MS ms sonra "isTyping: false" göndər
     typingTimeoutRef.current = setTimeout(() => {
       isTypingRef.current = false;
       if (selectedChat.type === 0) {
@@ -510,7 +689,7 @@ function Chat() {
           "TypingInConversation",
           selectedChat.id,
           selectedChat.otherUserId,
-          false,
+          false, // isTyping = false
         );
       } else if (selectedChat.type === 1) {
         conn.invoke("TypingInChannel", selectedChat.id, false);
@@ -518,29 +697,33 @@ function Chat() {
     }, TYPING_DEBOUNCE_MS);
   }
 
+  // handleScrollToMessage — mesaja scroll et (reply reference / pin bar klik)
+  // Mesaj DOM-da varsa birbaşa scroll et, yoxdursa around endpoint-dən yüklə
   const handleScrollToMessage = useCallback(async (messageId) => {
     const area = messagesAreaRef.current;
     if (!area || !selectedChat) return;
 
-    // Əvvəlcə DOM-da yoxla — mesaj artıq yüklənibsə birbaşa scroll et
+    // DOM-da bu mesaj artıq render olunubsa?
     let el = area.querySelector(`[data-bubble-id="${messageId}"]`);
     if (el) {
+      // Var — birbaşa smooth scroll et + highlight
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.classList.add("highlight-message");
       setTimeout(() => el.classList.remove("highlight-message"), HIGHLIGHT_DURATION_MS);
       return;
     }
 
-    // Mesaj DOM-da yoxdur — around endpoint ilə yüklə
+    // Yoxdur — around endpoint ilə həmin mesajın ətrafındakı mesajları yüklə
     try {
       const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/around/${messageId}`);
       if (!endpoint) return;
 
       const data = await apiGet(endpoint);
-      hasMoreRef.current = true;
-      hasMoreDownRef.current = true;
+      hasMoreRef.current = true;      // Yuxarıda daha mesaj var
+      hasMoreDownRef.current = true;  // Aşağıda da daha mesaj var (around mode)
 
-      // Ref ilə scroll+highlight-i saxla — setMessages sonrası useEffect-də icra olunacaq
+      // pendingHighlightRef — setMessages-dən SONRA useLayoutEffect işlətmək üçün
+      // Mesajlar render olunandan sonra highlight edəcəyik
       pendingHighlightRef.current = messageId;
       setMessages(data);
     } catch (err) {
@@ -548,56 +731,69 @@ function Chat() {
     }
   }, [selectedChat]);
 
+  // handleKeyDown — textarea-da klaviatura hadisəsi
+  // Enter → mesaj göndər (Shift+Enter → yeni sətir)
   function handleKeyDown(e) {
-    sendTypingSignal();
+    sendTypingSignal(); // Hər düymə basılışında typing siqnalı göndər
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+      e.preventDefault(); // Enter-in default davranışını (yeni sətir) dayandır
       handleSendMessage();
     }
   }
 
-  // Memoize: messages array reverse + grouping — yalnız messages dəyişəndə yenidən hesablanır
+  // --- MEMOIZED DƏYƏRLƏR ---
+
+  // grouped — mesajları tarix separator-ları ilə qruplaşdır
+  // useMemo — messages dəyişmədikdə bu hesablamanı yenidən etmə
+  // [...messages].reverse() — messages DESC-dir, ASC-ə çevir (köhnə → yeni)
+  // .NET: IEnumerable.Where(...).GroupBy(...)
   const grouped = useMemo(
     () => groupMessagesByDate([...messages].reverse()),
     [messages],
   );
 
-  // Seçilmiş mesajlardan hər hansı biri başqasınındırsa Delete disable olsun
+  // hasOthersSelected — seçilmiş mesajların arasında başqasının mesajı varmı?
+  // true olduqda Delete button deaktiv olur
   const hasOthersSelected = useMemo(() => {
     if (selectedMessages.size === 0) return false;
     return [...selectedMessages].some((id) => {
       const m = messages.find((msg) => msg.id === id);
-      return m && m.senderId !== user.id;
+      return m && m.senderId !== user.id; // Başqasının mesajıdırsa true
     });
   }, [selectedMessages, messages, user.id]);
 
-  // Stabilize callback references — React.memo yenidən render etməsin
+  // --- STABLE CALLBACK-LƏR ---
+  // useCallback([]) — dependency yoxdur, funksiya referansı sabit qalır
+  // React.memo ilə birlikdə MessageBubble-ın lazımsız yenidən render-inin qarşısını alır
+  // .NET ekvivalenti: static method reference saxlamaq kimi
+
   const handleReply = useCallback((m) => {
     setReplyTo(m);
-    setTimeout(() => inputRef.current?.focus(), 0);
+    setTimeout(() => inputRef.current?.focus(), 0); // Focus textarea-ya
   }, []);
 
   const handleForwardMsg = useCallback((m) => {
-    setForwardMessage(m);
+    setForwardMessage(m); // ForwardPanel-i aç
   }, []);
 
   const handleEditMsg = useCallback((m) => {
-    setEditMessage(m);
-    setReplyTo(null);
-    setMessageText(m.content);
+    setEditMessage(m);       // Edit mode-a gir
+    setReplyTo(null);        // Reply-ı ləğv et
+    setMessageText(m.content); // Məzmunu textarea-ya qoy
     setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
+  // handleReaction — mesaja emoji reaksiyası əlavə et / ləğv et
   const handleReaction = useCallback(async (msg, emoji) => {
     if (!selectedChat) return;
     try {
       const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}/reactions/toggle`);
       if (!endpoint) return;
-      // DM uses PUT, Channel uses POST for reaction toggle
+      // DM → PUT, Channel → POST (backend API fərqi)
       const result = selectedChat.type === 0
         ? await apiPut(endpoint, { reaction: emoji })
         : await apiPost(endpoint, { reaction: emoji });
-      // Optimistic UI — API response-dan reactions-ı al
+      // Optimistic UI — API-dən gələn reactions-ı dərhal state-ə tət
       const reactions = result.reactions || result;
       setMessages((prev) =>
         prev.map((m) => (m.id === msg.id ? { ...m, reactions } : m)),
@@ -607,14 +803,14 @@ function Chat() {
     }
   }, [selectedChat]);
 
-  // Reaction badge-ə klik edildikdə detail-ləri (kim react edib) yüklə
+  // handleLoadReactionDetails — reaction badge-ə kliklədikdə kim react edib yüklə
   const handleLoadReactionDetails = useCallback(async (messageId) => {
     if (!selectedChat) return null;
     try {
       const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${messageId}/reactions`);
       if (!endpoint) return null;
       const details = await apiGet(endpoint);
-      // Messages state-ində reaction-ları detail ilə yenilə
+      // Reaction detail-ləri (userFullNames) messages state-inə əlavə et
       setMessages((prev) =>
         prev.map((m) => (m.id === messageId ? { ...m, reactions: details } : m)),
       );
@@ -625,23 +821,30 @@ function Chat() {
     }
   }, [selectedChat]);
 
+  // --- JSX RENDER ---
   return (
     <div className="main-layout">
+      {/* Sidebar — sol dar nav bar (logout button) */}
       <Sidebar onLogout={logout} />
 
+      {/* main-content — söhbət siyahısı + chat paneli yan-yana */}
       <div className="main-content">
+        {/* ConversationList — sol panel, söhbət siyahısı */}
         <ConversationList
           conversations={conversations}
-          selectedChatId={selectedChat?.id}
+          selectedChatId={selectedChat?.id}    // Optional chaining — selectedChat null ola bilər
           searchText={searchText}
-          onSearchChange={setSearchText}
+          onSearchChange={setSearchText}        // Funksiya prop olaraq ötürülür
           onSelectChat={handleSelectChat}
           isLoading={isLoading}
         />
 
+        {/* chat-panel — sağ panel, mesajlar */}
         <div className="chat-panel">
+          {/* selectedChat varsa chat göstər, yoxsa empty state */}
           {selectedChat ? (
             <>
+              {/* ChatHeader — chat adı, online status, typing indicator */}
               <ChatHeader
                 selectedChat={selectedChat}
                 typingUsers={typingUsers}
@@ -650,8 +853,10 @@ function Chat() {
                 onTogglePinExpand={() => setPinBarExpanded((v) => !v)}
               />
 
+              {/* loadingOlder — yuxarı scroll edəndə köhnə mesajlar yüklənirkən spinner */}
               {loadingOlder && <div className="loading-older" />}
 
+              {/* PinnedBar — pinlənmiş mesajlar varsa compact bar göstər */}
               {pinnedMessages.length > 0 && (
                 <PinnedBar
                   pinnedMessages={pinnedMessages}
@@ -661,6 +866,7 @@ function Chat() {
                 />
               )}
 
+              {/* PinnedExpanded — genişləndirilmiş pin siyahısı */}
               {pinBarExpanded && pinnedMessages.length > 0 && (
                 <PinnedExpanded
                   pinnedMessages={pinnedMessages}
@@ -670,13 +876,16 @@ function Chat() {
                 />
               )}
 
+              {/* messages-area — scroll container */}
               <div
                 className="messages-area"
                 ref={messagesAreaRef}
-                onScroll={handleScroll}
+                onScroll={handleScroll} // useChatScroll-dan gəlir
               >
+                {/* grouped — [{type:"date", label:"..."}, {type:"message", data:{...}}, ...] */}
                 {grouped.map((item, index) => {
                   if (item.type === "date") {
+                    // Tarix separator — "Today", "Yesterday", "18 Feb 2026"
                     return (
                       <div key={`date-${index}`} className="date-separator">
                         <span>{item.label}</span>
@@ -684,9 +893,11 @@ function Chat() {
                     );
                   }
                   const msg = item.data;
+                  // isOwn — bu mesaj cari istifadəçinindirsə true
                   const isOwn = msg.senderId === user.id;
 
-                  // Avatar yalnız son mesajda görünür (növbəti mesaj fərqli senderId-dən və ya date separator-dursa)
+                  // showAvatar — avatar yalnız "son" mesajda görünür
+                  // Növbəti item fərqli senderdirsə və ya date separator-dursa → true
                   const nextItem = grouped[index + 1];
                   const showAvatar =
                     !nextItem ||
@@ -695,7 +906,7 @@ function Chat() {
 
                   return (
                     <MessageBubble
-                      key={msg.id}
+                      key={msg.id}              // React-ın list key-i
                       msg={msg}
                       isOwn={isOwn}
                       showAvatar={showAvatar}
@@ -716,9 +927,11 @@ function Chat() {
                     />
                   );
                 })}
+                {/* messagesEndRef — ən alt boş div, scrollIntoView üçün hədəf */}
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* selectMode → SelectToolbar, əks halda ChatInputArea */}
               {selectMode ? (
                 <SelectToolbar
                   selectedCount={selectedMessages.size}
@@ -747,6 +960,7 @@ function Chat() {
               />
               )}
 
+              {/* forwardMessage varsa ForwardPanel-i göstər (modal overlay) */}
               {forwardMessage && (
                 <ForwardPanel
                   conversations={conversations}
@@ -756,6 +970,7 @@ function Chat() {
               )}
             </>
           ) : (
+            // Chat seçilməyib — empty state
             <div className="chat-empty">
               <svg
                 width="48"

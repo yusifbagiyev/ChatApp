@@ -1,12 +1,32 @@
+// memo   — komponenti cache-lər; props dəyişmədikdə yenidən render etmə
+// useState — lokal state (menyu açıq/bağlı, reaction picker, tooltip)
+// useRef   — DOM referansları (menyu div-i, reaction div-i)
+// useEffect — kənar klik handler, menyu pozisyonu yoxlama
+// useLayoutEffect — reaction picker-in flip (yuxarı/aşağı açılma)
 import { memo, useState, useRef, useEffect, useLayoutEffect } from "react";
+
 import {
   getInitials,
   getAvatarColor,
-  formatMessageTime,
+  formatMessageTime,    // "HH:mm" formatı
 } from "../utils/chatUtils";
-import { QUICK_REACTION_EMOJIS, EXPANDED_REACTION_EMOJIS } from "../utils/emojiConstants";
-import MessageActionMenu from "./MessageActionMenu";
 
+import { QUICK_REACTION_EMOJIS, EXPANDED_REACTION_EMOJIS } from "../utils/emojiConstants";
+import MessageActionMenu from "./MessageActionMenu"; // "⋮" menyu komponenti
+
+// MessageBubble — tək bir mesajın balonu
+// memo ilə wrap edilib — Chat.jsx-dəki grouped.map() çox element render edir,
+// memo olmadan hər yeni mesajda bütün bubbles yenidən render olacaqdı
+//
+// Props:
+//   msg              — mesaj obyekti (id, content, senderId, status, reactions, ...)
+//   isOwn            — bu mesaj cari istifadəçinindirsə true (sağa hizalanır)
+//   showAvatar       — bu mesajda avatar göstərilsinmi? (son mesajda göstərilir)
+//   chatType         — 0=DM, 1=Channel, 2=DepartmentUser
+//   selectMode       — çox mesaj seçmə rejimi aktivdirsə true
+//   isSelected       — bu mesaj seçilib? (checkbox checked)
+//   onReply/onForward/onPin/onFavorite/onSelect/onToggleSelect/onScrollToMessage/onDelete/onEdit/onReaction/onLoadReactionDetails
+//                    — Chat.jsx-dən gəlir, useCallback ilə stabildir
 const MessageBubble = memo(function MessageBubble({
   msg,
   isOwn,
@@ -26,26 +46,47 @@ const MessageBubble = memo(function MessageBubble({
   onReaction,
   onLoadReactionDetails,
 }) {
-  const [showActions, setShowActions] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [reactionOpen, setReactionOpen] = useState(false);
-  const [reactionExpanded, setReactionExpanded] = useState(false);
-  const [reactionTooltipOpen, setReactionTooltipOpen] = useState(null); // açıq tooltip-in emoji-si
-  const [reactionDetailsLoading, setReactionDetailsLoading] = useState(false);
-  const menuRef = useRef(null);
-  const reactionRef = useRef(null);
-  const tooltipRef = useRef(null);
+  // --- LOKAL STATE ---
 
-  // Kənar tıklandıqda menuları + actions panelini + tooltip-i bağla
+  // showActions — hover olduqda action düymələri göstər (reaction + more)
+  const [showActions, setShowActions] = useState(false);
+
+  // menuOpen — "⋮" düyməsinə klik → MessageActionMenu açıq/bağlı
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // reactionOpen — "😊" düyməsinə klik → reaction picker açıq/bağlı
+  const [reactionOpen, setReactionOpen] = useState(false);
+
+  // reactionExpanded — "⌄" düyməsinə klik → genişləndirilmiş emoji siyahısı
+  const [reactionExpanded, setReactionExpanded] = useState(false);
+
+  // reactionTooltipOpen — hansı emoji-nin tooltip-i açıqdır? (null = heç biri)
+  // string: emoji (məsələn "👍") → həmin emoji-nin kim react etdiyini göstər
+  const [reactionTooltipOpen, setReactionTooltipOpen] = useState(null);
+
+  // reactionDetailsLoading — API-dən kim react etdi yüklənirkən true
+  const [reactionDetailsLoading, setReactionDetailsLoading] = useState(false);
+
+  // --- DOM REFERANSLARI ---
+  const menuRef = useRef(null);     // MessageActionMenu div-i
+  const reactionRef = useRef(null); // Reaction picker div-i
+  const tooltipRef = useRef(null);  // Reaction tooltip div-i
+
+  // --- KƏNAR KLİK HANDLER ---
+  // menuOpen YA reactionOpen YA reactionTooltipOpen açıqdırsa event listener qeydiyyat et
+  // Klik bunların xaricinə düşdükdə hamısını bağla
   useEffect(() => {
     function handleClickOutside(e) {
       const clickedInsideMenu = menuRef.current && menuRef.current.contains(e.target);
       const clickedInsideReaction = reactionRef.current && reactionRef.current.contains(e.target);
       const clickedInsideTooltip = tooltipRef.current && tooltipRef.current.contains(e.target);
-      // Tooltip xarici klik
+
+      // Tooltip kənara klikləndikdə bağla (reaction badge-ə klik istisnası)
       if (reactionTooltipOpen && !clickedInsideTooltip && !e.target.closest(".reaction-badge")) {
         setReactionTooltipOpen(null);
       }
+
+      // Menyu + reaction ikisindən kənara klikləndikdə hamısını bağla
       if (!clickedInsideMenu && !clickedInsideReaction) {
         setMenuOpen(false);
         setReactionOpen(false);
@@ -61,52 +102,65 @@ const MessageBubble = memo(function MessageBubble({
     if (menuOpen || reactionOpen || reactionTooltipOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
+    // Cleanup — listener-i sil (like removeEventListener in .NET Blazor)
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen, reactionOpen, reactionTooltipOpen]);
 
-  // Menu açılanda aşağıda yer yoxdursa yuxarıya aç
+  // Menyu açıldıqda ekranın altına çıxırsa yuxarıya flip et
   useEffect(() => {
     if (menuOpen && menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
+      // getBoundingClientRect() — elementin viewport-a nisbətən koordinatları
       if (rect.bottom > window.innerHeight) {
-        menuRef.current.classList.add("flip-up");
+        menuRef.current.classList.add("flip-up"); // CSS ilə yuxarı aç
       } else {
         menuRef.current.classList.remove("flip-up");
       }
     }
   }, [menuOpen]);
 
-  // Reaction picker: yuxarıda yer yoxdursa aşağıya flip et
+  // Reaction picker açıldıqda/genişləndirildiqdə ekranın yuxarısına çıxırsa aşağıya flip et
+  // useLayoutEffect — DOM render olduqdan sonra, paint-dən ƏVVƏL işlə (jump yoxdur)
   useLayoutEffect(() => {
     const el = reactionRef.current;
     if (!el || !reactionOpen) return;
 
     const rect = el.getBoundingClientRect();
     if (rect.top < 0) {
-      el.classList.add("flip-down");
+      el.classList.add("flip-down"); // CSS ilə aşağı aç
     } else {
       el.classList.remove("flip-down");
     }
   }, [reactionOpen, reactionExpanded]);
 
+  // --- JSX RENDER ---
   return (
+    // message-row — mesajın tam sırası (checkbox + avatar + bubble)
+    // data-bubble-id={msg.id} — handleScrollToMessage-də querySelector üçün
+    // data-unread="true" — IntersectionObserver-ın mark-as-read üçün izlədiyi element
     <div
       className={`message-row ${isOwn ? "own" : ""} ${showAvatar ? "has-avatar" : ""} ${isSelected ? "selected" : ""}`}
       data-bubble-id={msg.id}
+      // selectMode aktiv + mesaj silinməyibsə klik → toggle select
       onClick={selectMode && !msg.isDeleted ? () => onToggleSelect(msg.id) : undefined}
+      // selectMode deyilsə hover → action düymələrini göstər/gizlə
       onMouseEnter={selectMode ? undefined : () => setShowActions(true)}
       onMouseLeave={selectMode ? undefined : () => {
+        // Menyu YA reaction açıqdırsa hover leave-da gizlətmə
         if (!menuOpen && !reactionOpen) setShowActions(false);
       }}
+      // Spread operator ilə şərti data-* atributları əlavə et
+      // !isOwn + !msg.isRead → IntersectionObserver üçün lazımdır
       {...(!isOwn &&
         !msg.isRead && {
           "data-unread": "true",
           "data-msg-id": msg.id,
           "data-conv-id":
             chatType === 0 ? msg.conversationId : msg.channelId,
-          "data-conv-type": String(chatType),
+          "data-conv-type": String(chatType), // "0" (string) — dataset always string
         })}
     >
+      {/* Seçmə checkbox — selectMode aktiv + silinməmiş mesaj üçün */}
       {selectMode && !msg.isDeleted && (
         <div className={`select-checkbox ${isSelected ? "checked" : ""}`}>
           {isSelected && (
@@ -116,8 +170,11 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
       )}
+
+      {/* Avatar slot — yalnız başqasının mesajında (isOwn=false) */}
       {!isOwn && (
         <div className="message-avatar-slot">
+          {/* showAvatar — bu sətir qrupun son mesajıdırsa true */}
           {showAvatar && (
             <div
               className="message-avatar"
@@ -130,34 +187,34 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
       )}
+
+      {/* message-bubble — mesajın vizual balonu */}
+      {/* onContextMenu — sağ klik → menyu aç */}
       <div
         className={`message-bubble ${isOwn ? "own" : ""}`}
         onContextMenu={selectMode ? undefined : (e) => {
-          e.preventDefault();
+          e.preventDefault(); // Brauzerin default sağ klik menyusunu dayandır
           setMenuOpen(true);
           setReactionOpen(false);
           setShowActions(true);
         }}
       >
+        {/* Forwarded label — yönləndirilmiş mesaj */}
         {msg.isForwarded && !msg.isDeleted && (
           <div className="forwarded-label">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 17 20 12 15 7" />
               <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
             </svg>
             <span>Forwarded message</span>
           </div>
         )}
+
+        {/* Reply reference — bu mesaj başqa mesaja reply edirsə */}
         {msg.replyToMessageId && !msg.isDeleted && (
           <div
             className="reply-reference"
+            // Reply-a klik → həmin mesaja scroll et
             onClick={() => onScrollToMessage && onScrollToMessage(msg.replyToMessageId)}
           >
             <div className="reply-reference-bar" />
@@ -171,8 +228,11 @@ const MessageBubble = memo(function MessageBubble({
             </div>
           </div>
         )}
+
+        {/* Mesaj məzmunu */}
         <div className="message-content">
           {msg.isDeleted ? (
+            // Silinmiş mesaj — məzmun yerinə standart mesaj
             <span className="deleted-message-text">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6" />
@@ -181,30 +241,36 @@ const MessageBubble = memo(function MessageBubble({
               This message was deleted.
             </span>
           ) : (
-            msg.content
+            msg.content // Normal mesaj məzmunu
           )}
         </div>
+
+        {/* Meta sıra: reactions + "modified" + vaxt + read ticks */}
         <div className="message-meta">
-          {/* Reaction badges — meta sırasının solunda */}
+          {/* Reaction badges — bu mesaja olan reaksiyalar */}
           {msg.reactions && msg.reactions.length > 0 && (
             <div className="reaction-badges">
+              {/* Hər emoji üçün badge düyməsi */}
               {msg.reactions.map((r) => (
                 <div key={r.emoji} className="reaction-badge-wrapper">
                   <button
                     className="reaction-badge"
                     onClick={async (e) => {
-                      e.stopPropagation();
-                      // Eyni emoji-yə klik → bağla
+                      e.stopPropagation(); // Bubble-ın onClick-ini tetikləməsin
+
+                      // Eyni emoji-nin tooltip-inə klik → bağla (toggle)
                       if (reactionTooltipOpen === r.emoji) {
                         setReactionTooltipOpen(null);
                         return;
                       }
-                      // Əgər userFullNames artıq mövcuddursa (SignalR/toggle-dan gəlib)
+
+                      // userFullNames artıq yüklənibsə (SignalR/əvvəlki API-dən) → birbaşa göstər
                       if (r.userFullNames && r.userFullNames.length > 0) {
                         setReactionTooltipOpen(r.emoji);
                         return;
                       }
-                      // API-dən yüklə
+
+                      // Yüklənməyibsə API-dən al
                       setReactionTooltipOpen(r.emoji);
                       setReactionDetailsLoading(true);
                       await onLoadReactionDetails(msg.id);
@@ -212,8 +278,11 @@ const MessageBubble = memo(function MessageBubble({
                     }}
                   >
                     <span className="reaction-badge-emoji">{r.emoji}</span>
+                    {/* count > 1 olduqda sayı göstər */}
                     {r.count > 1 && <span className="reaction-badge-count">{r.count}</span>}
                   </button>
+
+                  {/* Reaction tooltip — kim react etdi? */}
                   {reactionTooltipOpen === r.emoji && (
                     <div className="reaction-tooltip visible" ref={tooltipRef}>
                       {reactionDetailsLoading ? (
@@ -221,6 +290,7 @@ const MessageBubble = memo(function MessageBubble({
                           <span className="reaction-tooltip-name reaction-tooltip-loading">Loading...</span>
                         </div>
                       ) : r.userFullNames && r.userFullNames.length > 0 ? (
+                        // Hər react edən istifadəçi üçün avatar + ad
                         r.userFullNames.map((name, i) => (
                           <div key={i} className="reaction-tooltip-item">
                             <div
@@ -233,6 +303,7 @@ const MessageBubble = memo(function MessageBubble({
                           </div>
                         ))
                       ) : (
+                        // Fallback — ad yoxdursa say göstər
                         <div className="reaction-tooltip-item">
                           <span className="reaction-tooltip-name">
                             {r.count} {r.count === 1 ? "person" : "people"} reacted
@@ -245,10 +316,17 @@ const MessageBubble = memo(function MessageBubble({
               ))}
             </div>
           )}
+
+          {/* "modified" — mesaj redaktə edilmişsə */}
           {msg.isEdited && <span className="message-modified">modified</span>}
+
+          {/* Vaxt — "HH:mm" */}
           <span className="message-time">
             {formatMessageTime(msg.createdAtUtc)}
           </span>
+
+          {/* Read ticks — yalnız öz mesajları üçün, status >= 1 */}
+          {/* status: 1=Sent(tək tik), 2=Delivered(ikiqat tik), 3=Read(mavi tik) */}
           {isOwn && msg.status >= 1 && (
             <svg
               className="read-check"
@@ -256,9 +334,11 @@ const MessageBubble = memo(function MessageBubble({
               height="16"
               viewBox="0 0 24 24"
               fill="none"
+              // status=3 (Read) → mavi, digər → boz
               stroke={msg.status === 3 ? "#46CDF0" : "#9ca3af"}
               strokeWidth="2.5"
             >
+              {/* status >= 2 → ikiqat tik (Delivered/Read), 1 → tək tik (Sent) */}
               {msg.status >= 2 ? (
                 <>
                   <polyline points="18 6 7 17 2 12" />
@@ -271,26 +351,21 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
 
-        {/* Hover action buttons + menus — bubble-ın child-ı, position: absolute */}
+        {/* Hover action düymələri + menyular */}
+        {/* Yalnız selectMode yox + (hover YA menyu YA reaction açıqdırsa) */}
         {!selectMode && (showActions || menuOpen || reactionOpen) && (
           <div className={`bubble-actions ${isOwn ? "own" : ""}`}>
+            {/* Reaction düyməsi — silinmiş mesajda göstərmə */}
             {!msg.isDeleted && (
               <button
                 className="bubble-action-btn"
                 title="Reactions"
                 onClick={() => {
-                  setReactionOpen(!reactionOpen);
+                  setReactionOpen(!reactionOpen); // Toggle
                   setMenuOpen(false);
                 }}
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M8 14s1.5 2 4 2 4-2 4-2" />
                   <line x1="9" y1="9" x2="9.01" y2="9" />
@@ -298,6 +373,8 @@ const MessageBubble = memo(function MessageBubble({
                 </svg>
               </button>
             )}
+
+            {/* More düyməsi — "⋮" → MessageActionMenu açır */}
             <button
               className="bubble-action-btn"
               title="More"
@@ -306,14 +383,7 @@ const MessageBubble = memo(function MessageBubble({
                 setReactionOpen(false);
               }}
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="5" r="1" />
                 <circle cx="12" cy="12" r="1" />
                 <circle cx="12" cy="19" r="1" />
@@ -340,13 +410,14 @@ const MessageBubble = memo(function MessageBubble({
               />
             )}
 
-            {/* Reaction picker */}
+            {/* Reaction picker — silinməmiş mesaj + reactionOpen */}
             {!msg.isDeleted && reactionOpen && (
               <div
                 className={`reaction-picker ${isOwn ? "own" : ""}`}
                 ref={reactionRef}
               >
                 <div className="reaction-quick">
+                  {/* reactionExpanded true → genişləndirilmiş, false → sürətli siyahı */}
                   {(reactionExpanded
                     ? EXPANDED_REACTION_EMOJIS
                     : QUICK_REACTION_EMOJIS
@@ -355,6 +426,7 @@ const MessageBubble = memo(function MessageBubble({
                       key={emoji}
                       className="reaction-emoji-btn"
                       onClick={() => {
+                        // onReaction — Chat.jsx-dəki handleReaction çağırır
                         onReaction && onReaction(msg, emoji);
                         setReactionOpen(false);
                         setReactionExpanded(false);
@@ -363,19 +435,14 @@ const MessageBubble = memo(function MessageBubble({
                       {emoji}
                     </button>
                   ))}
+
+                  {/* Genişləndir düyməsi — yalnız collapsed vəziyyətdə göstər */}
                   {!reactionExpanded && (
                     <button
                       className="reaction-expand-btn"
                       onClick={() => setReactionExpanded(true)}
                     >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="6 9 12 15 18 9" />
                       </svg>
                     </button>

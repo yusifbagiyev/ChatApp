@@ -1,6 +1,11 @@
+// Sidebar komponenti — sol dar navigasiya paneli (60px en)
+// Props:
+//   onLogout — Chat.jsx-dən gəlir, logout button-una klikləndikdə çağırılır
+// .NET ekvivalenti: MainLayout.razor-dakı sol NavMenu komponenti
 function Sidebar({ onLogout }) {
   return (
     <aside className="sidebar">
+      {/* Logo sahəsi — ən yuxarı chat ikonu */}
       <div className="sidebar-logo">
         <svg
           width="28"
@@ -14,7 +19,9 @@ function Sidebar({ onLogout }) {
         </svg>
       </div>
 
+      {/* nav — navigasiya düymələri qrupu */}
       <nav className="sidebar-nav">
+        {/* Messages — aktiv (active class var) */}
         <button className="nav-item active" title="Messages">
           <svg
             width="22"
@@ -27,6 +34,8 @@ function Sidebar({ onLogout }) {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </button>
+
+        {/* Contacts — TODO: onClick əlavə et, panel aç */}
         <button className="nav-item" title="Contacts">
           <svg
             width="22"
@@ -42,6 +51,8 @@ function Sidebar({ onLogout }) {
             <path d="M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
         </button>
+
+        {/* Channels — TODO: onClick əlavə et, panel aç */}
         <button className="nav-item" title="Channels">
           <svg
             width="22"
@@ -56,6 +67,8 @@ function Sidebar({ onLogout }) {
             <circle cx="5" cy="19" r="1" />
           </svg>
         </button>
+
+        {/* Settings — TODO: onClick əlavə et, panel aç */}
         <button className="nav-item" title="Settings">
           <svg
             width="22"
@@ -71,7 +84,10 @@ function Sidebar({ onLogout }) {
         </button>
       </nav>
 
+      {/* sidebar-bottom — ən aşağı yerləşdirilmiş logout düyməsi */}
       <div className="sidebar-bottom">
+        {/* onClick={onLogout} — prop olaraq gəlir (Chat.jsx-dən: logout funksiyası) */}
+        {/* AuthContext.logout() çağırır → backend POST /api/auth/logout, state sıfırlanır */}
         <button className="nav-item" title="Logout" onClick={onLogout}>
           <svg
             width="22"

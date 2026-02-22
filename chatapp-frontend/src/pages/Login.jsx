@@ -1,54 +1,106 @@
+// useState — state yaratmaq (like C# property + OnChange)
+// useContext — global state-ə daxil olmaq (like @inject ServiceName)
 import { useState, useContext } from "react";
+
+// AuthContext — global auth state (user, login, logout)
 import { AuthContext } from "../context/AuthContext";
+
+// useNavigate — koddan redirect etmək (like NavigationManager.NavigateTo("/"))
+// Navigate — JSX-dən redirect (like <Redirect to="/" />)
 import { useNavigate, Navigate } from "react-router-dom";
+
 import "./Login.css";
 
+// Login komponenti — Login səhifəsi
+// .NET ekvivalenti: @page "/login" ilə Blazor LoginPage komponenti
 function Login() {
+  // useContext ilə AuthContext-dən login funksiyasını və cari useri al
+  // .NET: @inject AuthService AuthService → AuthService.Login(...)
   const { login, user } = useContext(AuthContext);
+
+  // useNavigate — hook-dan navigate funksiyası al
+  // navigate("/") çağıranda URL dəyişir və / route render olunur
   const navigate = useNavigate();
 
+  // --- STATE DEĞİŞƏNLƏRİ ---
+  // useState("") — başlanğıc dəyər boş string
+  // [email, setEmail] → email oxumaq üçün, setEmail dəyişmək üçün
+  // .NET: string Email { get; set; } + event OnChange
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // rememberMe — checkbox vəziyyəti (true/false)
   const [rememberMe, setRememberMe] = useState(false);
+
+  // showPassword — şifrəni göstər/gizlə toggle
   const [showPassword, setShowPassword] = useState(false);
+
+  // isLoading — API çağrısı davam edərkən true (button disable olur, spinner görünür)
   const [isLoading, setIsLoading] = useState(false);
+
+  // errorMessage — login uğursuz olarsa göstəriləcək xəta mətni
   const [errorMessage, setErrorMessage] = useState("");
 
+  // --- EARLY RETURN: Artıq login olubsa ana səhifəyə redirect et ---
+  // Bu hooks-dan SONRA olmalıdır — hooks şərtli return-dan əvvəl olmalıdır (React qaydası)
+  // <Navigate to="/" /> — component render olunmadan yönləndirir
   if (user) {
     return <Navigate to="/" />;
   }
 
+  // handleSubmit — form submit olduqda çağırılır
+  // async funksiya — await ilə API cavabını gözləyirik
+  // .NET ekvivalenti: OnValidSubmit() event handler
   const handleSubmit = async (e) => {
+    // e.preventDefault() — default browser davranışını (səhifəni yeniləmək) dayandır
+    // .NET: e.PreventDefault() yoxdur, Blazor EditForm bunu özü edir
     e.preventDefault();
 
+    // Boş field yoxlaması — validation
     if (!email || !password) {
       setErrorMessage("Email and password are required");
-      return;
+      return; // Erkən çıx — API-ə getmə
     }
 
+    // Loading başladı — button disable et, spinner göstər
     setIsLoading(true);
-    setErrorMessage("");
+    setErrorMessage(""); // Köhnə xəta mesajını sil
 
     try {
+      // login(email, password, rememberMe) — AuthContext-dən gəlir
+      // İçəridə POST /api/auth/login çağırır
+      // await — API cavabını gözlə
       await login(email, password, rememberMe);
 
+      // Remember me — emaili localStorage-da saxla (brauzer yaddaşı, session bitdikdə silinmir)
+      // .NET ekvivalenti: ILocalStorageService (Blazored.LocalStorage)
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", email);
       } else {
         localStorage.removeItem("rememberedEmail");
       }
+
+      // Login uğurlu — ana səhifəyə yönləndir
       navigate("/");
     } catch (err) {
+      // Login uğursuz — xəta mesajını göstər
+      // err.message — throw new Error("...") ilə gəlir (AuthContext-dən)
       setErrorMessage(
         err.message || "An error occurred during login. Please try again.",
       );
     } finally {
+      // finally — həm try, həm catch-dən sonra işləyir
+      // Loading bitdi — spinner gizlə, button aktiv et
       setIsLoading(false);
     }
   };
 
+  // --- JSX: UI render ---
+  // return (...) — bu komponentin görsel çıxışı
+  // JSX = JavaScript içərisində HTML-yə bənzər syntax
   return (
     <div className="login-layout">
+      {/* Arxa fon — CSS animasiyalı shapes və particles */}
       <div className="login-background">
         <div className="login-background-shapes">
           <div className="shape shape-1"></div>
@@ -67,9 +119,11 @@ function Login() {
         </div>
       </div>
 
+      {/* Login card — mərkəzdə görünən form */}
       <div className="login-container">
         <div className="login-header">
           <div className="login-logo">
+            {/* SVG logo — inline SVG (like <img> amma daha çevik) */}
             <svg
               width="48"
               height="48"
@@ -107,30 +161,38 @@ function Login() {
           </div>
 
           <div className="login-card-body">
+            {/* onSubmit={handleSubmit} — form submit edildikdə handleSubmit çağır */}
+            {/* .NET: <EditForm OnValidSubmit="HandleSubmit"> */}
             <form onSubmit={handleSubmit}>
+
+              {/* Email field */}
               <div className="login-form-group">
                 <label className="login-label">Email</label>
                 <div className="login-input-wrapper">
                   <span className="login-input-icon">👤</span>
                   <input
                     type="text"
-                    value={email}
+                    value={email}           // Controlled input — value state-dən gəlir
                     onChange={(e) => {
+                      // e.target.value — istifadəçinin yazdığı mətn
+                      // setEmail ilə state yenilə → React yenidən render edir
                       setEmail(e.target.value);
-                      setErrorMessage("");
+                      setErrorMessage(""); // Yazmağa başlayanda xəta sil
                     }}
                     className="login-input"
                     placeholder="Enter your email address"
-                    autoComplete="email"
+                    autoComplete="email"    // Browser email suggestion-ları göstərsin
                   />
                 </div>
               </div>
 
+              {/* Password field */}
               <div className="login-form-group">
                 <label className="login-label">Password</label>
                 <div className="login-input-wrapper">
                   <span className="login-input-icon">🔒</span>
                   <input
+                    // showPassword true → type="text" (görsənir), false → type="password" (nöqtələr)
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => {
@@ -141,28 +203,32 @@ function Login() {
                     placeholder="Enter your password"
                     autoComplete="current-password"
                   />
+                  {/* Şifrəni göstər/gizlə toggle button */}
                   <button
-                    type="button"
+                    type="button"           // type="button" — bu form submit etmir!
                     className="login-input-toggle"
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
+                    onClick={() => setShowPassword(!showPassword)} // Toggle: true↔false
+                    tabIndex={-1}           // Tab düyməsi ilə bu button-a keçmə
                   >
                     {showPassword ? "🙈" : "👁"}
                   </button>
                 </div>
               </div>
 
+              {/* Remember Me checkbox */}
               <div className="login-form-options">
                 <label className="login-checkbox">
                   <input
                     type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
+                    checked={rememberMe}              // Controlled checkbox — checked state-dən gəlir
+                    onChange={(e) => setRememberMe(e.target.checked)} // .checked — boolean dəyər
                   />
                   <span>Remember me</span>
                 </label>
               </div>
 
+              {/* Şərti render: errorMessage boş deyilsə xəta blokunı göstər */}
+              {/* {condition && (...)} — condition true olduqda JSX render olunur */}
               {errorMessage && (
                 <div className="login-error">
                   <span>⚠️</span>
@@ -170,13 +236,16 @@ function Login() {
                 </div>
               )}
 
+              {/* Submit button */}
               <button
                 type="submit"
                 className="login-button"
-                disabled={isLoading}
+                disabled={isLoading} // isLoading true olarsa button deaktiv olur
               >
+                {/* Ternary: isLoading true → spinner + "Signing in...", false → "Sign In" */}
                 {isLoading ? (
                   <>
+                    {/* Fragment <> </> — birden çox element qaytarmaq üçün (like C# tuple) */}
                     <span className="login-button-spinner"></span>
                     <span>Signing in...</span>
                   </>
@@ -196,4 +265,6 @@ function Login() {
   );
 }
 
+// default export — bu fayldan yalnız bir şey export olunur
+// import Login from "./pages/Login" ilə istifadə olunur
 export default Login;

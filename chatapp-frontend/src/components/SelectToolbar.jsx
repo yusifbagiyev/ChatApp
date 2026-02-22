@@ -1,3 +1,13 @@
+// SelectToolbar komponenti — çox mesaj seçmə rejiminin toolbar-ı
+// Mesajlar seçiləndə normal ChatInputArea-nın əvəzinə görünür
+// Props:
+//   selectedCount      — neçə mesaj seçilib
+//   hasOthersSelected  — seçimlər arasında başqasının mesajı varmı? (Delete üçün)
+//   onExit             — X düyməsi → select mode-dan çıx
+//   onDelete           — Delete düyməsi → seçilmiş mesajları sil
+//   onForward          — Forward düyməsi → ForwardPanel aç
+//   deleteConfirmOpen  — "Delete?" modalı açıq/bağlı
+//   setDeleteConfirmOpen — modalı aç/bağla
 function SelectToolbar({
   selectedCount,
   hasOthersSelected,
@@ -5,22 +15,34 @@ function SelectToolbar({
   deleteConfirmOpen, setDeleteConfirmOpen,
 }) {
   return (
+    // Fragment <> </> — toolbar + modal (2 root element)
     <>
+      {/* Select toolbar — chatın altında, input yerinə görünür */}
       <div className="select-toolbar">
         <div className="select-toolbar-inner">
+          {/* Sol: X düyməsi + seçilmiş mesaj sayı */}
           <div className="select-toolbar-left">
+            {/* X — select mode-dan çıx, seçimləri sıfırla */}
             <button className="select-toolbar-close" onClick={onExit}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
+            {/* selectedCount — Set.size — neçə mesaj seçilib */}
             <span className="select-toolbar-count">
               Messages ({selectedCount})
             </span>
           </div>
+
+          {/* Separator çizgisi */}
           <div className="select-toolbar-divider" />
+
+          {/* Sağ: Delete + Forward düymələri */}
           <div className="select-toolbar-right">
+            {/* Delete düyməsi */}
+            {/* disabled — heç nə seçilməyibsə YA başqasının mesajı seçilibsə */}
+            {/* hasOthersSelected — başqasının mesajını silmək mümkün deyil */}
             <button
               className="select-action-btn select-delete-btn"
               disabled={selectedCount === 0 || hasOthersSelected}
@@ -33,6 +55,8 @@ function SelectToolbar({
               </svg>
               <span>Delete</span>
             </button>
+
+            {/* Forward düyməsi — seçilmiş mesajları başqa chata yönləndir */}
             <button
               className="select-action-btn select-forward-btn"
               disabled={selectedCount === 0}
@@ -47,8 +71,12 @@ function SelectToolbar({
           </div>
         </div>
       </div>
+
+      {/* Delete Confirm Modal — deleteConfirmOpen true olduqda overlay göstər */}
       {deleteConfirmOpen && (
+        // Overlay-ə klik → modal bağlansın
         <div className="delete-confirm-overlay" onClick={() => setDeleteConfirmOpen(false)}>
+          {/* e.stopPropagation() — modal içinə klik overlay-ə yayılmasın */}
           <div className="delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="delete-confirm-header">
               <span>Do you want to delete the selected messages ({selectedCount})?</span>
@@ -60,6 +88,7 @@ function SelectToolbar({
               </button>
             </div>
             <div className="delete-confirm-actions">
+              {/* DELETE — modalı bağla, sonra onDelete() çağır */}
               <button
                 className="delete-confirm-btn"
                 onClick={() => {
@@ -69,6 +98,7 @@ function SelectToolbar({
               >
                 DELETE
               </button>
+              {/* CANCEL — heç nə etmə, sadəcə modalı bağla */}
               <button className="delete-cancel-btn" onClick={() => setDeleteConfirmOpen(false)}>
                 CANCEL
               </button>
