@@ -13,6 +13,7 @@
 - Backend is complete and working. Don't modify backend code while there is need to change for increasing performance.
 - Frontend was Blazor WASM, migrating to React due to UI freezing.
 - **Bitrix24 style UI** is the target design. NOT WhatsApp. Full layout: sol navigation menu + messenger panel.
+- **BÜTÜN frontend kodlarını user özü yazır**. Heç bir kodu özün yazma (Edit/Write ilə). İzah et, user yazsın, sonra yoxla. Bug fix daxil — HƏR ŞEYİ user yazır.
 
 ## Critical: Backend Configuration
 

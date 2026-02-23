@@ -28,7 +28,7 @@ import {
 // Custom hook-lar — ayrı fayllarda saxlanılan məntiqi bloklar
 // .NET ekvivalenti: service class-ı inject etmək kimi
 import useChatSignalR from "../hooks/useChatSignalR"; // real-time event handler-lar
-import useChatScroll from "../hooks/useChatScroll";   // infinite scroll + pagination
+import useChatScroll from "../hooks/useChatScroll"; // infinite scroll + pagination
 
 // Global auth state — user, logout
 import { AuthContext } from "../context/AuthContext";
@@ -37,24 +37,24 @@ import { AuthContext } from "../context/AuthContext";
 import { apiGet, apiPost, apiPut, apiDelete } from "../services/api";
 
 // UI komponentlər — hər biri ayrı bir visual blok
-import Sidebar from "../components/Sidebar";                  // sol nav bar
+import Sidebar from "../components/Sidebar"; // sol nav bar
 import ConversationList from "../components/ConversationList"; // söhbət siyahısı
-import MessageBubble from "../components/MessageBubble";       // tək mesaj balonu
-import ForwardPanel from "../components/ForwardPanel";         // mesaj yönləndir panel
-import ChatHeader from "../components/ChatHeader";             // chat başlığı (ad, status)
-import ChatInputArea from "../components/ChatInputArea";       // mesaj yazma sahəsi
-import SelectToolbar from "../components/SelectToolbar";       // çox mesaj seç toolbar
+import MessageBubble from "../components/MessageBubble"; // tək mesaj balonu
+import ForwardPanel from "../components/ForwardPanel"; // mesaj yönləndir panel
+import ChatHeader from "../components/ChatHeader"; // chat başlığı (ad, status)
+import ChatInputArea from "../components/ChatInputArea"; // mesaj yazma sahəsi
+import SelectToolbar from "../components/SelectToolbar"; // çox mesaj seç toolbar
 import PinnedBar, { PinnedExpanded } from "../components/PinnedBar"; // pinlənmiş mesajlar
 
 // Util-lər və sabitlər
 import {
-  groupMessagesByDate,        // mesajları tarixə görə qruplaşdır
-  getChatEndpoint,            // chat tipinə görə doğru API endpoint-i qaytar
-  MESSAGE_PAGE_SIZE,          // bir dəfədə neçə mesaj yükləmək
-  CONVERSATION_PAGE_SIZE,     // söhbət siyahısı səhifə ölçüsü
-  HIGHLIGHT_DURATION_MS,      // mesaj vurğulama müddəti (millisaniyə)
-  TYPING_DEBOUNCE_MS,         // typing siqnalı debounce müddəti
-  BATCH_DELETE_THRESHOLD,     // batch delete üçün minimum mesaj sayı
+  groupMessagesByDate, // mesajları tarixə görə qruplaşdır
+  getChatEndpoint, // chat tipinə görə doğru API endpoint-i qaytar
+  MESSAGE_PAGE_SIZE, // bir dəfədə neçə mesaj yükləmək
+  CONVERSATION_PAGE_SIZE, // söhbət siyahısı səhifə ölçüsü
+  HIGHLIGHT_DURATION_MS, // mesaj vurğulama müddəti (millisaniyə)
+  TYPING_DEBOUNCE_MS, // typing siqnalı debounce müddəti
+  BATCH_DELETE_THRESHOLD, // batch delete üçün minimum mesaj sayı
 } from "../utils/chatUtils";
 
 import "./Chat.css";
@@ -162,7 +162,13 @@ function Chat() {
   // hasMoreDownRef — around mode-da altda mesaj varmı?
   // loadingOlder — köhnə mesajlar yüklənirkən true (spinner)
   // scrollRestoreRef — scroll bərpası üçün əvvəlki scroll vəziyyəti
-  const { handleScroll, hasMoreRef, hasMoreDownRef, loadingOlder, scrollRestoreRef } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages);
+  const {
+    handleScroll,
+    hasMoreRef,
+    hasMoreDownRef,
+    loadingOlder,
+    scrollRestoreRef,
+  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages);
 
   // --- EFFECT-LƏR ---
 
@@ -174,7 +180,17 @@ function Chat() {
 
   // useChatSignalR — real-time event-ləri dinlə (NewMessage, UserOnline, Typing, etc.)
   // Bu hook içəridə useEffect ilə SignalR event handler-larını qeydiyyata alır
-  useChatSignalR(user.id, setSelectedChat, setMessages, setConversations, setShouldScrollBottom, setOnlineUsers, setTypingUsers, setPinnedMessages, setCurrentPinIndex);
+  useChatSignalR(
+    user.id,
+    setSelectedChat,
+    setMessages,
+    setConversations,
+    setShouldScrollBottom,
+    setOnlineUsers,
+    setTypingUsers,
+    setPinnedMessages,
+    setCurrentPinIndex,
+  );
 
   // shouldScrollBottom true olduqda ən alt mesaja scroll et
   // useLayoutEffect — paint-dən ƏVVƏL işləyir → flash yoxdur
@@ -218,7 +234,10 @@ function Chat() {
       // CSS class əlavə et → highlight animasiyası başlar
       target.classList.add("highlight-message");
       // HIGHLIGHT_DURATION_MS ms sonra class sil (animasiya biter)
-      setTimeout(() => target.classList.remove("highlight-message"), HIGHLIGHT_DURATION_MS);
+      setTimeout(
+        () => target.classList.remove("highlight-message"),
+        HIGHLIGHT_DURATION_MS,
+      );
     }
   }, [messages]);
 
@@ -334,7 +353,7 @@ function Chat() {
     setForwardMessage(null);
     setEmojiOpen(false);
     setDeleteConfirmOpen(false);
-    hasMoreRef.current = true;      // Yenidən köhnə mesaj yükləmək mümkündür
+    hasMoreRef.current = true; // Yenidən köhnə mesaj yükləmək mümkündür
     hasMoreDownRef.current = false; // Around mode yox
 
     try {
@@ -407,7 +426,11 @@ function Chat() {
     setForwardMessage(null);
 
     try {
-      const endpoint = getChatEndpoint(targetChat.id, targetChat.type, "/messages");
+      const endpoint = getChatEndpoint(
+        targetChat.id,
+        targetChat.type,
+        "/messages",
+      );
       if (!endpoint) return;
 
       if (fwd.isMultiSelect) {
@@ -428,7 +451,9 @@ function Chat() {
 
       // Əgər forward edilən chat hazırda açıqdırsa, mesajları da yenilə
       if (selectedChat && selectedChat.id === targetChat.id) {
-        const data = await apiGet(`${getChatEndpoint(selectedChat.id, selectedChat.type, "/messages")}?pageSize=${MESSAGE_PAGE_SIZE}`);
+        const data = await apiGet(
+          `${getChatEndpoint(selectedChat.id, selectedChat.type, "/messages")}?pageSize=${MESSAGE_PAGE_SIZE}`,
+        );
         hasMoreDownRef.current = false;
         setShouldScrollBottom(true);
         setMessages(data);
@@ -441,42 +466,56 @@ function Chat() {
   // handlePinMessage — mesajı pin/unpin et
   // useCallback — selectedChat dəyişmədikdə eyni funksiya referansı saxla
   // Bu sayədə MessageBubble yenidən render olmur (React.memo ilə birlikdə)
-  const handlePinMessage = useCallback(async (msg) => {
-    if (!selectedChat) return;
-    try {
-      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}/pin`);
-      if (!endpoint) return;
+  const handlePinMessage = useCallback(
+    async (msg) => {
+      if (!selectedChat) return;
+      try {
+        const endpoint = getChatEndpoint(
+          selectedChat.id,
+          selectedChat.type,
+          `/messages/${msg.id}/pin`,
+        );
+        if (!endpoint) return;
 
-      // isPinned true → DELETE (unpin), false → POST (pin)
-      if (msg.isPinned) {
-        await apiDelete(endpoint);
-      } else {
-        await apiPost(endpoint);
+        // isPinned true → DELETE (unpin), false → POST (pin)
+        if (msg.isPinned) {
+          await apiDelete(endpoint);
+        } else {
+          await apiPost(endpoint);
+        }
+
+        // Pin siyahısını yenilə + mesajın isPinned flag-ini dəyiş
+        loadPinnedMessages(selectedChat);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msg.id ? { ...m, isPinned: !msg.isPinned } : m,
+          ),
+        );
+      } catch (err) {
+        console.error("Failed to pin/unpin message:", err);
       }
-
-      // Pin siyahısını yenilə + mesajın isPinned flag-ini dəyiş
-      loadPinnedMessages(selectedChat);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === msg.id ? { ...m, isPinned: !msg.isPinned } : m,
-        ),
-      );
-    } catch (err) {
-      console.error("Failed to pin/unpin message:", err);
-    }
-  }, [selectedChat]); // Dependency: selectedChat dəyişdikdə funksiyanı yenilə
+    },
+    [selectedChat],
+  ); // Dependency: selectedChat dəyişdikdə funksiyanı yenilə
 
   // handleFavoriteMessage — mesajı favorilərə əlavə et / çıxar
-  const handleFavoriteMessage = useCallback(async (msg) => {
-    if (!selectedChat) return;
-    try {
-      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}/favorite`);
-      if (!endpoint) return;
-      await apiPost(endpoint);
-    } catch (err) {
-      console.error("Failed to toggle favorite:", err);
-    }
-  }, [selectedChat]);
+  const handleFavoriteMessage = useCallback(
+    async (msg) => {
+      if (!selectedChat) return;
+      try {
+        const endpoint = getChatEndpoint(
+          selectedChat.id,
+          selectedChat.type,
+          `/messages/${msg.id}/favorite`,
+        );
+        if (!endpoint) return;
+        await apiPost(endpoint);
+      } catch (err) {
+        console.error("Failed to toggle favorite:", err);
+      }
+    },
+    [selectedChat],
+  );
 
   // --- SELECT MODE HANDLER-LƏRI ---
 
@@ -489,15 +528,6 @@ function Chat() {
 
   // handleToggleSelect — mesajı seç / seçimi ləğv et
   const handleToggleSelect = useCallback((msgId) => {
-    setMessages((prev) => {
-      const next = new Set(prev);
-      if (next.has(msgId)) {
-        next.delete(msgId); // Artıq seçilibsə çıxar
-      } else {
-        next.add(msgId);    // Seçilməyibsə əlavə et
-      }
-      return next;
-    });
     setSelectedMessages((prev) => {
       const next = new Set(prev);
       if (next.has(msgId)) {
@@ -523,28 +553,39 @@ function Chat() {
   }, [selectedMessages]);
 
   // handleDeleteMessage — tək mesajı sil (action menu-dan çağırılır)
-  const handleDeleteMessage = useCallback(async (msg) => {
-    if (!selectedChat) return;
-    try {
-      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}`);
-      if (!endpoint) return;
-      await apiDelete(endpoint);
-      // Soft delete — mesajı array-dən çıxarmırıq, isDeleted: true edirik
-      // UI-da "This message was deleted." göstəriləcək
-      setMessages((prev) =>
-        prev.map((m) => (m.id === msg.id ? { ...m, isDeleted: true } : m)),
-      );
-    } catch (err) {
-      console.error("Failed to delete message:", err);
-    }
-  }, [selectedChat]);
+  const handleDeleteMessage = useCallback(
+    async (msg) => {
+      if (!selectedChat) return;
+      try {
+        const endpoint = getChatEndpoint(
+          selectedChat.id,
+          selectedChat.type,
+          `/messages/${msg.id}`,
+        );
+        if (!endpoint) return;
+        await apiDelete(endpoint);
+        // Soft delete — mesajı array-dən çıxarmırıq, isDeleted: true edirik
+        // UI-da "This message was deleted." göstəriləcək
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msg.id ? { ...m, isDeleted: true } : m)),
+        );
+      } catch (err) {
+        console.error("Failed to delete message:", err);
+      }
+    },
+    [selectedChat],
+  );
 
   // handleDeleteSelected — seçilmiş bütün mesajları sil (SelectToolbar-dan)
   const handleDeleteSelected = useCallback(async () => {
     if (!selectedChat || selectedMessages.size === 0) return;
     try {
       const ids = [...selectedMessages]; // Set → Array
-      const base = getChatEndpoint(selectedChat.id, selectedChat.type, "/messages");
+      const base = getChatEndpoint(
+        selectedChat.id,
+        selectedChat.type,
+        "/messages",
+      );
       if (!base) return;
 
       // Çox mesaj varsa batch delete, azdırsa paralel individual delete
@@ -593,7 +634,11 @@ function Chat() {
       const editingMsg = editMessage;
       setEditMessage(null); // Edit mode-dan çıx
       try {
-        const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${editingMsg.id}`);
+        const endpoint = getChatEndpoint(
+          selectedChat.id,
+          selectedChat.type,
+          `/messages/${editingMsg.id}`,
+        );
         // PUT /api/conversations/{id}/messages/{msgId} — mesajı redaktə et
         await apiPut(endpoint, { newContent: text });
 
@@ -602,7 +647,12 @@ function Chat() {
           prev.map((m) => {
             if (m.id === editingMsg.id) {
               // Mesajın content-ini, isEdited və editedAtUtc-ni yenilə
-              return { ...m, content: text, isEdited: true, editedAtUtc: new Date().toISOString() };
+              return {
+                ...m,
+                content: text,
+                isEdited: true,
+                editedAtUtc: new Date().toISOString(),
+              };
             }
             // Bu mesajı reply etmiş mesajların preview-unu da yenilə
             if (m.replyToMessageId === editingMsg.id) {
@@ -620,7 +670,11 @@ function Chat() {
     setReplyTo(null); // Reply-ı sıfırla
 
     try {
-      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, "/messages");
+      const endpoint = getChatEndpoint(
+        selectedChat.id,
+        selectedChat.type,
+        "/messages",
+      );
       if (!endpoint) return;
 
       // POST /api/conversations/{id}/messages — yeni mesaj göndər
@@ -647,7 +701,7 @@ function Chat() {
       if (
         emojiPanelRef.current &&
         !emojiPanelRef.current.contains(e.target) && // Klik panelin içərisindədirsə bağlama
-        !e.target.closest(".emoji-btn")               // Emoji button-una klik → toggle edir
+        !e.target.closest(".emoji-btn") // Emoji button-una klik → toggle edir
       ) {
         setEmojiOpen(false);
       }
@@ -704,37 +758,47 @@ function Chat() {
 
   // handleScrollToMessage — mesaja scroll et (reply reference / pin bar klik)
   // Mesaj DOM-da varsa birbaşa scroll et, yoxdursa around endpoint-dən yüklə
-  const handleScrollToMessage = useCallback(async (messageId) => {
-    const area = messagesAreaRef.current;
-    if (!area || !selectedChat) return;
+  const handleScrollToMessage = useCallback(
+    async (messageId) => {
+      const area = messagesAreaRef.current;
+      if (!area || !selectedChat) return;
 
-    // DOM-da bu mesaj artıq render olunubsa?
-    let el = area.querySelector(`[data-bubble-id="${messageId}"]`);
-    if (el) {
-      // Var — birbaşa smooth scroll et + highlight
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("highlight-message");
-      setTimeout(() => el.classList.remove("highlight-message"), HIGHLIGHT_DURATION_MS);
-      return;
-    }
+      // DOM-da bu mesaj artıq render olunubsa?
+      let el = area.querySelector(`[data-bubble-id="${messageId}"]`);
+      if (el) {
+        // Var — birbaşa smooth scroll et + highlight
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("highlight-message");
+        setTimeout(
+          () => el.classList.remove("highlight-message"),
+          HIGHLIGHT_DURATION_MS,
+        );
+        return;
+      }
 
-    // Yoxdur — around endpoint ilə həmin mesajın ətrafındakı mesajları yüklə
-    try {
-      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/around/${messageId}`);
-      if (!endpoint) return;
+      // Yoxdur — around endpoint ilə həmin mesajın ətrafındakı mesajları yüklə
+      try {
+        const endpoint = getChatEndpoint(
+          selectedChat.id,
+          selectedChat.type,
+          `/messages/around/${messageId}`,
+        );
+        if (!endpoint) return;
 
-      const data = await apiGet(endpoint);
-      hasMoreRef.current = true;      // Yuxarıda daha mesaj var
-      hasMoreDownRef.current = true;  // Aşağıda da daha mesaj var (around mode)
+        const data = await apiGet(endpoint);
+        hasMoreRef.current = true; // Yuxarıda daha mesaj var
+        hasMoreDownRef.current = true; // Aşağıda da daha mesaj var (around mode)
 
-      // pendingHighlightRef — setMessages-dən SONRA useLayoutEffect işlətmək üçün
-      // Mesajlar render olunandan sonra highlight edəcəyik
-      pendingHighlightRef.current = messageId;
-      setMessages(data);
-    } catch (err) {
-      console.error("Failed to load messages around target:", err);
-    }
-  }, [selectedChat]);
+        // pendingHighlightRef — setMessages-dən SONRA useLayoutEffect işlətmək üçün
+        // Mesajlar render olunandan sonra highlight edəcəyik
+        pendingHighlightRef.current = messageId;
+        setMessages(data);
+      } catch (err) {
+        console.error("Failed to load messages around target:", err);
+      }
+    },
+    [selectedChat],
+  );
 
   // handleKeyDown — textarea-da klaviatura hadisəsi
   // Enter → mesaj göndər (Shift+Enter → yeni sətir)
@@ -782,49 +846,66 @@ function Chat() {
   }, []);
 
   const handleEditMsg = useCallback((m) => {
-    setEditMessage(m);       // Edit mode-a gir
-    setReplyTo(null);        // Reply-ı ləğv et
+    setEditMessage(m); // Edit mode-a gir
+    setReplyTo(null); // Reply-ı ləğv et
     setMessageText(m.content); // Məzmunu textarea-ya qoy
     setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
   // handleReaction — mesaja emoji reaksiyası əlavə et / ləğv et
-  const handleReaction = useCallback(async (msg, emoji) => {
-    if (!selectedChat) return;
-    try {
-      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${msg.id}/reactions/toggle`);
-      if (!endpoint) return;
-      // DM → PUT, Channel → POST (backend API fərqi)
-      const result = selectedChat.type === 0
-        ? await apiPut(endpoint, { reaction: emoji })
-        : await apiPost(endpoint, { reaction: emoji });
-      // Optimistic UI — API-dən gələn reactions-ı dərhal state-ə tət
-      const reactions = result.reactions || result;
-      setMessages((prev) =>
-        prev.map((m) => (m.id === msg.id ? { ...m, reactions } : m)),
-      );
-    } catch (err) {
-      console.error("Failed to toggle reaction:", err);
-    }
-  }, [selectedChat]);
+  const handleReaction = useCallback(
+    async (msg, emoji) => {
+      if (!selectedChat) return;
+      try {
+        const endpoint = getChatEndpoint(
+          selectedChat.id,
+          selectedChat.type,
+          `/messages/${msg.id}/reactions/toggle`,
+        );
+        if (!endpoint) return;
+        // DM → PUT, Channel → POST (backend API fərqi)
+        const result =
+          selectedChat.type === 0
+            ? await apiPut(endpoint, { reaction: emoji })
+            : await apiPost(endpoint, { reaction: emoji });
+        // Optimistic UI — API-dən gələn reactions-ı dərhal state-ə tət
+        const reactions = result.reactions || result;
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msg.id ? { ...m, reactions } : m)),
+        );
+      } catch (err) {
+        console.error("Failed to toggle reaction:", err);
+      }
+    },
+    [selectedChat],
+  );
 
   // handleLoadReactionDetails — reaction badge-ə kliklədikdə kim react edib yüklə
-  const handleLoadReactionDetails = useCallback(async (messageId) => {
-    if (!selectedChat) return null;
-    try {
-      const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, `/messages/${messageId}/reactions`);
-      if (!endpoint) return null;
-      const details = await apiGet(endpoint);
-      // Reaction detail-ləri (userFullNames) messages state-inə əlavə et
-      setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? { ...m, reactions: details } : m)),
-      );
-      return details;
-    } catch (err) {
-      console.error("Failed to load reaction details:", err);
-      return null;
-    }
-  }, [selectedChat]);
+  const handleLoadReactionDetails = useCallback(
+    async (messageId) => {
+      if (!selectedChat) return null;
+      try {
+        const endpoint = getChatEndpoint(
+          selectedChat.id,
+          selectedChat.type,
+          `/messages/${messageId}/reactions`,
+        );
+        if (!endpoint) return null;
+        const details = await apiGet(endpoint);
+        // Reaction detail-ləri (userFullNames) messages state-inə əlavə et
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId ? { ...m, reactions: details } : m,
+          ),
+        );
+        return details;
+      } catch (err) {
+        console.error("Failed to load reaction details:", err);
+        return null;
+      }
+    },
+    [selectedChat],
+  );
 
   // --- JSX RENDER ---
   return (
@@ -837,11 +918,12 @@ function Chat() {
         {/* ConversationList — sol panel, söhbət siyahısı */}
         <ConversationList
           conversations={conversations}
-          selectedChatId={selectedChat?.id}    // Optional chaining — selectedChat null ola bilər
+          selectedChatId={selectedChat?.id} // Optional chaining — selectedChat null ola bilər
           searchText={searchText}
-          onSearchChange={setSearchText}        // Funksiya prop olaraq ötürülür
+          onSearchChange={setSearchText} // Funksiya prop olaraq ötürülür
           onSelectChat={handleSelectChat}
           isLoading={isLoading}
+          userId={user.id}
         />
 
         {/* chat-panel — sağ panel, mesajlar */}
@@ -911,7 +993,7 @@ function Chat() {
 
                   return (
                     <MessageBubble
-                      key={msg.id}              // React-ın list key-i
+                      key={msg.id} // React-ın list key-i
                       msg={msg}
                       isOwn={isOwn}
                       showAvatar={showAvatar}
@@ -948,21 +1030,21 @@ function Chat() {
                   setDeleteConfirmOpen={setDeleteConfirmOpen}
                 />
               ) : (
-              <ChatInputArea
-                messageText={messageText}
-                setMessageText={setMessageText}
-                replyTo={replyTo}
-                setReplyTo={setReplyTo}
-                editMessage={editMessage}
-                setEditMessage={setEditMessage}
-                emojiOpen={emojiOpen}
-                setEmojiOpen={setEmojiOpen}
-                emojiPanelRef={emojiPanelRef}
-                inputRef={inputRef}
-                onSend={handleSendMessage}
-                onKeyDown={handleKeyDown}
-                onTyping={sendTypingSignal}
-              />
+                <ChatInputArea
+                  messageText={messageText}
+                  setMessageText={setMessageText}
+                  replyTo={replyTo}
+                  setReplyTo={setReplyTo}
+                  editMessage={editMessage}
+                  setEditMessage={setEditMessage}
+                  emojiOpen={emojiOpen}
+                  setEmojiOpen={setEmojiOpen}
+                  emojiPanelRef={emojiPanelRef}
+                  inputRef={inputRef}
+                  onSend={handleSendMessage}
+                  onKeyDown={handleKeyDown}
+                  onTyping={sendTypingSignal}
+                />
               )}
 
               {/* forwardMessage varsa ForwardPanel-i göstər (modal overlay) */}

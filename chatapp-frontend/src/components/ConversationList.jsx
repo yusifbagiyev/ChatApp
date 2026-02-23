@@ -17,6 +17,7 @@ function ConversationList({
   onSearchChange,
   onSelectChat,
   isLoading,
+  userId,
 }) {
   // Client-side filter — searchText-ə görə söhbət siyahısını filtrə et
   // .filter() — şərtə uyan elementləri qaytarır (like LINQ .Where())
@@ -27,10 +28,23 @@ function ConversationList({
 
   return (
     <div className="conversation-panel">
-      {/* Panel başlığı — axtarış sahəsi */}
       <div className="conversation-panel-header">
+        {/* Panel başlığı — filter ikonu */}
+        <button className="header-icon-btn" title="Filter">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <line x1="4" y1="6" x2="20" y2="6" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+            <line x1="11" y1="18" x2="13" y2="18" />
+          </svg>
+        </button>
         <div className="search-wrapper">
-          {/* SVG axtarış ikonu */}
           <svg
             className="search-icon"
             width="16"
@@ -53,6 +67,22 @@ function ConversationList({
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
+        {/* Yeni söhbət düyməsi — Bitrix24 stili */}
+        <button className="header-icon-btn create-btn" title="New chat">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+        </button>
       </div>
 
       {/* Söhbət siyahısı */}
@@ -65,51 +95,108 @@ function ConversationList({
           // Nəticə yoxdur
           <div className="empty-state">No conversations yet</div>
         ) : (
-          // .map() — hər söhbət üçün JSX render et (like @foreach in Blazor)
-          filteredConversations.map((c) => (
-            <div
-              key={c.id}  // React-ın list key-i — hər element unikal olmalıdır
-              // Template literal ilə dinamik className:
-              // selectedChatId === c.id → "selected" class əlavə et (mavi vurğu)
-              className={`conversation-item ${selectedChatId === c.id ? "selected" : ""}`}
-              onClick={() => onSelectChat(c)} // Klikləndikdə Chat.jsx-ə bu söhbəti göndər
-            >
-              {/* Avatar — adın baş hərflərindən rəngli dairə */}
+          filteredConversations.map((c) => {
+            // Öz mesajımdırmı? — tick icon göstərmək üçün
+            const isOwnLastMessage = c.lastMessageSenderId === userId;
+
+            // Preview mətni — tiplərə görə fərqlənir
+            let previewContent;
+            // Preview-un solunda əlavə icon/avatar olacaqmı?
+            let previewPrefix = null;
+
+            if (c.type === 2) {
+              // DepartmentUser → vəzifə adı
+              previewContent = c.positionName || "User";
+            } else if (!c.lastMessage) {
+              previewContent = "No messages yet";
+            } else if (c.isNotes) {
+              // Notes — ↩ icon ilə
+              previewPrefix = <span className="preview-reply-icon"><svg viewBox="0 0 16 16"><path d="M14 3v4c0 1.1-.9 2-2 2H4m0 0l3-3M4 9l3 3"/></svg></span>;
+              previewContent = c.lastMessage;
+            } else if (isOwnLastMessage) {
+              // Öz mesajım (DM/Channel) — ↩ icon + mətn
+              previewPrefix = <span className="preview-reply-icon"><svg viewBox="0 0 16 16"><path d="M14 3v4c0 1.1-.9 2-2 2H4m0 0l3-3M4 9l3 3"/></svg></span>;
+              previewContent = c.lastMessage;
+            } else if (c.type === 1 && c.lastMessageSenderFullName) {
+              // Channel + başqasının mesajı → kiçik avatar + mətn
+              previewPrefix = (
+                <span
+                  className="preview-sender-avatar"
+                  style={{ background: getAvatarColor(c.lastMessageSenderFullName) }}
+                >
+                  {getInitials(c.lastMessageSenderFullName)}
+                </span>
+              );
+              previewContent = c.lastMessage;
+            } else {
+              // DM — qarşı tərəfin mesajı → sadəcə mətn
+              previewContent = c.lastMessage;
+            }
+
+            return (
               <div
-                className="conversation-avatar"
-                style={{ background: getAvatarColor(c.name) }} // addan deterministik rəng
+                key={c.id}
+                className={`conversation-item ${selectedChatId === c.id ? "selected" : ""}`}
+                onClick={() => onSelectChat(c)}
               >
-                {getInitials(c.name)} {/* "John Doe" → "JD" */}
-              </div>
-
-              {/* Söhbət məlumatı — ad, tarix, son mesaj, oxunmamış sayı */}
-              <div className="conversation-info">
-                {/* Üst sıra: ad (solda) + tarix (sağda) */}
-                <div className="conversation-top-row">
-                  <span className="conversation-name">{c.name}</span>
-                  <span className="conversation-time">
-                    {/* formatTime — "HH:mm" və ya "DD/MM" formatı */}
-                    {formatTime(c.lastMessageAtUtc)}
-                  </span>
-                </div>
-
-                {/* Alt sıra: son mesaj preview (solda) + unread badge (sağda) */}
-                <div className="conversation-bottom-row">
-                  <span className="conversation-preview">
-                    {/* type=2 (DepartmentUser) → vəzifə adını göstər */}
-                    {/* type=0/1 → son mesaj mətnini göstər */}
-                    {c.type === 2
-                      ? c.positionName || "User"
-                      : c.lastMessage || "No messages yet"}
-                  </span>
-                  {/* Oxunmamış mesaj sayı — yalnız unreadCount > 0 olduqda görünür */}
-                  {c.unreadCount > 0 && (
-                    <span className="unread-badge">{c.unreadCount}</span>
+                {/* Avatar */}
+                <div
+                  className="conversation-avatar"
+                  style={{ background: getAvatarColor(c.name) }}
+                >
+                  {c.isNotes ? (
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2"
+                    >
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                  ) : (
+                    getInitials(c.name)
                   )}
                 </div>
+
+                {/* Söhbət məlumatı */}
+                <div className="conversation-info">
+                  {/* Üst sıra: ad + tick + tarix */}
+                  <div className="conversation-top-row">
+                    <span className="conversation-name">{c.name}</span>
+                    <div className="conversation-time-wrapper">
+                      {/* Tick icon — time-ın solunda, yalnız öz mesajımda */}
+                      {isOwnLastMessage && c.type !== 2 && c.lastMessage && (
+                        <span className={`preview-tick ${c.lastMessageStatus === "Read" ? "read" : ""}`}>
+                          <svg viewBox="0 0 16 11">
+                            <polyline points="1 5.5 5 9.5 11 1" />
+                            {c.lastMessageStatus === "Read" && (
+                              <polyline points="5.5 5.5 9.5 9.5 15 1" />
+                            )}
+                          </svg>
+                        </span>
+                      )}
+                      <span className="conversation-time">
+                        {formatTime(c.lastMessageAtUtc)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Alt sıra: preview + unread badge */}
+                  <div className="conversation-bottom-row">
+                    <span className="conversation-preview">
+                      {previewPrefix}
+                      {previewContent}
+                    </span>
+                    {c.unreadCount > 0 && (
+                      <span className="unread-badge">{c.unreadCount}</span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
