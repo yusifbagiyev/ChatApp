@@ -9,8 +9,8 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"
+    # Port expose etmirik — backend daxili network ilə qoşulur
+    # Xaricdən pgAdmin lazımdırsa: "5433:5432" istifadə et (fərqli port)
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
