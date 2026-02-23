@@ -4,11 +4,10 @@ import { getInitials, getAvatarColor, getLastSeenText } from "../utils/chatUtils
 // ChatHeader komponenti — chat panelinin yuxarı başlığı
 // Props:
 //   selectedChat     — seçilmiş chat obyekti (ad, tip, otherUserId, ...)
-//   typingUsers      — { conversationId: true } — kim yazır
 //   onlineUsers      — Set<userId> — online olan istifadəçilər
 //   pinnedMessages   — pinlənmiş mesajlar array-i (pin button aktiv/deaktiv üçün)
 //   onTogglePinExpand — pin list-i genişləndir/yığ (Chat.jsx-dən gəlir)
-function ChatHeader({ selectedChat, typingUsers, onlineUsers, pinnedMessages, onTogglePinExpand }) {
+function ChatHeader({ selectedChat, onlineUsers, pinnedMessages, onTogglePinExpand }) {
   return (
     <div className="chat-header">
       {/* Sol tərəf: avatar + ad + status */}
@@ -28,19 +27,12 @@ function ChatHeader({ selectedChat, typingUsers, onlineUsers, pinnedMessages, on
               {selectedChat.name}
             </span>
 
-            {/* Status yalnız DM (type=0) söhbəti üçün göstərilir, Notes üçün yox */}
-            {/* Prioritet sırası: Typing > Online > Last Seen */}
+            {/* Status yalnız DM (type=0) üçün: Online / Last Seen */}
             {!selectedChat.isNotes &&
               selectedChat.type === 0 &&
-              (typingUsers[selectedChat.id] ? (
-                // SignalR-dan gəlir — digər istifadəçi yazır
-                <span className="status-typing">is typing...</span>
-              ) : onlineUsers.has(selectedChat.otherUserId) ? (
-                // Set.has() — O(1) axtarış (Array.includes()-dən sürətli)
+              (onlineUsers.has(selectedChat.otherUserId) ? (
                 <span className="status-online">Online</span>
               ) : (
-                // Nə yazır, nə online → son görülmə vaxtı
-                // getLastSeenText — "2 hours ago", "Yesterday", "3 days ago"
                 <span className="status-offline">
                   {getLastSeenText(
                     selectedChat.otherUserLastSeenAtUtc,

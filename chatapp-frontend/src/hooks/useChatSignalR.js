@@ -22,6 +22,7 @@ export default function useChatSignalR(
   setTypingUsers,     // Kim yazır — { [conversationId]: true/fullName }
   setPinnedMessages,  // Pinlənmiş mesajlar array-ı
   setCurrentPinIndex, // Pin bar-dakı aktiv index
+  setLastReadTimestamp, // DM mesajın oxunma vaxtı — { [chatId]: Date }
 ) {
   // useEffect — komponentin mount olduğunda 1 dəfə işləyir
   // [userId] — dependency array: yalnız userId dəyişəndə yenidən işləyir
@@ -151,8 +152,13 @@ export default function useChatSignalR(
         }),
       );
 
+      // DM status bar üçün oxunma vaxtını capture et
+      setLastReadTimestamp((prev) => ({
+        ...prev,
+        [data.conversationId]: new Date(),
+      }));
+
       // Conversation list-dəki lastMessageStatus-u "Read"-ə yenilə
-      // Bu tick icon-u ✓✓ edir
       setConversations((prev) =>
         prev.map((c) => {
           if (c.id === data.conversationId) {
@@ -167,18 +173,25 @@ export default function useChatSignalR(
     // Channel-da mesajlar oxunanda — readByCount yenilə
     // data: channelId, readByUserId, messageReadCounts (Dictionary<Guid, int>)
     function handleChannelMessagesRead(channelId, readByUserId, messageReadCounts) {
-      // Mesajlardakı readByCount-u yenilə
+      // Mesajlardakı readByCount + readBy array yenilə
       setMessages((prev) =>
         prev.map((m) => {
           if (messageReadCounts && messageReadCounts[m.id] !== undefined) {
-            return { ...m, readByCount: messageReadCounts[m.id] };
+            const updatedReadBy = m.readBy ? [...m.readBy] : [];
+            if (!updatedReadBy.includes(readByUserId)) {
+              updatedReadBy.push(readByUserId);
+            }
+            return {
+              ...m,
+              readByCount: messageReadCounts[m.id],
+              readBy: updatedReadBy,
+            };
           }
           return m;
         }),
       );
 
       // Conversation list-dəki lastMessageStatus-u "Read"-ə yenilə
-      // Tick ✓ → ✓✓ olsun
       setConversations((prev) =>
         prev.map((c) => {
           if (c.id === channelId && c.lastMessageSenderId === userId) {

@@ -43,6 +43,8 @@ import MessageBubble from "../components/MessageBubble"; // tək mesaj balonu
 import ForwardPanel from "../components/ForwardPanel"; // mesaj yönləndir panel
 import ChatHeader from "../components/ChatHeader"; // chat başlığı (ad, status)
 import ChatInputArea from "../components/ChatInputArea"; // mesaj yazma sahəsi
+import ChatStatusBar from "../components/ChatStatusBar"; // viewed/typing status bar
+import ReadersPanel from "../components/ReadersPanel"; // oxuyanlar panel
 import SelectToolbar from "../components/SelectToolbar"; // çox mesaj seç toolbar
 import PinnedBar, { PinnedExpanded } from "../components/PinnedBar"; // pinlənmiş mesajlar
 
@@ -154,6 +156,16 @@ function Chat() {
   // inputRef — textarea element-i (focus vermək üçün)
   const inputRef = useRef(null);
 
+  // lastReadTimestamp — DM: mesajın oxunma vaxtı (SignalR event-dən capture edilir)
+  const [lastReadTimestamp, setLastReadTimestamp] = useState({});
+
+  // channelMembers — channel üzvlərinin lookup map-i
+  // { [channelId]: { [userId]: { fullName, avatarUrl } } }
+  const [channelMembers, setChannelMembers] = useState({});
+
+  // readersPanel — reader list panel state (null = bağlı)
+  const [readersPanel, setReadersPanel] = useState(null);
+
   // --- CUSTOM HOOKS ---
 
   // useChatScroll — infinite scroll (yuxarı scroll → köhnə mesajlar yüklə)
@@ -190,6 +202,7 @@ function Chat() {
     setTypingUsers,
     setPinnedMessages,
     setCurrentPinIndex,
+    setLastReadTimestamp,
   );
 
   // shouldScrollBottom true olduqda ən alt mesaja scroll et
@@ -369,6 +382,7 @@ function Chat() {
     setForwardMessage(null);
     setEmojiOpen(false);
     setDeleteConfirmOpen(false);
+    setReadersPanel(null);
     hasMoreRef.current = true; // Yenidən köhnə mesaj yükləmək mümkündür
     hasMoreDownRef.current = false; // Around mode yox
 
@@ -422,6 +436,22 @@ function Chat() {
         }
       } else if (chat.type === 1) {
         joinChannel(chat.id);
+
+        // Channel members yüklə — status bar-da "Viewed by X" üçün
+        if (!channelMembers[chat.id]) {
+          try {
+            const members = await apiGet(`/api/channels/${chat.id}/members`);
+            setChannelMembers((prev) => ({
+              ...prev,
+              [chat.id]: members.reduce((map, m) => {
+                map[m.userId] = { fullName: m.fullName, avatarUrl: m.avatarUrl };
+                return map;
+              }, {}),
+            }));
+          } catch (err) {
+            console.error("Failed to load channel members:", err);
+          }
+        }
       }
 
       // setTimeout(..., 0) — bir sonraki event loop-da textarea-ya focus ver
@@ -948,10 +978,9 @@ function Chat() {
           {/* selectedChat varsa chat göstər, yoxsa empty state */}
           {selectedChat ? (
             <>
-              {/* ChatHeader — chat adı, online status, typing indicator */}
+              {/* ChatHeader — chat adı, online status */}
               <ChatHeader
                 selectedChat={selectedChat}
-                typingUsers={typingUsers}
                 onlineUsers={onlineUsers}
                 pinnedMessages={pinnedMessages}
                 onTogglePinExpand={() => setPinBarExpanded((v) => !v)}
@@ -1035,6 +1064,17 @@ function Chat() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* ChatStatusBar — messages ilə input arasında, sabit yer */}
+              <ChatStatusBar
+                selectedChat={selectedChat}
+                messages={messages}
+                userId={user.id}
+                typingUsers={typingUsers}
+                lastReadTimestamp={lastReadTimestamp}
+                channelMembers={channelMembers}
+                onOpenReadersPanel={setReadersPanel}
+              />
+
               {/* selectMode → SelectToolbar, əks halda ChatInputArea */}
               {selectMode ? (
                 <SelectToolbar
@@ -1070,6 +1110,15 @@ function Chat() {
                   conversations={conversations}
                   onForward={handleForward}
                   onClose={() => setForwardMessage(null)}
+                />
+              )}
+
+              {/* ReadersPanel — channel mesajını oxuyanların siyahısı */}
+              {readersPanel && (
+                <ReadersPanel
+                  readByIds={readersPanel.readByIds}
+                  channelMembers={channelMembers[selectedChat?.id] || {}}
+                  onClose={() => setReadersPanel(null)}
                 />
               )}
             </>
