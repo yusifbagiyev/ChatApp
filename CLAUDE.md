@@ -14,7 +14,6 @@
 - Progress tracker: `tasks/todo.md` — read this first when resuming.
 - Lessons file: `tasks/lessons.md` — read this at session start.
 - When user says "Continue React migration", read `tasks/todo.md` and continue from next unchecked step.
-- Backend is COMPLETE. Do NOT modify backend code.
 - React project location: `C:\Users\Joseph\Desktop\ChatApp\chatapp-frontend\`
 
 ## Modullar

@@ -88,25 +88,19 @@ public class UnifiedConversationsController(IMediator mediator) : ControllerBase
                 .ToList();
         }
 
-        // STEP 2: Merge and sort by priority
-        var mergedItems = new List<UnifiedChatItemDto>();
-
-        // Priority 1: Notes conversation (always first) — search zamanı göstərmə
-        if (!hasSearch)
-            mergedItems.AddRange(allConversations.Where(c => c.IsNotes).Select(MapConversation));
-
-        // Priority 2+3: Pinned then active — interleave conversations and channels by LastMessageAtUtc
-        var nonNotes = allConversations
-            .Where(c => !c.IsNotes)
+        // STEP 2: Merge and sort by priority (Pinned → LastMessageAtUtc)
+        var allConvItems = allConversations
+            .Where(c => hasSearch ? !c.IsNotes : true)
             .Select(c => (Item: MapConversation(c), Time: c.LastMessageAtUtc, c.IsPinned));
 
         var channelItems = allChannels
             .Select(c => (Item: MapChannel(c), Time: c.LastMessageAtUtc ?? DateTime.MinValue, c.IsPinned));
 
-        mergedItems.AddRange(nonNotes.Concat(channelItems)
+        var mergedItems = allConvItems.Concat(channelItems)
             .OrderByDescending(x => x.IsPinned)
             .ThenByDescending(x => x.Time)
-            .Select(x => x.Item));
+            .Select(x => x.Item)
+            .ToList();
 
         var totalConvAndChannels = mergedItems.Count;
 

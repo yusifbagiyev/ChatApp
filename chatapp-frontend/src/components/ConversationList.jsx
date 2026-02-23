@@ -105,7 +105,11 @@ function ConversationList({
             // Preview-un solunda əlavə icon/avatar olacaqmı?
             let previewPrefix = null;
 
-            if (c.type === 2) {
+            if (c.draft) {
+              // Draft varsa — qırmızı "Draft:" prefix ilə göstər
+              previewPrefix = <span className="preview-draft-label">Draft:</span>;
+              previewContent = c.draft;
+            } else if (c.type === 2) {
               // DepartmentUser → vəzifə adı
               previewContent = c.positionName || "User";
             } else if (!c.lastMessage) {
@@ -144,7 +148,7 @@ function ConversationList({
                 <div className="conversation-avatar-wrapper">
                   <div
                     className="conversation-avatar"
-                    style={{ background: getAvatarColor(c.name) }}
+                    style={{ background: c.isNotes ? "#2FC6F6" : getAvatarColor(c.name) }}
                   >
                     {c.isNotes ? (
                       <svg

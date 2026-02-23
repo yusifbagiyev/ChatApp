@@ -90,6 +90,9 @@ function Chat() {
   // Mesaj yazma sahəsinin dəyəri
   const [messageText, setMessageText] = useState("");
 
+  // Draft saxlama — conversation dəyişdikdə yazılan mətn yadda qalır
+  const draftsRef = useRef({});
+
   // messagesEndRef — mesaj siyahısının ən sonuna yerləşdirilmiş gizli div
   // scrollIntoView() ilə ən yeni mesaja scroll etmək üçün
   const messagesEndRef = useRef(null);
@@ -354,6 +357,28 @@ function Chat() {
       return;
     }
 
+    // Draft saxla — əvvəlki chatın yazısını yadda saxla
+    if (selectedChat) {
+      const currentText = messageText.trim();
+      if (currentText) {
+        draftsRef.current[selectedChat.id] = currentText;
+        // Conversation list-də draft göstər
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedChat.id ? { ...c, draft: currentText } : c,
+          ),
+        );
+      } else {
+        delete draftsRef.current[selectedChat.id];
+        // Draft sil
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedChat.id ? { ...c, draft: null } : c,
+          ),
+        );
+      }
+    }
+
     // Əvvəlki chatın SignalR qrupundan ayrıl
     if (selectedChat) {
       if (selectedChat.type === 0) {
@@ -362,6 +387,10 @@ function Chat() {
         leaveChannel(selectedChat.id);
       }
     }
+
+    // Yeni chatın draft-ını yüklə
+    const savedDraft = draftsRef.current[chat.id] || "";
+    setMessageText(savedDraft);
 
     // State sıfırla — yeni chat seçildi
     setSelectedChat(chat);
@@ -670,6 +699,16 @@ function Chat() {
 
     const text = messageText.trim();
     setMessageText(""); // Yazma sahəsini dərhal sıfırla (UI cavabdehliyi)
+
+    // Draft sil — mesaj göndərildi
+    if (selectedChat) {
+      delete draftsRef.current[selectedChat.id];
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedChat.id ? { ...c, draft: null } : c,
+        ),
+      );
+    }
 
     // Textarea hündürlüyünü yenidən başlanğıc ölçüyə gətir
     const textarea = document.querySelector(".message-input");

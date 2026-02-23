@@ -505,6 +505,18 @@
   stroke: rgba(255, 255, 255, 0.8);
 }
 
+/* Draft label — conversation preview-da */
+.preview-draft-label {
+  color: #e74c3c;
+  font-weight: 600;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.conversation-item.selected .preview-draft-label {
+  color: rgba(255, 100, 100, 0.9);
+}
+
 /* ===================================
    UNREAD BADGE
    =================================== */
@@ -1659,6 +1671,7 @@
   flex-direction: column;
   padding: 10px 14px;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 /* Reply preview — input-un üstündə */
@@ -1820,7 +1833,7 @@
   font-family: inherit;
   line-height: 1.4;
   resize: none;
-  max-height: 120px;
+  max-height: 250px;
   overflow-y: auto;
   height: auto;
 }
@@ -1836,7 +1849,7 @@
   min-width: 34px;
   flex-shrink: 0;
   border: none;
-  background: var(--primary-color);
+  background: #00ACE3;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1847,7 +1860,7 @@
 }
 
 .send-btn:hover {
-  background: var(--primary-hover);
+  background: #0098ca;
   transform: scale(1.05);
 }
 
