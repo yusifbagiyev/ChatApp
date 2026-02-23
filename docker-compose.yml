@@ -22,13 +22,13 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── ChatApp Redis (port 6380 — inventory 6379 istifadə edir) ──
+  # ── ChatApp Redis ──
   redis:
     image: redis:7-alpine
     container_name: chatapp_redis
     command: redis-server --requirepass ${REDIS_PASSWORD}
     ports:
-      - "6380:6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
