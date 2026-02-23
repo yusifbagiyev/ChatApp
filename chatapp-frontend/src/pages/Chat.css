@@ -27,7 +27,7 @@
   --bubble-own: #e9fecb;
   --bubble-other: #ffffff;
   --selected-chat: #00ace3;
-  --unread-badge: #10b981;
+  --unread-badge: #4cc5eb;
 
   /* Sidebar */
   --sidebar-width: 60px;
@@ -318,6 +318,11 @@
    CONVERSATION AVATAR
    =================================== */
 
+.conversation-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .conversation-avatar {
   width: 44px;
   height: 44px;
@@ -330,6 +335,49 @@
   font-size: 15px;
   font-weight: 600;
   background: var(--primary-gradient);
+}
+
+/* Typing indicator — avatar-ın sağ-aşağı küncü */
+.avatar-typing-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  background: var(--white);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.typing-dot {
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: var(--gray-500);
+  animation: typingBounce 1.2s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
 }
 
 /* ===================================

@@ -18,6 +18,7 @@ function ConversationList({
   onSelectChat,
   isLoading,
   userId,
+  typingUsers,
 }) {
   // Client-side filter — searchText-ə görə söhbət siyahısını filtrə et
   // .filter() — şərtə uyan elementləri qaytarır (like LINQ .Where())
@@ -139,24 +140,34 @@ function ConversationList({
                 className={`conversation-item ${selectedChatId === c.id ? "selected" : ""}`}
                 onClick={() => onSelectChat(c)}
               >
-                {/* Avatar */}
-                <div
-                  className="conversation-avatar"
-                  style={{ background: getAvatarColor(c.name) }}
-                >
-                  {c.isNotes ? (
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="2"
-                    >
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                    </svg>
-                  ) : (
-                    getInitials(c.name)
+                {/* Avatar + typing indicator wrapper */}
+                <div className="conversation-avatar-wrapper">
+                  <div
+                    className="conversation-avatar"
+                    style={{ background: getAvatarColor(c.name) }}
+                  >
+                    {c.isNotes ? (
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="2"
+                      >
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                      </svg>
+                    ) : (
+                      getInitials(c.name)
+                    )}
+                  </div>
+                  {/* Typing indicator — avatar-ın sağ-aşağı küncündə animasiyalı dots */}
+                  {typingUsers[c.id] && (
+                    <span className="avatar-typing-indicator">
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                    </span>
                   )}
                 </div>
 
@@ -166,8 +177,8 @@ function ConversationList({
                   <div className="conversation-top-row">
                     <span className="conversation-name">{c.name}</span>
                     <div className="conversation-time-wrapper">
-                      {/* Tick icon — time-ın solunda, yalnız öz mesajımda */}
-                      {isOwnLastMessage && c.type !== 2 && c.lastMessage && (
+                      {/* Tick icon — time-ın solunda, yalnız öz mesajımda (Notes-da yox) */}
+                      {isOwnLastMessage && c.type !== 2 && !c.isNotes && c.lastMessage && (
                         <span className={`preview-tick ${c.lastMessageStatus === "Read" ? "read" : ""}`}>
                           <svg viewBox="0 0 16 11">
                             <polyline points="1 5.5 5 9.5 11 1" />

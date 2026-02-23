@@ -35,47 +35,16 @@ export default function useChatSignalR(
     //   1. Əgər bu conversation açıqdırsa — messages state-ə əlavə et
     //   2. Conversation list-dəki son mesajı yenilə
     function handleNewDirectMessage(message) {
-      // setSelectedChat-ı "functional update" ilə çağırırıq — closure problemi olmasın
-      // current → hal-hazırdakı selectedChat dəyəri
+      // isOpenChat — bu conversation hal-hazırda açıqdırmı?
+      let isOpenChat = false;
+
       setSelectedChat((current) => {
         if (
           current &&
-          current.type === 0 &&                          // DM-dir (type 0)
-          current.id === message.conversationId          // Bu conversation açıqdır
+          current.type === 0 &&
+          current.id === message.conversationId
         ) {
-          setMessages((prev) => {
-            // Duplicate check: eyni mesaj artıq varsa əlavə etmə
-            // (SignalR + API fallback eyni mesajı 2 dəfə göndərə bilər)
-            if (prev.some((m) => m.id === message.id)) return prev;
-            setShouldScrollBottom(true);                 // Aşağı scroll et
-            return [message, ...prev];                   // Yeni mesajı başa əlavə et (desc order)
-          });
-        }
-        return current; // selectedChat-ı dəyişmə, sadəcə oxu
-      });
-
-      // Conversation list-dəki son mesajı yenilə (preview üçün)
-      // .map() — hər conversation-ı gəz, uyğun olanı yenilə
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === message.conversationId) {
-            // Spread operator: ...c — köhnə bütün xassələri kopyala, sonra override et
-            return {
-              ...c,
-              lastMessage: message.content,
-              lastMessageAtUtc: message.createdAtUtc,
-            };
-          }
-          return c; // Uyğun deyilsə — dəyişmədən qaytar
-        }),
-      );
-    }
-
-    // ─── handleNewChannelMessage ───────────────────────────────────────────────
-    // handleNewDirectMessage-ın Channel versiyası (type === 1)
-    function handleNewChannelMessage(message) {
-      setSelectedChat((current) => {
-        if (current && current.type === 1 && current.id === message.channelId) {
+          isOpenChat = true;
           setMessages((prev) => {
             if (prev.some((m) => m.id === message.id)) return prev;
             setShouldScrollBottom(true);
@@ -85,30 +54,137 @@ export default function useChatSignalR(
         return current;
       });
 
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === message.channelId) {
+      // Conversation list-dəki son mesajı yenilə
+      setConversations((prev) => {
+        const updated = prev.map((c) => {
+          if (c.id === message.conversationId) {
+            // Duplicate check — hybrid broadcast eyni mesajı 2 dəfə göndərə bilər
+            const isDuplicate = c._lastProcessedMsgId === message.id;
             return {
               ...c,
+              _lastProcessedMsgId: message.id,
               lastMessage: message.content,
               lastMessageAtUtc: message.createdAtUtc,
+              lastMessageSenderId: message.senderId,
+              lastMessageSenderFullName: message.senderFullName,
+              lastMessageSenderAvatarUrl: message.senderAvatarUrl,
+              lastMessageStatus: message.senderId === userId ? "Sent" : c.lastMessageStatus,
+              // Başqasının mesajı + chat açıq deyilsə + duplicate deyilsə → unread artır
+              unreadCount:
+                message.senderId !== userId && !isOpenChat && !isDuplicate
+                  ? c.unreadCount + 1
+                  : c.unreadCount,
             };
           }
           return c;
-        }),
-      );
+        });
+        // Yeni mesajlı conversation-ı siyahının başına gətir
+        const idx = updated.findIndex((c) => c.id === message.conversationId);
+        if (idx > 0) {
+          const [item] = updated.splice(idx, 1);
+          updated.unshift(item);
+        }
+        return updated;
+      });
+    }
+
+    // ─── handleNewChannelMessage ───────────────────────────────────────────────
+    // handleNewDirectMessage-ın Channel versiyası (type === 1)
+    function handleNewChannelMessage(message) {
+      let isOpenChat = false;
+
+      setSelectedChat((current) => {
+        if (current && current.type === 1 && current.id === message.channelId) {
+          isOpenChat = true;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === message.id)) return prev;
+            setShouldScrollBottom(true);
+            return [message, ...prev];
+          });
+        }
+        return current;
+      });
+
+      setConversations((prev) => {
+        const updated = prev.map((c) => {
+          if (c.id === message.channelId) {
+            // Duplicate check — hybrid broadcast eyni mesajı 2 dəfə göndərə bilər
+            const isDuplicate = c._lastProcessedMsgId === message.id;
+            return {
+              ...c,
+              _lastProcessedMsgId: message.id,
+              lastMessage: message.content,
+              lastMessageAtUtc: message.createdAtUtc,
+              lastMessageSenderId: message.senderId,
+              lastMessageSenderFullName: message.senderFullName,
+              lastMessageSenderAvatarUrl: message.senderAvatarUrl,
+              lastMessageStatus: message.senderId === userId ? "Sent" : c.lastMessageStatus,
+              unreadCount:
+                message.senderId !== userId && !isOpenChat && !isDuplicate
+                  ? c.unreadCount + 1
+                  : c.unreadCount,
+            };
+          }
+          return c;
+        });
+        // Yeni mesajlı channel-ı siyahının başına gətir
+        const idx = updated.findIndex((c) => c.id === message.channelId);
+        if (idx > 0) {
+          const [item] = updated.splice(idx, 1);
+          updated.unshift(item);
+        }
+        return updated;
+      });
     }
 
     // ─── handleMessageRead ────────────────────────────────────────────────────
     // Digər istifadəçi mesajı oxuyanda — mesajın status-unu yenilə (✓✓ mavi)
     // status: 3 = Read (MessageStatus enum)
     function handleMessageRead(data) {
+      // Mesajlar array-ında status-u yenilə (✓✓ mavi tick üçün)
       setMessages((prev) =>
         prev.map((m) => {
           if (m.id === data.messageId) {
-            return { ...m, isRead: true, status: 3 }; // Status-u Read-ə yenilə
+            return { ...m, isRead: true, status: 3 };
           }
           return m;
+        }),
+      );
+
+      // Conversation list-dəki lastMessageStatus-u "Read"-ə yenilə
+      // Bu tick icon-u ✓✓ edir
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === data.conversationId) {
+            return { ...c, lastMessageStatus: "Read" };
+          }
+          return c;
+        }),
+      );
+    }
+
+    // ─── handleChannelMessagesRead ──────────────────────────────────────────────
+    // Channel-da mesajlar oxunanda — readByCount yenilə
+    // data: channelId, readByUserId, messageReadCounts (Dictionary<Guid, int>)
+    function handleChannelMessagesRead(channelId, readByUserId, messageReadCounts) {
+      // Mesajlardakı readByCount-u yenilə
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (messageReadCounts && messageReadCounts[m.id] !== undefined) {
+            return { ...m, readByCount: messageReadCounts[m.id] };
+          }
+          return m;
+        }),
+      );
+
+      // Conversation list-dəki lastMessageStatus-u "Read"-ə yenilə
+      // Tick ✓ → ✓✓ olsun
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === channelId && c.lastMessageSenderId === userId) {
+            return { ...c, lastMessageStatus: "Read" };
+          }
+          return c;
         }),
       );
     }
@@ -261,6 +337,7 @@ export default function useChatSignalR(
         conn.on("ChannelMessageEdited", handleMessageEdited);
         conn.on("ChannelMessageReactionsUpdated", handleReactionsUpdated);
         conn.on("DirectMessageReactionToggled", handleReactionsUpdated);
+        conn.on("ChannelMessagesRead", handleChannelMessagesRead);
       })
       .catch((err) => console.error("SignalR connection failed:", err));
 
@@ -287,6 +364,7 @@ export default function useChatSignalR(
         conn.off("ChannelMessageEdited", handleMessageEdited);
         conn.off("ChannelMessageReactionsUpdated", handleReactionsUpdated);
         conn.off("DirectMessageReactionToggled", handleReactionsUpdated);
+        conn.off("ChannelMessagesRead", handleChannelMessagesRead);
       }
     };
   }, [userId]); // [userId] — yalnız userId dəyişsə yenidən qur (re-login kimi)

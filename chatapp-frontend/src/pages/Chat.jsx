@@ -266,6 +266,16 @@ function Chat() {
               apiPost(`/api/channels/${convId}/messages/${msgId}/mark-as-read`);
             }
 
+            // Conversation list-dəki unreadCount-u azalt
+            setConversations((prev) =>
+              prev.map((c) => {
+                if (c.id === convId && c.unreadCount > 0) {
+                  return { ...c, unreadCount: c.unreadCount - 1 };
+                }
+                return c;
+              }),
+            );
+
             // Bu elementi artıq izləmə (bir dəfə kifayətdir)
             observer.unobserve(entry.target);
           }
@@ -344,6 +354,12 @@ function Chat() {
     setSelectedChat(chat);
     setMessages([]);
     setPinnedMessages([]);
+    // Bu chat-ın unreadCount-unu sıfırla
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === chat.id ? { ...c, unreadCount: 0 } : c,
+      ),
+    );
     setPinBarExpanded(false);
     setCurrentPinIndex(0);
     setSelectMode(false);
@@ -924,6 +940,7 @@ function Chat() {
           onSelectChat={handleSelectChat}
           isLoading={isLoading}
           userId={user.id}
+          typingUsers={typingUsers}
         />
 
         {/* chat-panel — sağ panel, mesajlar */}
