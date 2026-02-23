@@ -1462,9 +1462,7 @@
    =================================== */
 
 .chat-status-bar {
-  height: 28px;
-  flex-shrink: 0;
-  padding: 0 12px;
+  min-height: 28px;
 }
 
 .chat-status-bar.has-content {
@@ -1473,7 +1471,8 @@
   align-self: flex-start;
   gap: 6px;
   padding: 4px 12px;
-  margin-left: 8px;
+  margin-top: 8px;
+  margin-bottom: -4px;
   background: #A3BAD4;
   border-radius: 10px;
 }

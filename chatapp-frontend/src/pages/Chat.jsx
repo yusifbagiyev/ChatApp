@@ -1060,20 +1060,19 @@ function Chat() {
                     />
                   );
                 })}
+                {/* ChatStatusBar — son mesajdan sonra, scroll ilə birlikdə hərəkət edir */}
+                <ChatStatusBar
+                  selectedChat={selectedChat}
+                  messages={messages}
+                  userId={user.id}
+                  typingUsers={typingUsers}
+                  lastReadTimestamp={lastReadTimestamp}
+                  channelMembers={channelMembers}
+                  onOpenReadersPanel={setReadersPanel}
+                />
                 {/* messagesEndRef — ən alt boş div, scrollIntoView üçün hədəf */}
                 <div ref={messagesEndRef} />
               </div>
-
-              {/* ChatStatusBar — messages ilə input arasında, sabit yer */}
-              <ChatStatusBar
-                selectedChat={selectedChat}
-                messages={messages}
-                userId={user.id}
-                typingUsers={typingUsers}
-                lastReadTimestamp={lastReadTimestamp}
-                channelMembers={channelMembers}
-                onOpenReadersPanel={setReadersPanel}
-              />
 
               {/* selectMode → SelectToolbar, əks halda ChatInputArea */}
               {selectMode ? (
