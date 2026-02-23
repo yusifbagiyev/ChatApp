@@ -3,6 +3,7 @@ using ChatApp.Modules.Channels.Domain.Entities;
 using ChatApp.Modules.Channels.Domain.Enums;
 using ChatApp.Modules.Channels.Domain.Events;
 using ChatApp.Modules.Channels.Domain.ValueObjects;
+using ChatApp.Shared.Infrastructure.SignalR.Services;
 using ChatApp.Shared.Kernel.Common;
 using ChatApp.Shared.Kernel.Interfaces;
 using FluentValidation;
@@ -15,8 +16,9 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
         string Name,
         string? Description,
         ChannelType Type,
-        Guid CreatedBy
-    ) : IRequest<Result<Guid>>;
+        Guid CreatedBy,
+        List<Guid>? MemberIds = null
+    ) : IRequest<Result<object>>;
 
 
 
@@ -44,23 +46,26 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
 
 
 
-    public class CreateChannelCommandHandler : IRequestHandler<CreateChannelCommand, Result<Guid>>
+    public class CreateChannelCommandHandler : IRequestHandler<CreateChannelCommand, Result<object>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IEventBus _eventBus;
+        private readonly ISignalRNotificationService _notificationService;
         private readonly ILogger<CreateChannelCommandHandler> _logger;
 
         public CreateChannelCommandHandler(
             IUnitOfWork unitOfWork,
             IEventBus eventBus,
+            ISignalRNotificationService notificationService,
             ILogger<CreateChannelCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _eventBus = eventBus;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
-        public async Task<Result<Guid>> Handle(
+        public async Task<Result<object>> Handle(
             CreateChannelCommand request,
             CancellationToken cancellationToken)
         {
@@ -77,9 +82,12 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
                 if (existingChannel != null)
                 {
                     _logger?.LogWarning("Channel name {ChannelName} already exists", request.Name);
-                    return Result.Failure<Guid>("A channel with this name already exists");
+                    return Result.Failure<object>("A channel with this name already exists");
                 }
 
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+                // Create channel (constructor auto-adds creator as Owner)
                 var channel = new Channel(
                     channelName,
                     request.Description,
@@ -89,22 +97,76 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
                 await _unitOfWork.Channels.AddAsync(channel, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+                // Add members (creator xaric — artıq constructor-da Owner kimi əlavə olunub)
+                var addedMemberIds = new List<Guid>();
+
+                if (request.MemberIds?.Count > 0)
+                {
+                    foreach (var userId in request.MemberIds.Where(id => id != request.CreatedBy).Distinct())
+                    {
+                        var member = new ChannelMember(channel.Id, userId, MemberRole.Member);
+                        await _unitOfWork.ChannelMembers.AddAsync(member, cancellationToken);
+                        addedMemberIds.Add(userId);
+                    }
+
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                }
+
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
                 // Publish event
                 await _eventBus.PublishAsync(
                     new ChannelCreatedEvent(channel.Id, channelName, request.CreatedBy),
                     cancellationToken);
 
-                _logger?.LogInformation(
-                    "Channel {ChannelName} created successfully with ID {ChannelId}",
-                    channelName,
-                    channel.Id);
+                // Build channel DTO — AddMemberCommand-dakı eyni format
+                var memberCount = 1 + addedMemberIds.Count; // owner + members
+                var channelDto = new
+                {
+                    Id = channel.Id,
+                    Name = channel.Name,
+                    Description = channel.Description,
+                    Type = (int)channel.Type,
+                    CreatedBy = channel.CreatedBy,
+                    MemberCount = memberCount,
+                    IsArchived = false,
+                    CreatedAtUtc = channel.CreatedAtUtc,
+                    ArchivedAtUtc = (DateTime?)null,
+                    AvatarUrl = channel.AvatarUrl,
+                    LastMessageContent = (string?)null,
+                    LastMessageAtUtc = (DateTime?)null,
+                    UnreadCount = 0,
+                    HasUnreadMentions = false,
+                    LastReadLaterMessageId = (Guid?)null,
+                    LastMessageId = (Guid?)null,
+                    LastMessageSenderId = (Guid?)null,
+                    LastMessageStatus = (string?)null,
+                    LastMessageSenderAvatarUrl = (string?)null,
+                    FirstUnreadMessageId = (Guid?)null,
+                    IsPinned = false,
+                    IsMuted = false,
+                    IsMarkedReadLater = false
+                };
 
-                return Result.Success(channel.Id);
+                // Notify each added member via SignalR
+                foreach (var userId in addedMemberIds)
+                {
+                    await _notificationService.NotifyMemberAddedToChannelAsync(userId, channelDto);
+                }
+
+                _logger?.LogInformation(
+                    "Channel {ChannelName} created with ID {ChannelId} and {MemberCount} members",
+                    channelName,
+                    channel.Id,
+                    memberCount);
+
+                return Result.Success<object>(channelDto);
             }
             catch (Exception ex)
             {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
                 _logger?.LogError(ex, "Error creating channel {ChannelName}", request.Name);
-                return Result.Failure<Guid>("An error occurred while creating the channel");
+                return Result.Failure<object>("An error occurred while creating the channel");
             }
         }
     }

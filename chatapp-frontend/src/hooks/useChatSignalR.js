@@ -326,6 +326,38 @@ export default function useChatSignalR(
       );
     }
 
+    // ─── handleAddedToChannel ─────────────────────────────────────────────────
+    // Server "AddedToChannel" event-i göndərir — user bir channel-a əlavə olunanda.
+    // channelData: backend-dən gələn channel DTO (id, name, type, avatarUrl, memberCount, ...)
+    // Conversation list-ə əlavə edir ki, user dərhal yeni channel-ı görsün.
+    function handleAddedToChannel(channelData) {
+      setConversations((prev) => {
+        // Duplicate check — artıq listdə varsa əlavə etmə
+        if (prev.some((c) => c.id === channelData.id)) return prev;
+        // Backend DTO field adlarını conversation list formatına map et
+        const newConversation = {
+          id: channelData.id,
+          name: channelData.name,
+          type: channelData.type, // 1 = Channel
+          avatarUrl: channelData.avatarUrl,
+          createdBy: channelData.createdBy,
+          memberCount: channelData.memberCount,
+          isArchived: channelData.isArchived,
+          lastMessage: channelData.lastMessageContent,
+          lastMessageAtUtc: channelData.lastMessageAtUtc,
+          lastMessageSenderId: channelData.lastMessageSenderId,
+          lastMessageSenderFullName: null,
+          lastMessageSenderAvatarUrl: channelData.lastMessageSenderAvatarUrl,
+          lastMessageStatus: channelData.lastMessageStatus,
+          unreadCount: channelData.unreadCount || 0,
+          isPinned: channelData.isPinned || false,
+          isMuted: channelData.isMuted || false,
+          isMarkedReadLater: channelData.isMarkedReadLater || false,
+        };
+        return [newConversation, ...prev]; // Siyahının başına əlavə et
+      });
+    }
+
     // ─── SignalR Bağlantısını Qur + Handler-ları Register Et ─────────────────
     // startConnection() → Promise qaytarır → .then() ilə uğurlu bağlantıda handler-lar qur
     // conn.on("EventName", handlerFunction) — .NET-də: hub.On<T>("EventName", handler) kimi
@@ -351,6 +383,7 @@ export default function useChatSignalR(
         conn.on("ChannelMessageReactionsUpdated", handleReactionsUpdated);
         conn.on("DirectMessageReactionToggled", handleReactionsUpdated);
         conn.on("ChannelMessagesRead", handleChannelMessagesRead);
+        conn.on("AddedToChannel", handleAddedToChannel);
       })
       .catch((err) => console.error("SignalR connection failed:", err));
 
@@ -378,6 +411,7 @@ export default function useChatSignalR(
         conn.off("ChannelMessageReactionsUpdated", handleReactionsUpdated);
         conn.off("DirectMessageReactionToggled", handleReactionsUpdated);
         conn.off("ChannelMessagesRead", handleChannelMessagesRead);
+        conn.off("AddedToChannel", handleAddedToChannel);
       }
     };
   }, [userId]); // [userId] — yalnız userId dəyişsə yenidən qur (re-login kimi)

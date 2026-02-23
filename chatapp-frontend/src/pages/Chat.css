@@ -2407,6 +2407,687 @@
 }
 
 /* ===================================
+   CREATE CHANNEL PANEL
+   =================================== */
+
+.create-channel-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #F1F4F6;
+  overflow: hidden;
+}
+
+.create-channel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.create-channel-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.create-channel-content::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.create-channel-content:hover::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+}
+
+/* --- Yuxarı: Avatar + Ad input --- */
+
+.create-channel-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 28px 20px;
+}
+
+.create-channel-avatar {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 50%;
+  background: #59c0e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  overflow: hidden;
+}
+
+.create-channel-avatar:hover {
+  background: #4ab3db;
+  opacity: 0.85;
+}
+
+.create-channel-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.create-channel-name-wrapper {
+  flex: 1;
+}
+
+.create-channel-name-input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--gray-300);
+  background: transparent;
+  padding: 8px 0;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--gray-900);
+  outline: none;
+  transition: border-color var(--transition-base);
+  font-family: inherit;
+}
+
+.create-channel-name-input:focus {
+  border-bottom-color: #2FC6F6;
+}
+
+.create-channel-name-input.error {
+  border-bottom-color: #e74c3c;
+}
+
+.create-channel-name-input::placeholder {
+  color: var(--gray-400);
+  font-weight: 400;
+}
+
+.create-channel-name-status {
+  min-height: 20px;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.create-channel-name-status.error {
+  color: #e74c3c;
+}
+
+.create-channel-name-status.checking {
+  color: var(--gray-400);
+}
+
+/* --- Members bölməsi --- */
+
+.create-channel-members-section {
+  padding: 16px 20px 12px;
+}
+
+.create-channel-members-card {
+  background: var(--white);
+  border-radius: 8px;
+  border: 1px solid #dde0e6;
+  padding: 14px 18px;
+}
+
+.create-channel-section-label {
+  margin-bottom: 12px;
+}
+
+.create-channel-label-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.create-channel-label-hint {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--gray-400);
+  margin-left: 4px;
+}
+
+.create-channel-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.create-channel-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px 2px 2px;
+  background: #d4eaf5;
+  border-radius: 14px;
+  position: relative;
+}
+
+.create-channel-crown {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  z-index: 1;
+}
+
+.create-channel-chip-avatar {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.create-channel-chip-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2e87bf;
+  white-space: nowrap;
+}
+
+.create-channel-chip-remove {
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 0;
+  transition: all var(--transition-fast);
+}
+
+.create-channel-chip-remove:hover {
+  color: var(--error-color);
+}
+
+.create-channel-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: none;
+  background: transparent;
+  color: #2e87bf;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  border-radius: 14px;
+}
+
+.create-channel-add-btn:hover {
+  background: #d4eaf5;
+}
+
+/* --- Chat Settings kart --- */
+
+.create-channel-card {
+  margin: 0 20px 12px;
+  background: #FCFDFD;
+  border-radius: 8px;
+  border: 1px solid #dde0e6;
+  overflow: hidden;
+}
+
+.create-channel-card.open {
+  background: var(--white);
+}
+
+.create-channel-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 18px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-family: inherit;
+}
+
+.create-channel-card-header:hover {
+  background: var(--gray-50);
+}
+
+.create-channel-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.create-channel-card-title svg {
+  color: var(--gray-400);
+}
+
+.create-channel-chevron {
+  transition: transform var(--transition-base);
+  color: var(--gray-400);
+}
+
+.create-channel-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* --- Settings Body --- */
+
+.create-channel-card-body {
+  padding: 0 18px 18px;
+}
+
+.create-channel-field-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-700);
+  margin-bottom: 10px;
+  margin-top: 2px;
+}
+
+/* --- Radio Options --- */
+
+.create-channel-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.create-channel-radio input[type="radio"] {
+  display: none;
+}
+
+.create-channel-radio-dot {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border: 2px solid var(--gray-300);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  margin-top: 2px;
+}
+
+.create-channel-radio input[type="radio"]:checked + .create-channel-radio-dot {
+  border-color: #2196f3;
+}
+
+.create-channel-radio input[type="radio"]:checked + .create-channel-radio-dot::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2196f3;
+}
+
+.create-channel-radio-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.create-channel-radio-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.create-channel-radio-desc {
+  font-size: 13px;
+  color: var(--gray-400);
+  line-height: 1.4;
+}
+
+/* --- Description textarea --- */
+
+.create-channel-description {
+  width: 100%;
+  border: 1px solid #dde0e6;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--gray-900);
+  outline: none;
+  resize: vertical;
+  min-height: 100px;
+  max-height: 200px;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  font-family: inherit;
+  line-height: 1.5;
+  background: var(--white);
+}
+
+.create-channel-description:focus {
+  border-color: #80d4f0;
+  box-shadow: 0 0 0 2px rgba(47, 198, 246, 0.12);
+}
+
+.create-channel-description::placeholder {
+  color: var(--gray-400);
+}
+
+/* --- Footer --- */
+
+.create-channel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px 28px;
+  background: var(--white);
+  border-top: 1px solid #dde0e6;
+}
+
+.create-channel-submit-btn {
+  padding: 10px 30px;
+  border: 1px solid #a8d41a;
+  border-radius: 4px;
+  background: #BBED21;
+  color: var(--gray-900);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  text-transform: uppercase;
+}
+
+.create-channel-submit-btn:hover:not(:disabled) {
+  background: #aad91e;
+}
+
+.create-channel-submit-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.create-channel-cancel-btn {
+  padding: 10px 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  text-transform: uppercase;
+}
+
+.create-channel-cancel-btn:hover {
+  color: var(--gray-700);
+  background: var(--gray-100);
+}
+
+.create-channel-create-error {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #e74c3c;
+  margin-top: 4px;
+}
+
+/* --- Department chip icon --- */
+
+.create-channel-chip-dept-icon {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2e87bf;
+  color: var(--white);
+}
+
+.create-channel-chip-dept-icon svg {
+  stroke: var(--white);
+}
+
+.create-channel-member-chip.dept {
+  background: #d4eaf5;
+}
+
+/* --- Add Member Search Input --- */
+
+.add-member-search-input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--gray-800);
+  background: transparent;
+  min-width: 120px;
+  flex: 1;
+  padding: 4px 0;
+}
+
+.add-member-search-input::placeholder {
+  color: var(--gray-400);
+}
+
+/* --- Add Member List Panel (normal axında, Chat Settings əvəzinə) --- */
+
+/* Overlay backdrop — tam ekran, yarı-şəffaf, panelin arxasında */
+.add-member-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Floating hierarchy panel — 500×500 */
+.add-member-panel {
+  width: 500px;
+  height: 500px;
+  background: var(--white);
+  border-radius: 10px;
+  border: 1px solid #dde0e6;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.add-member-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.add-member-panel::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 4px;
+}
+
+.add-member-loading,
+.add-member-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 13px;
+}
+
+/* --- Department row --- */
+
+.add-member-dept-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.add-member-dept-row:hover {
+  background: #edf3f8;
+}
+
+.add-member-dept-row.selected {
+  background: #d4eaf5;
+}
+
+.add-member-expand-btn {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  color: var(--gray-500);
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+}
+
+.add-member-expand-btn:hover {
+  background: var(--gray-200);
+}
+
+.add-member-expand-placeholder {
+  width: 20px;
+  min-width: 20px;
+}
+
+.add-member-chevron {
+  transition: transform 0.2s ease;
+}
+
+.add-member-chevron.open {
+  transform: rotate(90deg);
+}
+
+.add-member-dept-icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0ebf3;
+  color: #2e87bf;
+}
+
+.add-member-dept-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.add-member-dept-label {
+  font-size: 11px;
+  color: #2e87bf;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.add-member-dept-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- User row --- */
+
+.add-member-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.add-member-user-row:hover {
+  background: #edf3f8;
+}
+
+.add-member-user-row.selected {
+  background: #d4eaf5;
+}
+
+.add-member-user-avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.add-member-user-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.add-member-user-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-800);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Check icon (selected) --- */
+
+.add-member-check {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* --- Children indent --- */
+
+.add-member-children {
+  /* 8px (dept row padding) + 20px (chevron) + 8px (gap) = 36px
+     Bu indent user avatar-ını department ikonuna hizalayır */
+  padding-left: 28px;
+}
+
+.add-member-company {
+  /* Company wrapper — heç bir stil lazım deyil */
+}
+
+/* ===================================
    RESPONSIVE
    =================================== */
 

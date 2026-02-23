@@ -19,6 +19,7 @@ function ConversationList({
   isLoading,
   userId,
   typingUsers,
+  onCreateChannel,
 }) {
   // Client-side filter — searchText-ə görə söhbət siyahısını filtrə et
   // .filter() — şərtə uyan elementləri qaytarır (like LINQ .Where())
@@ -69,7 +70,7 @@ function ConversationList({
           />
         </div>
         {/* Yeni söhbət düyməsi — Bitrix24 stili */}
-        <button className="header-icon-btn create-btn" title="New chat">
+        <button className="header-icon-btn create-btn" title="New group" onClick={onCreateChannel}>
           <svg
             width="18"
             height="18"

@@ -24,6 +24,7 @@ Identity | Channels | DirectMessages | Files | Notifications | Search | Settings
 - Lazımsız kodları silməyi unutma
 - Həmişə kodları optimizasiya etmək, code refactor etmək və performansı yüksəltmək lazımdır.
 - Yeni bir kod yazmamışdan öncə yazılan arxitekturanı, yanaşmanı təhlil et , daha sonra kod yaz.
+- Kodun strukturu , arxitekturası hansı üsullarla yazılıbsa, o qaydanı pozma!
 
 ## Workflow Orchestration
 

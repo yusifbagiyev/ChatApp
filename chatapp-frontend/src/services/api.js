@@ -6,7 +6,9 @@
 //   - Proactive token refresh timer işləyir
 
 // Backend server URL-i — bütün endpointlərə bu əlavə olunur
-const BASE_URL = "http://localhost:7000";
+// Docker-da: window.__ENV__.API_BASE_URL nginx/docker-entrypoint.sh tərəfindən set olunur
+// Development-də: public/env.js default "http://localhost:7000" istifadə edir
+const BASE_URL = window.__ENV__?.API_BASE_URL || "http://localhost:7000";
 
 // JWT token 30 dəq-ə expire olur.
 // Biz 25 dəq sonra proaktiv refresh edirik ki, istifadəçi "session expired" görməsin.

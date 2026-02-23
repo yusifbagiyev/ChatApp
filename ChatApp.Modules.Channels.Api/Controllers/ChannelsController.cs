@@ -5,6 +5,7 @@ using ChatApp.Modules.Channels.Application.DTOs.Responses;
 using ChatApp.Modules.Channels.Application.Queries.GetChannel;
 using ChatApp.Modules.Channels.Application.Queries.GetPublicChannels;
 using ChatApp.Modules.Channels.Application.Queries.GetUserChannels;
+using ChatApp.Modules.Channels.Application.Queries.CheckChannelName;
 using ChatApp.Modules.Channels.Application.Queries.SearchChannels;
 using ChatApp.Shared.Infrastructure.Authorization;
 using MediatR;
@@ -34,11 +35,11 @@ namespace ChatApp.Modules.Channels.Api.Controllers
 
 
         /// <summary>
-        /// Creates a new channel
+        /// Creates a new channel with optional initial members
         /// </summary>
         [HttpPost]
         [RequirePermission("Channels.Create")]
-        [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -57,10 +58,7 @@ namespace ChatApp.Modules.Channels.Api.Controllers
             if (result.IsFailure)
                 return BadRequest(new { error = result.Error });
 
-            return CreatedAtAction(
-                nameof(GetChannel),
-                new { channelId = result.Value },
-                new { channelId = result.Value, message = "Channel created successfully" });
+            return StatusCode(StatusCodes.Status201Created, result.Value);
         }
 
 
@@ -165,6 +163,33 @@ namespace ChatApp.Modules.Channels.Api.Controllers
 
             var result = await _mediator.Send(
                 new SearchChannelsQuery(query, userId),
+                cancellationToken);
+
+            if (result.IsFailure)
+                return BadRequest(new { error = result.Error });
+
+            return Ok(result.Value);
+        }
+
+
+
+        /// <summary>
+        /// Checks if a channel name is available (valid and unique)
+        /// </summary>
+        [HttpGet("check-name")]
+        [RequirePermission("Channels.Read")]
+        [ProducesResponseType(typeof(CheckChannelNameResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> CheckChannelName(
+            [FromQuery] string name,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return Ok(new CheckChannelNameResult(false, "Channel name cannot be empty"));
+
+            var result = await _mediator.Send(
+                new CheckChannelNameQuery(name),
                 cancellationToken);
 
             if (result.IsFailure)

@@ -46,6 +46,7 @@ import ChatInputArea from "../components/ChatInputArea"; // mesaj yazma sahəsi
 import ChatStatusBar from "../components/ChatStatusBar"; // viewed/typing status bar
 import ReadersPanel from "../components/ReadersPanel"; // oxuyanlar panel
 import SelectToolbar from "../components/SelectToolbar"; // çox mesaj seç toolbar
+import CreateChannelPanel from "../components/CreateChannelPanel"; // channel yaratma paneli
 import PinnedBar, { PinnedExpanded } from "../components/PinnedBar"; // pinlənmiş mesajlar
 
 // Util-lər və sabitlər
@@ -76,6 +77,9 @@ function Chat() {
   // Seçilmiş chat — sağ paneldə açıq olan söhbət
   // null olduqda "Select a chat" boş ekranı görünür
   const [selectedChat, setSelectedChat] = useState(null);
+
+  // Channel yaratma paneli — true olduqda chat-panel-da CreateChannelPanel görsənir
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
 
   // Mesajlar siyahısı — aktiv chatın mesajları
   // Backend DESC qaytarır (yeni → köhnə), biz tersine çeviririk
@@ -348,6 +352,71 @@ function Chat() {
     }
   }
 
+  // handleOpenCreateChannel — pencil button klikləndikdə channel yaratma paneli açılır
+  function handleOpenCreateChannel() {
+    // Draft saxla
+    if (selectedChat) {
+      const currentText = messageText.trim();
+      if (currentText) {
+        draftsRef.current[selectedChat.id] = currentText;
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedChat.id ? { ...c, draft: currentText } : c,
+          ),
+        );
+      }
+      // SignalR qrupundan ayrıl
+      if (selectedChat.type === 0) leaveConversation(selectedChat.id);
+      else if (selectedChat.type === 1) leaveChannel(selectedChat.id);
+    }
+    setSelectedChat(null);
+    setMessages([]);
+    setMessageText("");
+    setShowCreateChannel(true);
+  }
+
+  // handleCancelCreateChannel — panel bağlanır
+  function handleCancelCreateChannel() {
+    setShowCreateChannel(false);
+  }
+
+  // handleChannelCreated — channel uğurla yaradıldıqda çağırılır
+  // channelData: backend-dən qaytarılan channel DTO
+  async function handleChannelCreated(channelData) {
+    // 1. Paneli bağla
+    setShowCreateChannel(false);
+
+    // 2. Channel DTO-nu conversation formatına çevir
+    const newConversation = {
+      id: channelData.id,
+      name: channelData.name,
+      type: channelData.type, // 1 = Channel
+      avatarUrl: channelData.avatarUrl,
+      createdBy: channelData.createdBy,
+      memberCount: channelData.memberCount,
+      isArchived: channelData.isArchived,
+      lastMessage: channelData.lastMessageContent,
+      lastMessageAtUtc: channelData.lastMessageAtUtc,
+      lastMessageSenderId: channelData.lastMessageSenderId,
+      lastMessageSenderFullName: null,
+      lastMessageSenderAvatarUrl: channelData.lastMessageSenderAvatarUrl,
+      lastMessageStatus: channelData.lastMessageStatus,
+      unreadCount: 0,
+      isPinned: false,
+      isMuted: false,
+      isMarkedReadLater: false,
+    };
+
+    // 3. Conversation list-ə əlavə et (duplicate check)
+    setConversations((prev) => {
+      if (prev.some((c) => c.id === channelData.id)) return prev;
+      return [newConversation, ...prev];
+    });
+
+    // 4. Yeni yaradılmış channeli seç
+    handleSelectChat(newConversation);
+  }
+
   // handleSelectChat — istifadəçi sol siyahıdan bir chata klikləyəndə çağırılır
   // chat.type: 0 = DM Conversation, 1 = Channel, 2 = DepartmentUser
   async function handleSelectChat(chat) {
@@ -356,6 +425,9 @@ function Chat() {
       setShouldScrollBottom(true);
       return;
     }
+
+    // CreateChannel paneli açıqdırsa bağla
+    setShowCreateChannel(false);
 
     // Draft saxla — əvvəlki chatın yazısını yadda saxla
     if (selectedChat) {
@@ -1007,6 +1079,7 @@ function Chat() {
           searchText={searchText}
           onSearchChange={setSearchText} // Funksiya prop olaraq ötürülür
           onSelectChat={handleSelectChat}
+          onCreateChannel={handleOpenCreateChannel}
           isLoading={isLoading}
           userId={user.id}
           typingUsers={typingUsers}
@@ -1014,8 +1087,14 @@ function Chat() {
 
         {/* chat-panel — sağ panel, mesajlar */}
         <div className="chat-panel">
-          {/* selectedChat varsa chat göstər, yoxsa empty state */}
-          {selectedChat ? (
+          {/* showCreateChannel → panel, selectedChat → chat, əks halda empty */}
+          {showCreateChannel ? (
+            <CreateChannelPanel
+              onCancel={handleCancelCreateChannel}
+              onChannelCreated={handleChannelCreated}
+              currentUser={user}
+            />
+          ) : selectedChat ? (
             <>
               {/* ChatHeader — chat adı, online status */}
               <ChatHeader

@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace ChatApp.Modules.Identity.Application.DTOs.Responses
 {
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum NodeType
     {
         Department,

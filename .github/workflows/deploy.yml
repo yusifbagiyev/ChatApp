@@ -1,0 +1,42 @@
+name: Build and Deploy ChatApp
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, chatapp]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # .env faylı serverdə əvvəlcədən yaradılıb: /root/ChatApp/.env
+      # GitHub Secrets istifadə etmirik — secret-lər serverdə qalır
+      - name: Copy .env from server
+        run: cp /root/ChatApp/.env .env
+
+      - name: Stop existing containers
+        run: docker compose down --remove-orphans
+        continue-on-error: true
+
+      - name: Build and start containers
+        run: docker compose up --build -d
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to start..."
+          sleep 30
+          docker compose ps
+
+      - name: Verify deployment
+        run: |
+          curl -f http://localhost:7000/api/health || echo "Backend not ready yet"
+          curl -f http://localhost:7000 || echo "Frontend not ready yet"
+
+      - name: Clean up old Docker images
+        run: docker image prune -f
+        if: success()

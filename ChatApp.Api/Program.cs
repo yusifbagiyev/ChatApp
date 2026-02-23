@@ -68,7 +68,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:5300", "https://localhost:5301","null")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:5300", "https://localhost:5301", "http://10.0.1.60:7000", "null")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials(); // Required for SignalR
@@ -331,34 +331,34 @@ using (var scope = app.Services.CreateScope())
 app.UseMiddleware<Globalexceptionhandlermiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 
+// Swagger həmişə aktiv — Docker deployment-da da lazımdır debugging üçün
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ChatApp API v1");
+});
+
+// Docker-da backend HTTP (8080) ilə Nginx arxasında işləyir — HTTPS redirect lazım deyil
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ChatApp API v1");
-    });
+    app.UseHttpsRedirection();
 }
-
-app.UseHttpsRedirection();
 
 // IMPORTANT: CORS must be before routing for SignalR
 app.UseCors("AllowFrontend");
 
 // Configure static files to serve uploaded files from the storage path
 var fileStoragePath = builder.Configuration.GetSection("FileStorage")["LocalPath"] ?? "D:\\ChatAppUploads";
-if (Directory.Exists(fileStoragePath))
+if (!Directory.Exists(fileStoragePath))
 {
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(fileStoragePath),
-        RequestPath = "/uploads"
-    });
+    Directory.CreateDirectory(fileStoragePath);
+    Log.Information("File storage path created: {Path}", fileStoragePath);
 }
-else
+app.UseStaticFiles(new StaticFileOptions
 {
-    Log.Warning($"File storage path does not exist: {fileStoragePath}");
-}
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(fileStoragePath),
+    RequestPath = "/uploads"
+});
 
 app.UseRouting();
 app.UseAuthentication();
@@ -370,6 +370,9 @@ app.MapControllers();
 
 // Map SignalR hub
 app.MapHub<ChatHub>("/hubs/chat");
+
+// Health check endpoint — Docker healthcheck və monitoring üçün
+app.MapGet("/api/health", () => Results.Ok("healthy")).AllowAnonymous();
 
 Log.Information("ChatApp API starting...");
 
