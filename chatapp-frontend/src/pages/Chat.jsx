@@ -387,10 +387,13 @@ function Chat() {
     setShowCreateChannel(false);
 
     // 2. Channel DTO-nu conversation formatına çevir
+    // Backend ChannelType qaytarır (1=Public, 2=Private) — unified type deyil!
+    // Unified type: 0=Conversation, 1=Channel, 2=DepartmentUser
+    // Yaradılan şey həmişə channel-dir → type: 1
     const newConversation = {
       id: channelData.id,
       name: channelData.name,
-      type: channelData.type, // 1 = Channel
+      type: 1, // Unified type: Channel
       avatarUrl: channelData.avatarUrl,
       createdBy: channelData.createdBy,
       memberCount: channelData.memberCount,
