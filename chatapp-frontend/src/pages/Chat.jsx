@@ -215,6 +215,8 @@ function Chat() {
   // shouldScrollBottom true olduqda ən alt mesaja scroll et
   // useLayoutEffect — paint-dən ƏVVƏL işləyir → flash yoxdur
   // useEffect olsaydı: brauzer mesajları yuxarıda çəkib SONRA scroll edərdi (flash)
+  // channelMembers dependency: channel members GECİKMƏLİ yükləndikdə ChatStatusBar
+  // "Viewed by X" render olur → hündürlük artır → scroll yenilənməlidir
   useLayoutEffect(() => {
     if (shouldScrollBottom) {
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
@@ -231,7 +233,7 @@ function Chat() {
         messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
       }
     }
-  }, [messages, shouldScrollBottom, pinnedMessages]);
+  }, [messages, shouldScrollBottom, pinnedMessages, channelMembers]);
 
   // Scroll position restore — yuxarı scroll edib köhnə mesaj yüklənəndə
   // useLayoutEffect — brauzer paint etməzdən əvvəl işlə
