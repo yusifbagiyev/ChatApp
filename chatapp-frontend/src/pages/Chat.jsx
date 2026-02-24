@@ -827,11 +827,45 @@ function Chat() {
     setReplyTo(null); // Reply-ı sıfırla
 
     try {
-      const endpoint = getChatEndpoint(
-        selectedChat.id,
-        selectedChat.type,
-        "/messages",
-      );
+      let chatId = selectedChat.id;
+      let chatType = selectedChat.type;
+
+      // ── DepartmentUser (type=2): əvvəlcə conversation yarat ──
+      // DepartmentUser hələ real conversation deyil — sadəcə eyni departamentdəki istifadəçidir.
+      // İlk mesaj göndərildikdə backend conversation yaradır, biz sonra type-ı 0-a çeviririk.
+      if (chatType === 2) {
+        // POST /api/conversations — { otherUserId } göndər, conversationId qaytarır
+        const result = await apiPost("/api/conversations", {
+          otherUserId: selectedChat.id, // DepartmentUser id = userId
+        });
+
+        // Backend: { conversationId: Guid } qaytarır
+        chatId = result.conversationId;
+        chatType = 0; // Artıq real DM conversation-dır
+
+        // selectedChat-ı yenilə — type 2 → type 0
+        const updatedChat = {
+          ...selectedChat,
+          id: chatId,
+          type: 0,
+          otherUserId: selectedChat.id,
+        };
+        setSelectedChat(updatedChat);
+
+        // Conversation list-dəki DepartmentUser-i real conversation-a çevir
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedChat.id && c.type === 2
+              ? { ...c, id: chatId, type: 0, otherUserId: selectedChat.id }
+              : c,
+          ),
+        );
+
+        // Yeni conversation-ın SignalR qrupuna qoşul
+        joinConversation(chatId);
+      }
+
+      const endpoint = getChatEndpoint(chatId, chatType, "/messages");
       if (!endpoint) return;
 
       // POST /api/conversations/{id}/messages — yeni mesaj göndər
