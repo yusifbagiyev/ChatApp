@@ -1473,18 +1473,24 @@
    CHAT STATUS BAR
    =================================== */
 
+/* Container — messages-area ilə input arasında sabit durur */
+.chat-status-bar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 16px;
+  flex-shrink: 0;
+}
+
 .chat-status-bar {
-  min-height: 28px;
+  min-height: 0;
 }
 
 .chat-status-bar.has-content {
   display: inline-flex;
   align-items: center;
-  align-self: flex-start;
   gap: 6px;
   padding: 4px 12px;
-  margin-top: 8px;
-  margin-bottom: -4px;
   background: #A3BAD4;
   border-radius: 10px;
 }

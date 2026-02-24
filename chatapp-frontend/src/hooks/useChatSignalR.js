@@ -208,6 +208,7 @@ export default function useChatSignalR(
               ...m,
               readByCount: messageReadCounts[m.id],
               readBy: updatedReadBy,
+              status: 3, // Read — tick icon mavi double tick göstərsin
             };
           }
           return m;

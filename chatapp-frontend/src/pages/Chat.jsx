@@ -606,18 +606,23 @@ function Chat() {
         );
         hasMoreDownRef.current = false;
         setShouldScrollBottom(true);
-        // Functional merge — SignalR status yenilikləri qorunur
+        // Functional merge — SignalR status yenilikləri qorunur (DM status + Channel readBy)
         setMessages((prev) => {
-          const prevStatusMap = new Map();
+          const prevMap = new Map();
           for (const m of prev) {
-            if (m.status !== undefined) prevStatusMap.set(m.id, m.status);
+            prevMap.set(m.id, m);
           }
           return data.map((m) => {
-            const prevStatus = prevStatusMap.get(m.id);
-            if (prevStatus !== undefined && prevStatus > m.status) {
-              return { ...m, status: prevStatus, isRead: prevStatus >= 3 };
+            const p = prevMap.get(m.id);
+            if (!p) return m;
+            let merged = m;
+            if (p.status !== undefined && p.status > m.status) {
+              merged = { ...merged, status: p.status, isRead: p.status >= 3 };
             }
-            return m;
+            if (p.readByCount !== undefined && p.readByCount > (m.readByCount || 0)) {
+              merged = { ...merged, readByCount: p.readByCount, readBy: p.readBy };
+            }
+            return merged;
           });
         });
       }
@@ -896,18 +901,26 @@ function Chat() {
       setShouldScrollBottom(true); // Yeni mesajdan sonra aşağıya scroll et
       // Functional merge — SignalR-dan gələn status yenilikləri (Read, Delivered)
       // API data-dan üstün tutulur. Əks halda race condition:
-      // "MessageRead" event status=3 edir, amma apiGet köhnə status=1 gətirir və üzərinə yazır.
+      // DM: "MessageRead" event status=3 edir, amma apiGet köhnə status=1 gətirir və üzərinə yazır.
+      // Channel: "ChannelMessagesRead" event readByCount/readBy edir, apiGet köhnə data gətirir.
       setMessages((prev) => {
-        const prevStatusMap = new Map();
+        const prevMap = new Map();
         for (const m of prev) {
-          if (m.status !== undefined) prevStatusMap.set(m.id, m.status);
+          prevMap.set(m.id, m);
         }
         return data.map((m) => {
-          const prevStatus = prevStatusMap.get(m.id);
-          if (prevStatus !== undefined && prevStatus > m.status) {
-            return { ...m, status: prevStatus, isRead: prevStatus >= 3 };
+          const p = prevMap.get(m.id);
+          if (!p) return m;
+          let merged = m;
+          // DM status qoru (daha yüksək status üstündür)
+          if (p.status !== undefined && p.status > m.status) {
+            merged = { ...merged, status: p.status, isRead: p.status >= 3 };
           }
-          return m;
+          // Channel readByCount/readBy qoru (daha yüksək count üstündür)
+          if (p.readByCount !== undefined && p.readByCount > (m.readByCount || 0)) {
+            merged = { ...merged, readByCount: p.readByCount, readBy: p.readBy };
+          }
+          return merged;
         });
       });
     } catch (err) {
@@ -1243,19 +1256,20 @@ function Chat() {
                     />
                   );
                 })}
-                {/* ChatStatusBar — son mesajdan sonra, scroll ilə birlikdə hərəkət edir */}
-                <ChatStatusBar
-                  selectedChat={selectedChat}
-                  messages={messages}
-                  userId={user.id}
-                  typingUsers={typingUsers}
-                  lastReadTimestamp={lastReadTimestamp}
-                  channelMembers={channelMembers}
-                  onOpenReadersPanel={setReadersPanel}
-                />
                 {/* messagesEndRef — ən alt boş div, scrollIntoView üçün hədəf */}
-                <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} style={{ minHeight: 1, flexShrink: 0 }} />
               </div>
+
+              {/* ChatStatusBar — messages-area ilə input arasında sabit duran bar */}
+              <ChatStatusBar
+                selectedChat={selectedChat}
+                messages={messages}
+                userId={user.id}
+                typingUsers={typingUsers}
+                lastReadTimestamp={lastReadTimestamp}
+                channelMembers={channelMembers}
+                onOpenReadersPanel={setReadersPanel}
+              />
 
               {/* selectMode → SelectToolbar, əks halda ChatInputArea */}
               {selectMode ? (

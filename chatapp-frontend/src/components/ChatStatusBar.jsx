@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 
 // ChatStatusBar — mesaj input sahəsinin üstündə sabit yer tutan status bar
-// Həmişə render olunur (sabit hündürlük), content olduqda dolu, olmadıqda boş
+// İki hissəsi var:
+//   1. Typing (sol) — qarşı tərəf yazarkən "is typing" göstərir
+//   2. Viewed (sağ) — öz mesajımızın oxunma statusunu göstərir
 function ChatStatusBar({
   selectedChat,
   messages,
@@ -18,41 +20,36 @@ function ChatStatusBar({
   const lastMessage = messages.length > 0 ? messages[0] : null;
   const isLastMessageOwn = lastMessage && lastMessage.senderId === userId;
 
-  // Content hesabla — null olarsa boş bar görsənəcək
-  const content = useMemo(() => {
-    // Typing — ən yüksək prioritet
-    const typingValue = typingUsers[selectedChat?.id];
-    if (typingValue) {
-      const typingText =
-        !selectedChat || selectedChat.isNotes || selectedChat.type === 2
-          ? typeof typingValue === "string"
-            ? `${typingValue} is typing`
-            : "is typing"
-          : selectedChat.type === 0
-            ? "is typing"
-            : `${typingValue} is typing`;
+  // ── Typing content (sol tərəf) ──
+  const typingContent = useMemo(() => {
+    if (!selectedChat || selectedChat.isNotes || selectedChat.type === 2) return null;
 
-      return (
-        <>
-          <span className="status-bar-typing-dots">
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-          </span>
-          <span className="status-bar-typing">{typingText}</span>
-        </>
-      );
-    }
+    const typingValue = typingUsers[selectedChat.id];
+    if (!typingValue) return null;
 
-    // Notes / DepartmentUser / chat yoxdursa — boş
-    if (!selectedChat || selectedChat.isNotes || selectedChat.type === 2) {
-      return null;
-    }
+    const typingText =
+      selectedChat.type === 0
+        ? "is typing"
+        : `${typingValue} is typing`;
 
-    // Son mesaj özümünkü deyilsə — boş
+    return (
+      <>
+        <span className="status-bar-typing-dots">
+          <span className="typing-dot" />
+          <span className="typing-dot" />
+          <span className="typing-dot" />
+        </span>
+        <span className="status-bar-typing">{typingText}</span>
+      </>
+    );
+  }, [selectedChat, typingUsers]);
+
+  // ── Viewed content (sağ tərəf) ──
+  const viewedContent = useMemo(() => {
+    if (!selectedChat || selectedChat.isNotes || selectedChat.type === 2) return null;
     if (!lastOwnMessage || !isLastMessageOwn) return null;
 
-    // DM — "Viewed: today, 11:30"
+    // DM — "Viewed: bugün, 15:29"
     if (selectedChat.type === 0) {
       if (lastOwnMessage.status !== 3) return null;
 
@@ -71,7 +68,7 @@ function ChatStatusBar({
       } else if (isYesterday) {
         dateLabel = "yesterday";
       } else {
-        dateLabel = readTime.toLocaleDateString("en-US", {
+        dateLabel = readTime.toLocaleDateString(undefined, {
           month: "short",
           day: "numeric",
         });
@@ -80,6 +77,7 @@ function ChatStatusBar({
       const timeStr = readTime.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
+        hour12: false,
       });
 
       return (
@@ -140,11 +138,21 @@ function ChatStatusBar({
     }
 
     return null;
-  }, [selectedChat, typingUsers, lastOwnMessage, isLastMessageOwn, lastReadTimestamp, channelMembers, onOpenReadersPanel]);
+  }, [selectedChat, lastOwnMessage, isLastMessageOwn, lastReadTimestamp, channelMembers, onOpenReadersPanel]);
+
+  // Heç bir content yoxdursa heç nə render etmə (yer tutmasın)
+  if (!typingContent && !viewedContent) return null;
 
   return (
-    <div className={`chat-status-bar${content ? " has-content" : ""}`}>
-      {content}
+    <div className="chat-status-bar-container">
+      {/* Typing — sol tərəf */}
+      <div className={`chat-status-bar typing${typingContent ? " has-content" : ""}`}>
+        {typingContent}
+      </div>
+      {/* Viewed — sağ tərəf */}
+      <div className={`chat-status-bar viewed${viewedContent ? " has-content" : ""}`}>
+        {viewedContent}
+      </div>
     </div>
   );
 }
