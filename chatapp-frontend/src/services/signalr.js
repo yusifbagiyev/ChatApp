@@ -23,6 +23,9 @@ const HUB_URL = (window.__ENV__?.API_BASE_URL ?? "http://localhost:7000") + "/hu
 let connection = null;
 let connectionPromise = null;
 
+// stopRequested: logout zamanı true olur — onclose handler-da retry olmasın
+let stopRequested = false;
+
 // ─── getSignalRToken ──────────────────────────────────────────────────────────
 // SignalR JWT token alır. SignalR WebSocket-də HTTP cookie işlətmir,
 // ona görə ayrıca JWT token lazımdır.
@@ -49,19 +52,20 @@ export async function startConnection() {
   // Bağlantı hələ qurulur (başqa bir çağırış başlatıb) → eyni promise-i gözlə
   if (connectionPromise) return connectionPromise;
 
+  // Yeni bağlantı başlayır — stopRequested sıfırla
+  stopRequested = false;
+
   // IIFE (Immediately Invoked Async Function): async funksiyonu dərhal çağır
   // Bu pattern race condition-u önləyir — yalnız 1 bağlantı yaranır
   connectionPromise = (async () => {
-    // 1. JWT token al
-    const token = await getSignalRToken();
-
-    // 2. HubConnection obyekti qur
+    // 1. HubConnection obyekti qur
     // HubConnectionBuilder — builder pattern (.NET-də WebApplicationBuilder kimi)
     const conn = new HubConnectionBuilder()
       .withUrl(HUB_URL, {
-        // accessTokenFactory: SignalR hər WebSocket frame-inə token əlavə edir
-        // ?access_token=eyJ... — WebSocket URL-ə əlavə olunur
-        accessTokenFactory: () => token,
+        // accessTokenFactory: Hər reconnect zamanı TƏZƏ token alır.
+        // Köhnə variant: () => token (statik, expire olurdu)
+        // Yeni variant: () => getSignalRToken() (dinamik, hər dəfə fresh token)
+        accessTokenFactory: () => getSignalRToken(),
       })
       // withAutomaticReconnect: şəbəkə kəsildikdə avtomatik yenidən qoşul
       // Array: [0ms, 1s, 2s, 5s, 10s, 30s] — hər cəhd arasındakı gözləmə müddəti
@@ -70,7 +74,7 @@ export async function startConnection() {
       .configureLogging(LogLevel.Warning)
       .build(); // HubConnection obyekti yarat
 
-    // 3. Lifecycle event-ləri qur
+    // 2. Lifecycle event-ləri qur
     // onreconnecting: şəbəkə kəsildikdə — connection null-a set et
     conn.onreconnecting(() => {
       connection = null; // Köhnə reference-i sil
@@ -81,16 +85,26 @@ export async function startConnection() {
       connection = conn;
     });
 
-    // onclose: bağlantı tamamilə bağlandıqda — hər şeyi sıfırla
+    // onclose: bağlantı tamamilə bağlandıqda (bütün reconnect cəhdləri uğursuz)
+    // Əgər logout deyilsə → 5 saniyə sonra sıfırdan yenidən bağlan
     conn.onclose(() => {
       connection = null;
       connectionPromise = null;
+
+      if (!stopRequested) {
+        console.warn("SignalR: connection lost. Retrying in 5s...");
+        setTimeout(() => {
+          startConnection().catch((err) =>
+            console.error("SignalR: reconnect from scratch failed:", err),
+          );
+        }, 5000);
+      }
     });
 
-    // 4. Bağlantını başlat (WebSocket el sıxışması)
+    // 3. Bağlantını başlat (WebSocket el sıxışması)
     await conn.start();
 
-    // 5. Singleton-u set et
+    // 4. Singleton-u set et
     connection = conn;
     connectionPromise = null; // Promise bitdi, növbəti çağırışlar birbaşa connection-u alsın
     return conn;
@@ -102,6 +116,9 @@ export async function startConnection() {
 // ─── stopConnection ───────────────────────────────────────────────────────────
 // Bağlantını dayandırır. Logout zamanı çağırılır.
 export async function stopConnection() {
+  // stopRequested = true → onclose handler retry etməsin
+  stopRequested = true;
+
   // Əgər bağlantı hələ qurulursa — əvvəl gözlə, sonra dayandır
   if (connectionPromise) {
     await connectionPromise;
