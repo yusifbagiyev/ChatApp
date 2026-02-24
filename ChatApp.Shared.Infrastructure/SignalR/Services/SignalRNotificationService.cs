@@ -392,9 +392,12 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
             _logger?.LogDebug("Broadcasting typing indicator to channel {ChannelId} and {MemberCount} members directly",
                 channelId, memberUserIds.Count);
 
-            // 1. Send to channel group (for users actively viewing the channel - real-time, no delay)
+            // Sender-in connection-larını al — group broadcast-dan istisna etmək üçün
+            var senderConnections = await _connectionManager.GetUserConnectionsAsync(typingUserId);
+
+            // 1. Send to channel group EXCLUDING sender (sender öz typing-ini görməsin)
             await _hubContext.Clients
-                .Group($"channel_{channelId}")
+                .GroupExcept($"channel_{channelId}", senderConnections)
                 .SendAsync("UserTypingInChannel", channelId, typingUserId, fullName, isTyping);
 
             // 2. ALSO send directly to each member's connections (for lazy loading support)
@@ -421,9 +424,12 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
             _logger?.LogDebug("Broadcasting typing indicator to conversation {ConversationId} and {MemberCount} members directly",
                 conversationId, memberUserIds.Count);
 
-            // 1. Send to conversation group (for active viewers - real-time)
+            // Sender-in connection-larını al — group broadcast-dan istisna etmək üçün
+            var senderConnections = await _connectionManager.GetUserConnectionsAsync(typingUserId);
+
+            // 1. Send to conversation group EXCLUDING sender (sender öz typing-ini görməsin)
             await _hubContext.Clients
-                .Group($"conversation_{conversationId}")
+                .GroupExcept($"conversation_{conversationId}", senderConnections)
                 .SendAsync("UserTypingInConversation", conversationId, typingUserId, isTyping);
 
             // 2. ALSO send directly to each member's connections (for lazy loading)

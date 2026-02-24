@@ -98,9 +98,9 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
             }
             else
             {
-                // Fallback: If cache is empty, just broadcast to group (backward compatible)
-                // Cache will be populated on next message send or member change
-                await Clients.Group($"channel_{channelId}").SendAsync(
+                // Fallback: If cache is empty, broadcast to group EXCLUDING caller
+                // OthersInGroup — sender-ə göndərmir (sender öz typing-ini görməsin)
+                await Clients.OthersInGroup($"channel_{channelId}").SendAsync(
                     "UserTypingInChannel",
                     channelId,
                     userId,
