@@ -37,6 +37,8 @@ jobs:
           curl -f http://localhost:7000/api/health || echo "Backend not ready yet"
           curl -f http://localhost:7000 || echo "Frontend not ready yet"
 
-      - name: Clean up old Docker images
-        run: docker image prune -f
-        if: success()
+      - name: Clean up old Docker resources
+        run: |
+          docker builder prune -af
+          docker image prune -af
+        if: always()
