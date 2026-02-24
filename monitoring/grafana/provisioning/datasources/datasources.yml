@@ -1,0 +1,20 @@
+# Grafana datasource-lar — avtomatik qoşulur (provisioning)
+# İlk dəfə açılanda manual əlavə etməyə ehtiyac yoxdur
+
+apiVersion: 1
+
+datasources:
+  # Prometheus — CPU, RAM, Disk, Docker metrikləri
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+
+  # Loki — Application logları
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true

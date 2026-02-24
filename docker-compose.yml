@@ -81,6 +81,106 @@ services:
       - backend
     restart: unless-stopped
 
+  # ══════════════════════════════════════════════════════════════
+  # ══ MONITORING STACK ════════════════════════════════════════
+  # ══════════════════════════════════════════════════════════════
+
+  # ── Prometheus — metrik toplama serveri ──
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: chatapp_prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+    networks:
+      - chatapp-net
+    restart: unless-stopped
+
+  # ── Grafana — dashboard UI (http://10.0.1.60:3000) ──
+  grafana:
+    image: grafana/grafana:latest
+    container_name: chatapp_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - chatapp-net
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  # ── Node Exporter — server CPU/RAM/Disk/Network metrikləri ──
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: chatapp_node_exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - chatapp-net
+    restart: unless-stopped
+
+  # ── cAdvisor — Docker container metrikləri (CPU, RAM, restart) ──
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: chatapp_cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    command:
+      - '-port=8081'
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - chatapp-net
+    restart: unless-stopped
+
+  # ── Loki — log aggregation backend ──
+  loki:
+    image: grafana/loki:latest
+    container_name: chatapp_loki
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - chatapp-net
+    restart: unless-stopped
+
+  # ── Promtail — container loglarını Loki-yə göndərən agent ──
+  promtail:
+    image: grafana/promtail:latest
+    container_name: chatapp_promtail
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - chatapp-net
+    depends_on:
+      - loki
+    restart: unless-stopped
+
 networks:
   chatapp-net:
     driver: bridge
@@ -89,3 +189,6 @@ volumes:
   postgres_data:
   redis_data:
   uploads_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
