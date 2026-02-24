@@ -937,8 +937,8 @@ function Chat() {
   // sendTypingSignal — istifadəçi yazarkən SignalR hub-a "typing" siqnalı göndər
   // Debounce pattern: TYPING_DEBOUNCE_MS sonra "stopped typing" göndər
   function sendTypingSignal() {
-    // DepartmentUser (type=2) üçün typing yoxdur
-    if (!selectedChat || selectedChat.type === 2) return;
+    // DepartmentUser (type=2) və Notes üçün typing yoxdur
+    if (!selectedChat || selectedChat.type === 2 || selectedChat.isNotes) return;
     const conn = getConnection();
     if (!conn) return;
 
