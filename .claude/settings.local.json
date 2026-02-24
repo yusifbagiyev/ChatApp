@@ -79,7 +79,8 @@
       "Bash(npm run build:*)",
       "Bash(git branch:*)",
       "Bash(git worktree remove:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git remote:*)"
     ],
     "deny": [],
     "ask": []

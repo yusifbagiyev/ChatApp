@@ -232,13 +232,18 @@ namespace ChatApp.Modules.Identity.Api.Controllers
         /// </summary>
         private void SetSessionCookie(string sessionId, bool rememberMe, TimeSpan refreshTokenLifetime)
         {
-            var isProduction = !_environment.IsDevelopment();
+            // Nginx reverse proxy arxasında HTTP istifadə olunur.
+            // Secure=true yalnız HTTPS ilə işləyir — HTTP-də browser cookie-ni reject edir.
+            // SameSite=Lax kifayətdir çünki frontend və API eyni origin-dədir (Nginx proxy).
+            var isHttps = string.Equals(
+                Request.Headers["X-Forwarded-Proto"].FirstOrDefault(), "https",
+                StringComparison.OrdinalIgnoreCase) || Request.IsHttps;
 
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = isProduction,
-                SameSite = isProduction ? SameSiteMode.None : SameSiteMode.Lax,
+                Secure = isHttps,
+                SameSite = SameSiteMode.Lax,
                 Expires = rememberMe ? DateTimeOffset.UtcNow.Add(refreshTokenLifetime) : null,
                 Path = "/"
             };
@@ -251,13 +256,15 @@ namespace ChatApp.Modules.Identity.Api.Controllers
         /// </summary>
         private void ClearSessionCookie()
         {
-            var isProduction = !_environment.IsDevelopment();
+            var isHttps = string.Equals(
+                Request.Headers["X-Forwarded-Proto"].FirstOrDefault(), "https",
+                StringComparison.OrdinalIgnoreCase) || Request.IsHttps;
 
             Response.Cookies.Delete(SessionCookieName, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = isProduction,
-                SameSite = isProduction ? SameSiteMode.None : SameSiteMode.Lax,
+                Secure = isHttps,
+                SameSite = SameSiteMode.Lax,
                 Path = "/"
             });
         }
