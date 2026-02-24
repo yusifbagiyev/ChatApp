@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # ── ChatApp PostgreSQL (port 5433 — inventory 5432 istifadə edir) ──
@@ -26,6 +26,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: chatapp_redis
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -93,8 +95,8 @@ services:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.retention.time=15d'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
     networks:
       - chatapp-net
     restart: unless-stopped
@@ -127,10 +129,10 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/rootfs'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
     networks:
       - chatapp-net
     restart: unless-stopped
@@ -146,7 +148,7 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     command:
-      - '-port=8081'
+      - "-port=8081"
     privileged: true
     devices:
       - /dev/kmsg
