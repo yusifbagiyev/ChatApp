@@ -53,7 +53,10 @@ function ChatStatusBar({
     if (selectedChat.type === 0) {
       if (lastOwnMessage.status !== 3) return null;
 
-      const readTime = lastReadTimestamp[selectedChat.id];
+      // SignalR event-dən gələn readTime əsasdır.
+      // Yoxdursa (conversation ilk açıldıqda), mesajın createdAtUtc fallback olur.
+      const readTime = lastReadTimestamp[selectedChat.id]
+        || new Date(lastOwnMessage.createdAtUtc);
       if (!readTime) return null;
 
       const now = new Date();

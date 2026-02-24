@@ -107,6 +107,12 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
       // useLayoutEffect (Chat.jsx-də) bu dəyişikliyi görüb scroll-u restore edəcək
     } catch (err) {
       console.error("Failed to load older messages:", err);
+      // "Session expired" → session bitib, daha API call etmə
+      // Bu, 401 infinite retry loop-un qarşısını alır:
+      //   scroll → 401 → refresh fail → throw → catch buraya düşür → hasMore=false → loop bitdi
+      if (err.message === "Session expired") {
+        hasMoreRef.current = false;
+      }
     } finally {
       // Hər halda — yükləmə bitdi
       loadingMoreRef.current = false;
@@ -157,6 +163,10 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
       setMessages((prev) => [...newerMessages.reverse(), ...prev]);
     } catch (err) {
       console.error("Failed to load newer messages:", err);
+      // "Session expired" → daha aşağıya yükləmə cəhd etmə
+      if (err.message === "Session expired") {
+        hasMoreDownRef.current = false;
+      }
     } finally {
       loadingMoreRef.current = false;
     }

@@ -219,6 +219,17 @@ function Chat() {
     if (shouldScrollBottom) {
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
       setShouldScrollBottom(false);
+      return;
+    }
+    // Auto-scroll: istifadəçi artıq aşağıdadırsa və content dəyişibsə
+    // (məs. viewed bar görsəndikdə) avtomatik aşağı düş
+    const area = messagesAreaRef.current;
+    if (area) {
+      const distanceFromBottom =
+        area.scrollHeight - area.scrollTop - area.clientHeight;
+      if (distanceFromBottom < 80) {
+        messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+      }
     }
   }, [messages, shouldScrollBottom, pinnedMessages]);
 
@@ -1256,20 +1267,19 @@ function Chat() {
                     />
                   );
                 })}
+                {/* ChatStatusBar — mesajlarla birlikdə scroll edir */}
+                <ChatStatusBar
+                  selectedChat={selectedChat}
+                  messages={messages}
+                  userId={user.id}
+                  typingUsers={typingUsers}
+                  lastReadTimestamp={lastReadTimestamp}
+                  channelMembers={channelMembers}
+                  onOpenReadersPanel={setReadersPanel}
+                />
                 {/* messagesEndRef — ən alt boş div, scrollIntoView üçün hədəf */}
                 <div ref={messagesEndRef} style={{ minHeight: 1, flexShrink: 0 }} />
               </div>
-
-              {/* ChatStatusBar — messages-area ilə input arasında sabit duran bar */}
-              <ChatStatusBar
-                selectedChat={selectedChat}
-                messages={messages}
-                userId={user.id}
-                typingUsers={typingUsers}
-                lastReadTimestamp={lastReadTimestamp}
-                channelMembers={channelMembers}
-                onOpenReadersPanel={setReadersPanel}
-              />
 
               {/* selectMode → SelectToolbar, əks halda ChatInputArea */}
               {selectMode ? (

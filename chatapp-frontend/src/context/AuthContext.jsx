@@ -14,7 +14,7 @@ import { createContext, useState, useEffect } from "react";
 // api.js-dən HTTP yardımçı funksiyalar
 // scheduleRefresh: token expire olmadan 5 dəq əvvəl refresh edir
 // stopRefreshTimer: logout zamanı timer-i dayandırır
-import { apiGet, apiPost, scheduleRefresh, stopRefreshTimer } from "../services/api";
+import { apiGet, apiPost, scheduleRefresh, stopRefreshTimer, resetSessionExpired } from "../services/api";
 
 // ─── createContext ────────────────────────────────────────────────────────────
 // "Kanal" yaradırıq. Bu kanal vasitəsilə user, login, logout bütün app-a çatır.
@@ -45,6 +45,8 @@ function AuthProvider({ children }) {
   // Uğurludursa → user state-ini doldur
   // Uğursuzdursa → user = null (login lazımdır)
   async function checkAuth() {
+    // Kill switch-i sıfırla — app yenidən açıldığında əvvəlki expired flag qalmasın
+    resetSessionExpired();
     try {
       // GET /api/users/me — cookie avtomatik göndərilir (credentials: include)
       const data = await apiGet("/api/users/me");
@@ -64,6 +66,10 @@ function AuthProvider({ children }) {
   //   2. GET /api/users/me — user məlumatını al
   // Uğursuz olarsa — throw edir, Login.jsx catch edib error göstərir
   async function login(email, password, rememberMe) {
+    // Kill switch-i sıfırla — checkAuth() uğursuz olubsa sessionExpired=true qalıb,
+    // apiPost onu görüb throw edər. Login endpoint-i ƏVVƏL sıfırlanmalıdır.
+    resetSessionExpired();
+
     // BFF pattern: server cookie qaytarır, biz token saxlamırıq (güvənli)
     await apiPost("/api/auth/login", { email, password, rememberMe });
 

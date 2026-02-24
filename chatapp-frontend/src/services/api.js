@@ -10,10 +10,11 @@
 // Development-də: public/env.js default "http://localhost:7000" istifadə edir
 const BASE_URL = window.__ENV__?.API_BASE_URL ?? "http://localhost:7000";
 
-// JWT token 30 dəq-ə expire olur.
-// Biz 25 dəq sonra proaktiv refresh edirik ki, istifadəçi "session expired" görməsin.
-// 25 * 60 * 1000 = 1,500,000 millisaniyə = 25 dəqiqə
-const REFRESH_INTERVAL_MS = 25 * 60 * 1000;
+// JWT access token 15 dəqiqəyə expire olur (appsettings.json: AccessTokenExpirationMinutes=15).
+// Biz 12 dəqiqə sonra proaktiv refresh edirik ki, expire olmadan yeniləsin.
+// 15 dəq - 3 dəq bufer = 12 dəqiqə → token heç vaxt expire olmur (normal şəraitdə).
+// 12 * 60 * 1000 = 720,000 millisaniyə = 12 dəqiqə
+const REFRESH_INTERVAL_MS = 12 * 60 * 1000;
 
 // ─── Module-Level Variables ───────────────────────────────────────────────────
 // Bu dəyişənlər faylın "özəl yaddaşı"dır — class-sız singleton kimi işləyir.
@@ -26,10 +27,19 @@ let refreshPromise = null;
 // refreshTimerId: setTimeout qaytardığı ID — clearTimeout üçün lazımdır
 let refreshTimerId = null;
 
+// sessionExpired: refresh uğursuz olduqda true olur — "kill switch"
+// true olduqda heç bir API call refresh cəhd etmir, dərhal throw edir.
+// Bu, 401 infinite retry loop-un qarşısını alır.
+// .NET ekvivalenti: CancellationToken.IsCancellationRequested
+let sessionExpired = false;
+
 // ─── refreshToken ─────────────────────────────────────────────────────────────
 // Server-dən yeni access token alır (refresh cookie vasitəsilə).
 // "Singleton promise" pattern: eyni anda çoxlu 401 gəlsə, yalnız 1 refresh gedir.
 async function refreshToken() {
+  // Kill switch — artıq session expired olubsa, heç refresh cəhd etmə
+  if (sessionExpired) throw new Error("Session expired");
+
   // Artıq refresh işləyirsə — eyni promise-i qaytar (2 request göndərmə)
   if (refreshPromise) return refreshPromise;
 
@@ -40,9 +50,14 @@ async function refreshToken() {
     credentials: "include",
   })
     .then((res) => {
-      // !res.ok → HTTP 4xx/5xx — refresh uğursuz → throw et
-      if (!res.ok) throw new Error("Refresh failed");
-      scheduleRefresh(); // Uğurlu → növbəti refresh-i planla (25 dəq sonra yenə)
+      // !res.ok → HTTP 4xx/5xx — refresh uğursuz → kill switch aktiv et
+      if (!res.ok) {
+        sessionExpired = true;   // Bütün sonrakı API call-ları dərhal dayandır
+        stopRefreshTimer();      // Proactive timer-i ləğv et — boşuna refresh etməsin
+        throw new Error("Refresh failed");
+      }
+      sessionExpired = false;    // Uğurlu — əvvəlki expired flag-ı sıfırla
+      scheduleRefresh();         // Növbəti refresh-i planla (25 dəq sonra yenə)
       return true;
     })
     .finally(() => {
@@ -82,11 +97,22 @@ function stopRefreshTimer() {
   }
 }
 
+// ─── resetSessionExpired ────────────────────────────────────────────────────────
+// Login uğurlu olduqda çağırılır — kill switch-i sıfırla.
+// Əks halda istifadəçi yenidən login olsa belə, köhnə sessionExpired=true qalardı.
+function resetSessionExpired() {
+  sessionExpired = false;
+}
+
 // ─── apiFetch — Core HTTP Function ───────────────────────────────────────────
 // Bütün API calls buradan keçir. 401 gəldikdə: refresh + retry.
 // endpoint: "/api/users/me" kimi — BASE_URL-ə əlavə olunur
 // options: { method, headers, body } — GET üçün boş, POST/PUT üçün dolu
 async function apiFetch(endpoint, options = {}) {
+  // Kill switch — session artıq expired-dirsə, heç request göndərmə
+  // Bu, infinite loop-un ən sürətli "circuit breaker"-idir
+  if (sessionExpired) throw new Error("Session expired");
+
   // fetch — HTTP sorğu göndər
   // ...options — spread operator: options-ın bütün xassələrini buraya kopyala
   // credentials: "include" — cookie-ni hər request-ə əlavə et (server session üçün)
@@ -166,4 +192,4 @@ function apiDelete(endpoint) {
 }
 
 // Named exports — başqa fayllar bunları import edə bilsin
-export { apiGet, apiPost, apiPut, apiDelete, scheduleRefresh, stopRefreshTimer };
+export { apiGet, apiPost, apiPut, apiDelete, scheduleRefresh, stopRefreshTimer, resetSessionExpired };
