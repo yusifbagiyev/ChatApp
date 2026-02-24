@@ -55,8 +55,31 @@ export default function useChatSignalR(
         return current;
       });
 
-      // Conversation list-dəki son mesajı yenilə
+      // Conversation list-dəki son mesajı yenilə (və ya yeni conversation əlavə et)
       setConversations((prev) => {
+        const exists = prev.some((c) => c.id === message.conversationId);
+
+        // ── Yeni conversation (ilk mesaj) — listdə yoxdur → yarat və başa əlavə et ──
+        if (!exists) {
+          const newConv = {
+            id: message.conversationId,
+            name: message.senderFullName,
+            type: 0, // DM
+            avatarUrl: message.senderAvatarUrl,
+            otherUserId: message.senderId,
+            lastMessage: message.content,
+            lastMessageAtUtc: message.createdAtUtc,
+            lastMessageSenderId: message.senderId,
+            lastMessageSenderFullName: message.senderFullName,
+            lastMessageSenderAvatarUrl: message.senderAvatarUrl,
+            lastMessageStatus: null,
+            unreadCount: isOpenChat ? 0 : 1,
+            _lastProcessedMsgId: message.id,
+          };
+          return [newConv, ...prev];
+        }
+
+        // ── Mövcud conversation — yenilə ──
         const updated = prev.map((c) => {
           if (c.id === message.conversationId) {
             // Duplicate check — hybrid broadcast eyni mesajı 2 dəfə göndərə bilər
