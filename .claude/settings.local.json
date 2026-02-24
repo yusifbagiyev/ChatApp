@@ -81,7 +81,8 @@
       "Bash(git worktree remove:*)",
       "Bash(npm install:*)",
       "Bash(git remote:*)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(ping:*)"
     ],
     "deny": [],
     "ask": []

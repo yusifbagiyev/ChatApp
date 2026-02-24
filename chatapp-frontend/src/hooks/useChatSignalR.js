@@ -338,7 +338,7 @@ export default function useChatSignalR(
         const newConversation = {
           id: channelData.id,
           name: channelData.name,
-          type: channelData.type, // 1 = Channel
+          type: 1, // Unified type: Channel (Backend ChannelType enum-dan fərqli!)
           avatarUrl: channelData.avatarUrl,
           createdBy: channelData.createdBy,
           memberCount: channelData.memberCount,

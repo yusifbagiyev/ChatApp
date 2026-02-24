@@ -14,7 +14,7 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 
 // SignalR hub-ının URL-i — backend-dəki ChatHub endpoint-i
 // Docker-da: window.__ENV__.API_BASE_URL runtime-da set olunur (nginx/docker-entrypoint.sh)
-const HUB_URL = (window.__ENV__?.API_BASE_URL || "http://localhost:7000") + "/hubs/chat";
+const HUB_URL = (window.__ENV__?.API_BASE_URL ?? "http://localhost:7000") + "/hubs/chat";
 
 // ─── Module-Level Singleton ───────────────────────────────────────────────────
 // connection: aktiv SignalR bağlantısı (1 ədəd — singleton pattern)
@@ -28,7 +28,7 @@ let connectionPromise = null;
 // ona görə ayrıca JWT token lazımdır.
 // Server: GET /api/auth/signalr-token → { token: "eyJ..." }
 async function getSignalRToken() {
-  const response = await fetch((window.__ENV__?.API_BASE_URL || "http://localhost:7000") + "/api/auth/signalr-token", {
+  const response = await fetch((window.__ENV__?.API_BASE_URL ?? "http://localhost:7000") + "/api/auth/signalr-token", {
     credentials: "include",   // Session cookie göndər ki, server bizi tanısın
   });
 

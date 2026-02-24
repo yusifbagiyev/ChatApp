@@ -68,7 +68,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:5300", "https://localhost:5301", "http://10.0.1.60:7000", "null")
+        policy.WithOrigins("http://localhost:5173", "http://10.0.1.60:7000", "null")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials(); // Required for SignalR
@@ -111,8 +111,8 @@ builder.Services.AddSettingsInfrastructure(builder.Configuration);
 builder.Services.AddSharedInfrastructure(builder.Configuration);
 
 // Register SignalR services
-builder.Services.AddSingleton<IConnectionManager,ConnectionManager>();
-builder.Services.AddScoped<IPresenceService,PresenceService>();
+builder.Services.AddSingleton<IConnectionManager, ConnectionManager>();
+builder.Services.AddScoped<IPresenceService, PresenceService>();
 builder.Services.AddScoped<ISignalRNotificationService, SignalRNotificationService>();
 builder.Services.AddSingleton<IChannelMemberCache, ChannelMemberCache>();
 
@@ -268,7 +268,7 @@ using (var scope = app.Services.CreateScope())
         // Channels Module
         var channelsContext = services.GetRequiredService<ChannelsDbContext>();
         await channelsContext.Database.MigrateAsync();
-        await ChannelDatabaseSeeder.SeedAsync(channelsContext,logger);
+        await ChannelDatabaseSeeder.SeedAsync(channelsContext, logger);
 
 
         // DirectMessages Module - ADD THESE LINES
@@ -281,18 +281,18 @@ using (var scope = app.Services.CreateScope())
         // Add Files module seeding in database initialization
         var filesContext = services.GetRequiredService<FilesDbContext>();
         await filesContext.Database.MigrateAsync();
-        await FileDatabaseSeeder.SeedAsync(filesContext,logger);
+        await FileDatabaseSeeder.SeedAsync(filesContext, logger);
 
 
         // Notifications Module
         var notificationsContext = services.GetRequiredService<NotificationsDbContext>();
         await notificationsContext.Database.MigrateAsync();
-        await NotificationsDatabaseSeeder.SeedAsync(notificationsContext,logger);
+        await NotificationsDatabaseSeeder.SeedAsync(notificationsContext, logger);
 
         // Settings Module
         var settingsContext = services.GetRequiredService<SettingsDbContext>();
         await settingsContext.Database.MigrateAsync();
-        await UserSettingsDatabaseSeeder.SeedAsync(settingsContext,logger);
+        await UserSettingsDatabaseSeeder.SeedAsync(settingsContext, logger);
 
         logger.LogInformation("Database initialization completed successfully");
 
