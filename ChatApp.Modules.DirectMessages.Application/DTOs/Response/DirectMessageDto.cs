@@ -20,6 +20,7 @@ namespace ChatApp.Modules.DirectMessages.Application.DTOs.Response
         bool IsEdited,
         bool IsDeleted,
         bool IsRead,
+        DateTime? ReadAtUtc,
         bool IsPinned,
         int ReactionCount,
         DateTime CreatedAtUtc,

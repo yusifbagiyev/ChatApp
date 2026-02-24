@@ -82,6 +82,9 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectConversation
                     request.UserId,
                     cancellationToken);
 
+                // Capture read timestamp before bulk update (ExecuteUpdateAsync bypasses entity methods)
+                var readAtUtc = DateTime.UtcNow;
+
                 // Mark all unread messages as read
                 var markedCount = await _unitOfWork.Messages.MarkAllAsReadAsync(
                     request.ConversationId,
@@ -101,7 +104,8 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectConversation
                         message.ConversationId,
                         message.Id,
                         request.UserId,
-                        message.SenderId);
+                        message.SenderId,
+                        readAtUtc);
 
                     // Publish domain event for internal processing
                     await _eventBus.PublishAsync(

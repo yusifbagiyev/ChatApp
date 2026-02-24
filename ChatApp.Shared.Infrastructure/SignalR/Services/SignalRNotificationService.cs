@@ -218,11 +218,11 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
             }
         }
 
-        public async Task NotifyMessageReadAsync(Guid conversationId, Guid messageId, Guid readBy, Guid senderId)
+        public async Task NotifyMessageReadAsync(Guid conversationId, Guid messageId, Guid readBy, Guid senderId, DateTime readAtUtc)
         {
             _logger?.LogDebug("Broadcasting message read for message {MessageId} to sender {SenderId}", messageId, senderId);
 
-            var notification = new { conversationId, messageId, readBy };
+            var notification = new { conversationId, messageId, readBy, readAtUtc };
 
             // Send to conversation group (both users if they're in the group)
             await _hubContext.Clients

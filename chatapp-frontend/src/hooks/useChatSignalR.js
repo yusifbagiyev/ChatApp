@@ -166,19 +166,21 @@ export default function useChatSignalR(
     // status: 3 = Read (MessageStatus enum)
     function handleMessageRead(data) {
       // Mesajlar array-ında status-u yenilə (✓✓ mavi tick üçün)
+      // readAtUtc: server-dən gələn dəqiq oxunma vaxtı
       setMessages((prev) =>
         prev.map((m) => {
           if (m.id === data.messageId) {
-            return { ...m, isRead: true, status: 3 };
+            return { ...m, isRead: true, status: 3, readAtUtc: data.readAtUtc };
           }
           return m;
         }),
       );
 
       // DM status bar üçün oxunma vaxtını capture et
+      // Server-dən gələn readAtUtc istifadə et (client-side new Date() əvəzinə)
       setLastReadTimestamp((prev) => ({
         ...prev,
-        [data.conversationId]: new Date(),
+        [data.conversationId]: new Date(data.readAtUtc),
       }));
 
       // Conversation list-dəki lastMessageStatus-u "Read"-ə yenilə

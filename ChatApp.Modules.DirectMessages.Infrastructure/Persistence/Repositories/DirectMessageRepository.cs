@@ -222,7 +222,8 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                        !m.IsRead &&
                        !m.IsDeleted)
                 .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(m => m.IsRead, true),
+                    .SetProperty(m => m.IsRead, true)
+                    .SetProperty(m => m.ReadAtUtc, DateTime.UtcNow),
                     cancellationToken);
 
             return affectedRows;
@@ -271,6 +272,7 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
             public bool IsEdited { get; init; }
             public bool IsDeleted { get; init; }
             public bool IsRead { get; init; }
+            public DateTime? ReadAtUtc { get; init; }
             public bool IsPinned { get; init; }
             public DateTime CreatedAtUtc { get; init; }
             public DateTime? EditedAtUtc { get; init; }
@@ -322,6 +324,7 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                        IsEdited = message.IsEdited,
                        IsDeleted = message.IsDeleted,
                        IsRead = message.IsRead,
+                       ReadAtUtc = message.ReadAtUtc,
                        IsPinned = message.IsPinned,
                        CreatedAtUtc = message.CreatedAtUtc,
                        EditedAtUtc = message.EditedAtUtc,
@@ -422,6 +425,7 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 r.IsEdited,
                 r.IsDeleted,
                 r.IsRead,
+                r.ReadAtUtc,
                 r.IsPinned,
                 reactionCounts.TryGetValue(r.Id, out var count) ? count : 0, // PERFORMANCE FIX: Use batched count
                 r.CreatedAtUtc,

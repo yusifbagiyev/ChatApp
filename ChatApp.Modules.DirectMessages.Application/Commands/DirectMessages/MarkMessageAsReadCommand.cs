@@ -82,7 +82,8 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
                         message.ConversationId,
                         message.Id,
                         request.UserId,
-                        message.SenderId);
+                        message.SenderId,
+                        message.ReadAtUtc!.Value);
 
 
                     // Publish domain event for internal processing

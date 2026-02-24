@@ -54,9 +54,10 @@ function ChatStatusBar({
       if (lastOwnMessage.status !== 3) return null;
 
       // SignalR event-dən gələn readTime əsasdır.
-      // Yoxdursa (conversation ilk açıldıqda), mesajın createdAtUtc fallback olur.
+      // Yoxdursa (conversation ilk açıldıqda), mesajın readAtUtc (server oxunma vaxtı) fallback olur.
+      // createdAtUtc əvəzinə readAtUtc istifadə edirik — dəqiq oxunma vaxtı.
       const readTime = lastReadTimestamp[selectedChat.id]
-        || new Date(lastOwnMessage.createdAtUtc);
+        || (lastOwnMessage.readAtUtc ? new Date(lastOwnMessage.readAtUtc) : null);
       if (!readTime) return null;
 
       const now = new Date();

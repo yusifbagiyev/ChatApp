@@ -51,6 +51,10 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Configuratio
                 .IsRequired()
                 .HasDefaultValue(false);
 
+            builder.Property(m => m.ReadAtUtc)
+                .HasColumnName("read_at_utc")
+                .HasColumnType("timestamp with time zone");
+
             builder.Property(m => m.EditedAtUtc)
                 .HasColumnName("edited_at_utc")
                 .HasColumnType("timestamp with time zone");

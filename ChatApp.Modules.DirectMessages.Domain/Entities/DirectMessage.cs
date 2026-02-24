@@ -15,6 +15,7 @@ namespace ChatApp.Modules.DirectMessages.Domain.Entities
         public bool IsEdited { get; private set; }
         public bool IsDeleted { get; private set; }
         public bool IsRead { get; private set; }
+        public DateTime? ReadAtUtc { get; private set; }
         public DateTime? EditedAtUtc {  get; private set; }
         public DateTime? DeletedAtUtc { get; private set; }
         public Guid? ReplyToMessageId { get; private set; }
@@ -94,6 +95,7 @@ namespace ChatApp.Modules.DirectMessages.Domain.Entities
             if (!IsRead)
             {
                 IsRead = true;
+                ReadAtUtc = DateTime.UtcNow;
                 UpdatedAtUtc = DateTime.UtcNow;
             }
         }

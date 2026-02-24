@@ -93,6 +93,7 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
                     IsEdited: message.IsEdited,
                     IsDeleted: true, // Mark as deleted
                     IsRead: message.IsRead,
+                    ReadAtUtc: message.ReadAtUtc,
                     IsPinned: message.IsPinned,
                     ReactionCount: 0,
                     CreatedAtUtc: message.CreatedAtUtc,
