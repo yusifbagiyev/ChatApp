@@ -606,7 +606,20 @@ function Chat() {
         );
         hasMoreDownRef.current = false;
         setShouldScrollBottom(true);
-        setMessages(data);
+        // Functional merge — SignalR status yenilikləri qorunur
+        setMessages((prev) => {
+          const prevStatusMap = new Map();
+          for (const m of prev) {
+            if (m.status !== undefined) prevStatusMap.set(m.id, m.status);
+          }
+          return data.map((m) => {
+            const prevStatus = prevStatusMap.get(m.id);
+            if (prevStatus !== undefined && prevStatus > m.status) {
+              return { ...m, status: prevStatus, isRead: prevStatus >= 3 };
+            }
+            return m;
+          });
+        });
       }
     } catch (err) {
       console.error("Failed to forward message:", err);
@@ -881,7 +894,22 @@ function Chat() {
       const data = await apiGet(`${endpoint}?pageSize=${MESSAGE_PAGE_SIZE}`);
       hasMoreDownRef.current = false;
       setShouldScrollBottom(true); // Yeni mesajdan sonra aşağıya scroll et
-      setMessages(data);
+      // Functional merge — SignalR-dan gələn status yenilikləri (Read, Delivered)
+      // API data-dan üstün tutulur. Əks halda race condition:
+      // "MessageRead" event status=3 edir, amma apiGet köhnə status=1 gətirir və üzərinə yazır.
+      setMessages((prev) => {
+        const prevStatusMap = new Map();
+        for (const m of prev) {
+          if (m.status !== undefined) prevStatusMap.set(m.id, m.status);
+        }
+        return data.map((m) => {
+          const prevStatus = prevStatusMap.get(m.id);
+          if (prevStatus !== undefined && prevStatus > m.status) {
+            return { ...m, status: prevStatus, isRead: prevStatus >= 3 };
+          }
+          return m;
+        });
+      });
     } catch (err) {
       console.error("Failed to send message:", err);
     }
