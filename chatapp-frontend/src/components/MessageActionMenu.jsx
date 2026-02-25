@@ -15,6 +15,7 @@ import { memo } from "react";
 //   onForward — Forward seçildi
 //   onPin     — Pin/Unpin seçildi
 //   onFavorite — Add to Favorites seçildi
+//   onMarkLater — Mark to read later seçildi
 //   onSelect  — Select seçildi (çox mesaj seçmə rejiminə gir)
 //   onDelete  — Delete seçildi (yalnız isOwn)
 //   onClose   — menyu bağlandı
@@ -27,6 +28,8 @@ const MessageActionMenu = memo(function MessageActionMenu({
   onForward,
   onPin,
   onFavorite,
+  onMarkLater,
+  readLaterMessageId,
   onSelect,
   onDelete,
   onClose,
@@ -132,6 +135,19 @@ const MessageActionMenu = memo(function MessageActionMenu({
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
             </svg>
           </button>
+
+          {/* Mark to read later — yalnız qarşı tərəfin mesajında + bu mesaj artıq mark olunmayıbsa */}
+          {!isOwn && msg.id !== readLaterMessageId && (
+            <button
+              className="action-menu-item"
+              onClick={() => handleAction(onMarkLater, msg)}
+            >
+              <span>Mark to read later</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+          )}
 
           {/* Select — çox mesaj seçmə rejiminə keç (bu mesajı seçilmiş başlat) */}
           {/* onSelect(msg.id) — ID-ni ötürürük, mesaj obyektini yox */}

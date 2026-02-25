@@ -205,6 +205,14 @@ function ConversationList({
                       {previewPrefix}
                       {previewContent}
                     </span>
+                    {/* Read later icon — mesaj səviyyəsində mark varsa bookmark göstər */}
+                    {c.lastReadLaterMessageId && (
+                      <span className="read-later-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                        </svg>
+                      </span>
+                    )}
                     {c.unreadCount > 0 && (
                       <span className="unread-badge">{c.unreadCount}</span>
                     )}

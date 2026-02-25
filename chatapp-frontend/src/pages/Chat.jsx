@@ -157,6 +157,12 @@ function Chat() {
   // currentPinIndex — PinnedBar-da hazırda göstərilən pin-in indeksi
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
 
+  // readLaterMessageId — "sonra oxu" olaraq işarələnmiş mesajın id-si (separator üçün)
+  const [readLaterMessageId, setReadLaterMessageId] = useState(null);
+
+  // pendingScrollToReadLater — conversation açılanda separator-a scroll etmək lazım olduqda true
+  const pendingScrollToReadLaterRef = useRef(false);
+
   // deleteConfirmOpen — "Delete messages?" modal-ı açıq/bağlı
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
@@ -271,6 +277,20 @@ function Chat() {
         () => target.classList.remove("highlight-message"),
         HIGHLIGHT_DURATION_MS,
       );
+    }
+  }, [messages]);
+
+  // Read later separator-a scroll — conversation açılanda separator mərkəzə gəlsin
+  useLayoutEffect(() => {
+    if (!pendingScrollToReadLaterRef.current) return;
+    pendingScrollToReadLaterRef.current = false;
+
+    const area = messagesAreaRef.current;
+    if (!area) return;
+
+    const separator = area.querySelector(".read-later-separator");
+    if (separator) {
+      separator.scrollIntoView({ behavior: "instant", block: "center" });
     }
   }, [messages]);
 
@@ -500,28 +520,62 @@ function Chat() {
     setEmojiOpen(false);
     setDeleteConfirmOpen(false);
     setReadersPanel(null);
+    setReadLaterMessageId(null); // Əvvəlki chatın read later mark-ını sıfırla
     hasMoreRef.current = true; // Yenidən köhnə mesaj yükləmək mümkündür
     hasMoreDownRef.current = false; // Around mode yox
+
+    // lastReadLaterMessageId varsa — around endpoint ilə yüklə, əks halda normal
+    const hasReadLater = !!chat.lastReadLaterMessageId;
 
     try {
       const msgBase = getChatEndpoint(chat.id, chat.type, "/messages");
       if (!msgBase) return;
-      const msgEndpoint = `${msgBase}?pageSize=${MESSAGE_PAGE_SIZE}`;
       const pinEndpoint = `${msgBase}/pinned`;
 
-      // Promise.all — iki API çağrısını paralel icra et (daha sürətli)
-      // .NET ekvivalenti: await Task.WhenAll(task1, task2)
-      const [msgData, pinData] = await Promise.all([
+      // Read later varsa around endpoint, yoxdursa normal endpoint
+      const msgEndpoint = hasReadLater
+        ? `${msgBase}/around/${chat.lastReadLaterMessageId}`
+        : `${msgBase}?pageSize=${MESSAGE_PAGE_SIZE}`;
+
+      // Promise.all — API çağrılarını paralel icra et
+      const promises = [
         apiGet(msgEndpoint),
-        apiGet(pinEndpoint).catch(() => []), // Pin yükləmə uğursuz olsa boş array
-      ]);
+        apiGet(pinEndpoint).catch(() => []),
+      ];
+
+      // Read later varsa: həm də DELETE read-later çağır (icon-u conversation list-dən sil)
+      if (hasReadLater) {
+        const clearEndpoint = chat.type === 0
+          ? `/api/conversations/${chat.id}/read-later`
+          : `/api/channels/${chat.id}/read-later`;
+        promises.push(apiDelete(clearEndpoint).catch(() => {}));
+      }
+
+      const [msgData, pinData] = await Promise.all(promises);
 
       // Pinlənmiş mesajları DESC sırala
       const sortedPins = (pinData || []).sort(
         (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
       );
       setPinnedMessages(sortedPins);
-      setShouldScrollBottom(true); // Yeni chat seçildikdə ən aşağıya scroll et
+
+      if (hasReadLater) {
+        // Around mode — marked message ətrafında yüklə (highlight yox, unread qalmalıdır)
+        setReadLaterMessageId(chat.lastReadLaterMessageId);
+        hasMoreRef.current = true;
+        hasMoreDownRef.current = true;
+        pendingScrollToReadLaterRef.current = true; // Separator-a scroll et
+        // lastReadLaterMessageId sil ki, növbəti dəfə açanda separator + ikon görünməsin
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === chat.id
+              ? { ...c, lastReadLaterMessageId: null }
+              : c,
+          ),
+        );
+      } else {
+        setShouldScrollBottom(true); // Normal: ən aşağıya scroll et
+      }
       setMessages(msgData);
 
       // Yeni chatın SignalR qrupuna qoşul
@@ -696,6 +750,39 @@ function Chat() {
       }
     },
     [selectedChat],
+  );
+
+  // handleMarkLater — mesajı "sonra oxu" olaraq işarələ / işarəni sil (toggle)
+  // Backend toggle məntiqi: eyni mesaj → sil, fərqli mesaj → köhnəni sil + yenisini qoy
+  const handleMarkLater = useCallback(
+    async (msg) => {
+      if (!selectedChat) return;
+      try {
+        const endpoint = getChatEndpoint(
+          selectedChat.id,
+          selectedChat.type,
+          `/messages/${msg.id}/mark-later/toggle`,
+        );
+        if (!endpoint) return;
+        await apiPost(endpoint);
+
+        // Toggle məntiqi: eyni mesaj seçilibsə → sil, fərqli mesaj → yenilə
+        const isToggleOff = readLaterMessageId === msg.id;
+        setReadLaterMessageId(isToggleOff ? null : msg.id);
+
+        // Conversation list-dəki lastReadLaterMessageId yenilə (mesaj səviyyəsində)
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedChat.id
+              ? { ...c, lastReadLaterMessageId: isToggleOff ? null : msg.id }
+              : c,
+          ),
+        );
+      } catch (err) {
+        console.error("Failed to toggle mark later:", err);
+      }
+    },
+    [selectedChat, readLaterMessageId],
   );
 
   // --- SELECT MODE HANDLER-LƏRI ---
@@ -1065,8 +1152,8 @@ function Chat() {
   // [...messages].reverse() — messages DESC-dir, ASC-ə çevir (köhnə → yeni)
   // .NET: IEnumerable.Where(...).GroupBy(...)
   const grouped = useMemo(
-    () => groupMessagesByDate([...messages].reverse()),
-    [messages],
+    () => groupMessagesByDate([...messages].reverse(), readLaterMessageId),
+    [messages, readLaterMessageId],
   );
 
   // hasOthersSelected — seçilmiş mesajların arasında başqasının mesajı varmı?
@@ -1234,6 +1321,14 @@ function Chat() {
                       </div>
                     );
                   }
+                  if (item.type === "readLater") {
+                    // Read later separator — işarələnmiş mesajdan əvvəl göstərilir
+                    return (
+                      <div key="read-later" className="read-later-separator">
+                        <span>Read later</span>
+                      </div>
+                    );
+                  }
                   const msg = item.data;
                   // isOwn — bu mesaj cari istifadəçinindirsə true
                   const isOwn = msg.senderId === user.id;
@@ -1244,6 +1339,7 @@ function Chat() {
                   const showAvatar =
                     !nextItem ||
                     nextItem.type === "date" ||
+                    nextItem.type === "readLater" ||
                     nextItem.data.senderId !== msg.senderId;
 
                   return (
@@ -1259,6 +1355,8 @@ function Chat() {
                       onForward={handleForwardMsg}
                       onPin={handlePinMessage}
                       onFavorite={handleFavoriteMessage}
+                      onMarkLater={handleMarkLater}
+                      readLaterMessageId={readLaterMessageId}
                       onSelect={handleEnterSelectMode}
                       onToggleSelect={handleToggleSelect}
                       onScrollToMessage={handleScrollToMessage}

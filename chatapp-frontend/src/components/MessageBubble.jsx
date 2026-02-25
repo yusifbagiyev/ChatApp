@@ -38,6 +38,8 @@ const MessageBubble = memo(function MessageBubble({
   onForward,
   onPin,
   onFavorite,
+  onMarkLater,
+  readLaterMessageId,
   onSelect,
   onToggleSelect,
   onScrollToMessage,
@@ -401,6 +403,8 @@ const MessageBubble = memo(function MessageBubble({
                 onForward={onForward}
                 onPin={onPin}
                 onFavorite={onFavorite}
+                onMarkLater={onMarkLater}
+                readLaterMessageId={readLaterMessageId}
                 onSelect={onSelect}
                 onDelete={onDelete}
                 onClose={() => {

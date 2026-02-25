@@ -542,6 +542,23 @@
 }
 
 /* ===================================
+   READ LATER ICON (Conversation List)
+   =================================== */
+
+.read-later-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--unread-badge);
+}
+
+.read-later-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ===================================
    CHAT PANEL — Right Side
    =================================== */
 
@@ -960,6 +977,26 @@
   font-weight: 500;
   padding: 4px 12px;
   border-radius: 12px;
+}
+
+/* ===================================
+   READ LATER SEPARATOR
+   =================================== */
+
+.read-later-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 8px 0;
+  padding: 8px 0;
+  background: rgba(240, 248, 247, 0.6);
+}
+
+.read-later-separator span {
+  color: #000;
+  font-size: 13px;
+  font-weight: 400;
 }
 
 /* ===================================

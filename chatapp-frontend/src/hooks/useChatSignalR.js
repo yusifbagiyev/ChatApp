@@ -379,6 +379,7 @@ export default function useChatSignalR(
           isPinned: channelData.isPinned || false,
           isMuted: channelData.isMuted || false,
           isMarkedReadLater: channelData.isMarkedReadLater || false,
+          lastReadLaterMessageId: channelData.lastReadLaterMessageId || null,
         };
         return [newConversation, ...prev]; // Siyahının başına əlavə et
       });

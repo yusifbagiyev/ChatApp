@@ -151,8 +151,12 @@ export function getLastSeenText(dateString) {
 //
 // Chat.jsx bu array-i .map() ilə render edir:
 //   type === "date" → <div class="date-separator">
+//   type === "readLater" → <div class="read-later-separator">
 //   type === "message" → <MessageBubble />
-export function groupMessagesByDate(msgs) {
+//
+// readLaterMessageId (optional) — "sonra oxu" olaraq işarələnmiş mesajın id-si.
+// Varsa, həmin mesajdan ƏVVƏL "Read later" separator əlavə olunur.
+export function groupMessagesByDate(msgs, readLaterMessageId) {
   const groups = [];
   let currentDate = "";                          // Hal-hazırdakı tarix label-i
 
@@ -169,6 +173,12 @@ export function groupMessagesByDate(msgs) {
       currentDate = msgDate;                     // Cari tarixi yenilə
       groups.push({ type: "date", label: msgDate }); // Separator əlavə et
     }
+
+    // Read later separator — işarələnmiş mesajdan ƏVVƏL göstər
+    if (readLaterMessageId && msg.id === readLaterMessageId) {
+      groups.push({ type: "readLater" });
+    }
+
     groups.push({ type: "message", data: msg }); // Mesajı əlavə et
   }
   return groups;
