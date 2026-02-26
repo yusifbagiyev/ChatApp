@@ -65,6 +65,7 @@ Identity | Channels | DirectMessages | Files | Notifications | Search | Settings
 3. **Document Results**: Add review section to `tasks/todo.md`
 4. **Capture Lessons**: Update `tasks/lessons.md` after corrections
 5. **Dont build**: Əgər sadəcə frontenddə iş görürsənsə, backend proyektini build etmə və ya əksinə.
+6. **Performance**: Kod yazarkən həm mövcud kodun vəziyyətinə bax, həm də yeni implementasiya edəcəyin kodun vəziyyətinə. Hansı üsul daha optimal, daha performans artırıcıdırsa, onu yaz. Lazımsız kodları sil.
 
 ## Core Principles
 

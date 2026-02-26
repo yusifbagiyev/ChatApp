@@ -166,9 +166,6 @@ function Chat() {
   // pendingScrollToReadLater — conversation açılanda separator-a scroll etmək lazım olduqda true
   const pendingScrollToReadLaterRef = useRef(false);
 
-  // pendingUnreadCountRef — around mode-da unreadCount saxla, ən sona çatanda separator hesabla
-  const pendingUnreadCountRef = useRef(0);
-
   // deleteConfirmOpen — "Delete messages?" modal-ı açıq/bağlı
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
@@ -187,16 +184,6 @@ function Chat() {
 
   // --- CUSTOM HOOKS ---
 
-  // handleReachedBottom — around mode-da ən sona çatanda new messages separator hesabla
-  // pendingUnreadCountRef > 0 olduqda: messages[unread-1] = ilk oxunmamış mesaj (DESC)
-  const handleReachedBottom = useCallback(() => {
-    const pending = pendingUnreadCountRef.current;
-    if (pending > 0 && pending <= messages.length) {
-      setNewMessagesStartId(messages[pending - 1].id);
-      pendingUnreadCountRef.current = 0;
-    }
-  }, [messages]);
-
   // useChatScroll — infinite scroll (yuxarı scroll → köhnə mesajlar yüklə)
   // handleScroll — scroll event handler (throttled)
   // hasMoreRef — daha köhnə mesaj varmı? false → daha yükləmə
@@ -209,7 +196,7 @@ function Chat() {
     hasMoreDownRef,
     loadingOlder,
     scrollRestoreRef,
-  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, handleReachedBottom);
+  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages);
 
   // --- EFFECT-LƏR ---
 
@@ -564,14 +551,24 @@ function Chat() {
       ];
 
       // Read later varsa: həm də DELETE read-later çağır (icon-u conversation list-dən sil)
+      // + unread varsa: birinci unread mesajın ID-si üçün ən son mesajları paralel yüklə
       if (hasReadLater) {
         const clearEndpoint = chat.type === 0
           ? `/api/conversations/${chat.id}/messages/read-later`
           : `/api/channels/${chat.id}/read-later`;
         promises.push(apiDelete(clearEndpoint).catch(() => {}));
+
+        const unread = chat.unreadCount || 0;
+        if (unread > 0) {
+          // Ən son unread mesajları yüklə (separator pozisiyası üçün)
+          // Promise.all ilə paralel icra olunur — əlavə gözləmə yoxdur
+          promises.push(
+            apiGet(`${msgBase}?pageSize=${unread}`).catch(() => null),
+          );
+        }
       }
 
-      const [msgData, pinData] = await Promise.all(promises);
+      const [msgData, pinData, , latestForSeparator] = await Promise.all(promises);
 
       // Pinlənmiş mesajları DESC sırala
       const sortedPins = (pinData || []).sort(
@@ -596,22 +593,21 @@ function Chat() {
       } else {
         setShouldScrollBottom(true); // Normal: ən aşağıya scroll et
       }
-      // "New messages" separator — unreadCount əsasında ilk oxunmamış mesajı tap
+      // "New messages" separator — ilk oxunmamış mesajın ID-sini tap
       const unread = chat.unreadCount || 0;
-      if (hasReadLater) {
-        // Around mode — msgData read-later ətrafındadır, son mesajlar deyil
-        // unreadCount-u ref-ə saxla, ən sona scroll etdikdə hesablansın (onReachedBottom)
-        pendingUnreadCountRef.current = unread;
-        setNewMessagesStartId(null);
-      } else {
-        // Normal mode — msgData ən son mesajlardır (DESC)
-        // msgData[unreadCount-1] = ən köhnə oxunmamış = xronoloji birinci unread
-        pendingUnreadCountRef.current = 0;
-        if (unread > 0 && unread <= msgData.length) {
-          setNewMessagesStartId(msgData[unread - 1].id);
+      if (hasReadLater && latestForSeparator) {
+        // Around mode — birinci unread mesajın ID-sini paralel yüklənmiş datadan al
+        // latestForSeparator: DESC (yeni→köhnə), sonuncu element = ən köhnə unread
+        if (latestForSeparator.length >= unread) {
+          setNewMessagesStartId(latestForSeparator[unread - 1].id);
         } else {
           setNewMessagesStartId(null);
         }
+      } else if (!hasReadLater && unread > 0 && unread <= msgData.length) {
+        // Normal mode — msgData ən son mesajlardır (DESC)
+        setNewMessagesStartId(msgData[unread - 1].id);
+      } else {
+        setNewMessagesStartId(null);
       }
 
       // Backend həm normal həm around endpoint-lərdə DESC qaytarır (yeni→köhnə)

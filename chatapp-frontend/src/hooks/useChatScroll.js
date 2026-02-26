@@ -19,9 +19,7 @@ import { getChatEndpoint, MESSAGE_PAGE_SIZE } from "../utils/chatUtils";
 // messages: hal-hazırdakı mesajlar array-ı (ən yeni index 0-da, ən köhnə sonda)
 // selectedChat: hansı chat açıqdır
 // setMessages: messages state-ini yeniləmək üçün
-// onReachedBottom — around mode-da ən son mesajlara çatdıqda callback
-// (new messages separator pozisiyasını hesablamaq üçün)
-export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, onReachedBottom) {
+export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages) {
 
   // ─── useRef-lər ─────────────────────────────────────────────────────────────
   // useRef nədir? DOM referansı ya da "mutable container" üçün.
@@ -165,7 +163,6 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
 
       if (!newerMessages || newerMessages.length === 0) {
         hasMoreDownRef.current = false; // Daha yeni mesaj yoxdur
-        onReachedBottom?.(); // Ən sona çatdı — new messages separator hesablansın
         return;
       }
 
@@ -176,7 +173,6 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
         const unique = newerMessages.filter((m) => !existingIds.has(m.id));
         if (unique.length === 0) {
           hasMoreDownRef.current = false; // Hamısı dublikatdır → daha yeni yoxdur
-          onReachedBottom?.(); // Ən sona çatdı — new messages separator hesablansın
           return prev;
         }
         return [...unique.reverse(), ...prev];
