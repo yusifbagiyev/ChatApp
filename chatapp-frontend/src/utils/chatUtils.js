@@ -6,19 +6,19 @@
 // "export const" — bu sabitlər birbaşa import edilə bilər:
 // import { MESSAGE_PAGE_SIZE } from "../utils/chatUtils"
 
-export const MESSAGE_PAGE_SIZE = 30;          // Hər dəfə neçə mesaj yüklənir
-export const CONVERSATION_PAGE_SIZE = 50;     // Conversation list-i neçəyə qədər yüklənir
-export const HIGHLIGHT_DURATION_MS = 3000;   // Scroll-dan sonra mesajın 3 saniyə vurğulanması
-export const TYPING_DEBOUNCE_MS = 2000;      // Yazmağı dayandırandan 2 saniyə sonra "yazır" biter
-export const MESSAGE_MAX_LENGTH = 4000;      // Mesaj maksimum uzunluğu
-export const BATCH_DELETE_THRESHOLD = 5;     // 5-dən çox mesaj → batch delete API istifadə et
+export const MESSAGE_PAGE_SIZE = 30; // Hər dəfə neçə mesaj yüklənir
+export const CONVERSATION_PAGE_SIZE = 50; // Conversation list-i neçəyə qədər yüklənir
+export const HIGHLIGHT_DURATION_MS = 3000; // Scroll-dan sonra mesajın 3 saniyə vurğulanması
+export const TYPING_DEBOUNCE_MS = 2000; // Yazmağı dayandırandan 2 saniyə sonra "yazır" biter
+export const MESSAGE_MAX_LENGTH = 4000; // Mesaj maksimum uzunluğu
+export const BATCH_DELETE_THRESHOLD = 5; // 5-dən çox mesaj → batch delete API istifadə et
 
 // ─── getChatEndpoint ──────────────────────────────────────────────────────────
 // Chat tipinə görə doğru API URL-i qaytar.
 // type 0 = DM (Direct Message/Conversation), type 1 = Channel
 export function getChatEndpoint(chatId, chatType, path = "") {
   if (chatType === 0) return `/api/conversations/${chatId}${path}`; // DM
-  if (chatType === 1) return `/api/channels/${chatId}${path}`;      // Channel
+  if (chatType === 1) return `/api/channels/${chatId}${path}`; // Channel
   return null; // type 2 (DepartmentUser) — endpoint yoxdur
 }
 
@@ -46,15 +46,15 @@ const avatarColors = [
 // "Ali" → "A"
 // null/undefined → "?"
 export function getInitials(name) {
-  if (!name) return "?";                        // Ad yoxdur → sual işarəsi
-  const parts = name.split(" ");                // "Ali Hasanov" → ["Ali", "Hasanov"]
+  if (!name) return "?"; // Ad yoxdur → sual işarəsi
+  const parts = name.split(" "); // "Ali Hasanov" → ["Ali", "Hasanov"]
   if (parts.length >= 2) {
     // parts[0][0] → "A" (Alinin ilk hərfi)
     // parts[1][0] → "H" (Hasanovun ilk hərfi)
     // .toUpperCase() → böyük hərfə çevir
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
-  return name[0].toUpperCase();                 // Yalnız 1 söz varsa → ilk hərfi qaytar
+  return name[0].toUpperCase(); // Yalnız 1 söz varsa → ilk hərfi qaytar
 }
 
 // ─── getAvatarColor ───────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ export function getInitials(name) {
 //
 // Hash nədir? Bir string-i rəqəmə çevirmək üçün riyazi əməliyyat.
 export function getAvatarColor(name) {
-  if (!name) return avatarColors[0];            // Ad yoxdur → ilk rəng (indigo)
+  if (!name) return avatarColors[0]; // Ad yoxdur → ilk rəng (indigo)
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     // charCodeAt(i): hərfin ASCII kodu (məsələn "A" = 65)
@@ -83,8 +83,8 @@ export function getAvatarColor(name) {
 // .NET-də: DateTime.ToString("HH:mm") kimi amma daha "ağıllı"
 export function formatTime(dateString) {
   if (!dateString) return "";
-  const date = new Date(dateString);             // string-dən Date obyekti
-  const now = new Date();                        // İndiki vaxt
+  const date = new Date(dateString); // string-dən Date obyekti
+  const now = new Date(); // İndiki vaxt
   // Günlər arasındakı fərq: millisaniyəni → günə çevir
   const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
 
@@ -95,7 +95,7 @@ export function formatTime(dateString) {
       minute: "2-digit",
     });
   } else if (diffDays === 1) {
-    return "Yesterday";                          // Dünən
+    return "Yesterday"; // Dünən
   } else if (diffDays < 7) {
     // Bu həftə → qısa gün adı: "Mon", "Tue"...
     return date.toLocaleDateString("en-US", { weekday: "short" });
@@ -126,15 +126,49 @@ export function getLastSeenText(dateString) {
   if (!dateString) return "";
   const date = new Date(dateString);
   const now = new Date();
-  const diffMs = now - date;                              // Millisaniyə fərqi
-  const diffMins = Math.floor(diffMs / 60000);            // Dəqiqə fərqi
-  const diffHours = Math.floor(diffMs / 3600000);         // Saat fərqi
-  const diffDays = Math.floor(diffMs / 86400000);         // Gün fərqi
+  const diffMs = now - date; // Millisaniyə fərqi
+  const diffMins = Math.floor(diffMs / 60000); // Dəqiqə fərqi
+  const diffHours = Math.floor(diffMs / 3600000); // Saat fərqi
+  const diffDays = Math.floor(diffMs / 86400000); // Gün fərqi
 
   if (diffMins < 1) return "Last seen just now";
-  if (diffMins < 60) return `Last seen ${diffMins} min ago`;      // Template literal: ${variable}
-  if (diffHours < 24) return `Last seen ${diffHours} hours ago`;  // .NET-də: $"Last seen {hours} hours ago"
+  if (diffMins < 60) return `Last seen ${diffMins} min ago`; // Template literal: ${variable}
+  if (diffHours < 24) return `Last seen ${diffHours} hours ago`; // .NET-də: $"Last seen {hours} hours ago"
   return `Last seen ${diffDays} days ago`;
+}
+
+// ─── formatDateSeparator ──────────────────────────────────────────────────────
+// Tarix separator-u üçün label formatı:
+//   Bugün      → "Today"
+//   Dünən      → "Yesterday"
+//   Eyni il    → "Monday, December 22"
+//   Fərqli il  → "Monday, November 11, 2024"
+function formatDateSeparator(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  // Gün fərqi — local timezone-da müqayisə
+  const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((today - dateDay) / 86400000);
+
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "yesterday";
+
+  // Fərqli il → "Monday, November 11, 2024"
+  if (date.getFullYear() !== now.getFullYear()) {
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+  // Eyni il → "Monday, December 22"
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 // ─── groupMessagesByDate ──────────────────────────────────────────────────────
@@ -142,9 +176,9 @@ export function getLastSeenText(dateString) {
 //
 // Input: [msg1(today), msg2(today), msg3(yesterday)]
 // Output: [
-//   { type: "date", label: "Friday, February 21, 2026" },
+//   { type: "date", label: "Yesterday" },
 //   { type: "message", data: msg3 },
-//   { type: "date", label: "Saturday, February 22, 2026" },
+//   { type: "date", label: "Today" },
 //   { type: "message", data: msg1 },
 //   { type: "message", data: msg2 },
 // ]
@@ -157,22 +191,25 @@ export function getLastSeenText(dateString) {
 // readLaterMessageId (optional) — "sonra oxu" olaraq işarələnmiş mesajın id-si.
 // newMessagesStartId (optional) — ilk oxunmamış mesajın id-si.
 // Varsa, həmin mesajdan ƏVVƏL müvafiq separator əlavə olunur.
-export function groupMessagesByDate(msgs, readLaterMessageId, newMessagesStartId) {
+export function groupMessagesByDate(
+  msgs,
+  readLaterMessageId,
+  newMessagesStartId,
+) {
   const groups = [];
-  let currentDate = "";                          // Hal-hazırdakı tarix label-i
+  let currentDateKey = ""; // Müqayisə açarı (sabit format)
 
   for (const msg of msgs) {
-    // createdAtUtc-dan tarix label-i əldə et: "Friday, February 21, 2026"
-    const msgDate = new Date(msg.createdAtUtc).toLocaleDateString("en-US", {
-      weekday: "long",   // "Friday"
-      month: "long",     // "February"
-      day: "numeric",    // "21"
-    });
+    // Müqayisə üçün sabit tarix açarı: "2026-02-21"
+    const d = new Date(msg.createdAtUtc);
+    const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
     // Yeni tarix başlayırsa — date separator əlavə et
-    if (msgDate !== currentDate) {
-      currentDate = msgDate;                     // Cari tarixi yenilə
-      groups.push({ type: "date", label: msgDate }); // Separator əlavə et
+    if (dateKey !== currentDateKey) {
+      currentDateKey = dateKey;
+      // Görüntü üçün nisbi format: Today, Yesterday, və ya tam tarix
+      const label = formatDateSeparator(msg.createdAtUtc);
+      groups.push({ type: "date", label });
     }
 
     // Read later separator — işarələnmiş mesajdan ƏVVƏL göstər

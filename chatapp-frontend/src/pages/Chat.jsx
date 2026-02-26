@@ -105,6 +105,9 @@ function Chat() {
   // handleScroll, IntersectionObserver üçün lazımdır
   const messagesAreaRef = useRef(null);
 
+  // floatingDateRef — scroll zamanı cari tarixi göstərən sabit element
+  const floatingDateRef = useRef(null);
+
   // pendingHighlightRef — around endpoint-dən sonra vurğulanacaq mesajın id-si
   // useLayoutEffect-də istifadə olunur
   const pendingHighlightRef = useRef(null);
@@ -177,8 +180,10 @@ function Chat() {
   // pendingScrollToUnread — normal mode-da new messages separator-a scroll etmək üçün
   const pendingScrollToUnreadRef = useRef(false);
 
-  // deleteConfirmOpen — "Delete messages?" modal-ı açıq/bağlı
+  // deleteConfirmOpen — "Delete messages?" modal-ı açıq/bağlı (SelectToolbar — çox mesaj)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  // pendingDeleteMsg — action menu-dan tək mesaj silmə təsdiqləməsi
+  const [pendingDeleteMsg, setPendingDeleteMsg] = useState(null);
 
   // inputRef — textarea element-i (focus vermək üçün)
   const inputRef = useRef(null);
@@ -207,7 +212,7 @@ function Chat() {
     hasMoreDownRef,
     loadingOlder,
     scrollRestoreRef,
-  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef);
+  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef, floatingDateRef);
 
   // --- EFFECT-LƏR ---
 
@@ -1537,6 +1542,9 @@ function Chat() {
                 ref={messagesAreaRef}
                 onScroll={handleScroll} // useChatScroll-dan gəlir
               >
+                {/* Floating date — scroll zamanı cari tarixi yuxarıda göstər */}
+                <div className="floating-date" ref={floatingDateRef} />
+
                 {/* grouped — [{type:"date", label:"..."}, {type:"message", data:{...}}, ...] */}
                 {grouped.map((item, index) => {
                   if (item.type === "date") {
@@ -1595,7 +1603,7 @@ function Chat() {
                       onSelect={handleEnterSelectMode}
                       onToggleSelect={handleToggleSelect}
                       onScrollToMessage={handleScrollToMessage}
-                      onDelete={handleDeleteMessage}
+                      onDelete={setPendingDeleteMsg}
                       onEdit={handleEditMsg}
                       onReaction={handleReaction}
                       onLoadReactionDetails={handleLoadReactionDetails}
@@ -1643,6 +1651,37 @@ function Chat() {
                   onKeyDown={handleKeyDown}
                   onTyping={sendTypingSignal}
                 />
+              )}
+
+              {/* Tək mesaj silmə təsdiqləməsi — action menu-dan Delete basıldıqda */}
+              {pendingDeleteMsg && (
+                <div className="delete-confirm-overlay" onClick={() => setPendingDeleteMsg(null)}>
+                  <div className="delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="delete-confirm-header">
+                      <span>Do you want to delete this message?</span>
+                      <button className="delete-confirm-close" onClick={() => setPendingDeleteMsg(null)}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="delete-confirm-actions">
+                      <button
+                        className="delete-confirm-btn"
+                        onClick={() => {
+                          handleDeleteMessage(pendingDeleteMsg);
+                          setPendingDeleteMsg(null);
+                        }}
+                      >
+                        DELETE
+                      </button>
+                      <button className="delete-cancel-btn" onClick={() => setPendingDeleteMsg(null)}>
+                        CANCEL
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* forwardMessage varsa ForwardPanel-i göstər (modal overlay) */}

@@ -20,7 +20,7 @@ import { getChatEndpoint, MESSAGE_PAGE_SIZE } from "../utils/chatUtils";
 // selectedChat: hansı chat açıqdır
 // setMessages: messages state-ini yeniləmək üçün
 // allReadPatchRef: unreadCount===0 ilə girdikdə true — scroll ilə yüklənən mesajları isRead:true patch et
-export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef) {
+export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef, floatingDateRef) {
 
   // ─── useRef-lər ─────────────────────────────────────────────────────────────
   // useRef nədir? DOM referansı ya da "mutable container" üçün.
@@ -202,6 +202,33 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
     }
   }
 
+  // ─── updateFloatingDate ──────────────────────────────────────────────────────
+  // Scroll zamanı cari bölmənin tarixini floating indicator-da göstər
+  // setState yoxdur — birbaşa DOM manipulation (performans üçün)
+  function updateFloatingDate() {
+    const el = floatingDateRef?.current;
+    if (!el) return;
+    const area = messagesAreaRef.current;
+    if (!area) return;
+
+    const separators = area.querySelectorAll(".date-separator");
+    const areaTop = area.getBoundingClientRect().top;
+    let label = "";
+
+    // Yalnız viewport-dan tam çıxmış separator-un label-ini göstər
+    // bottom <= areaTop → separator (padding daxil) artıq görünmür
+    for (const sep of separators) {
+      if (sep.getBoundingClientRect().bottom <= areaTop) {
+        label = sep.querySelector("span")?.textContent || "";
+      }
+    }
+
+    // Birbaşa DOM yenilə — re-render yoxdur
+    if (el.textContent !== label) {
+      el.textContent = label;
+    }
+  }
+
   // ─── handleScroll ─────────────────────────────────────────────────────────────
   // Hər scroll event-i üçün çağırılan throttled funksiya.
   // requestAnimationFrame (RAF): bir frame-dən çox çağırılmaz (~16ms-də bir = 60fps)
@@ -215,6 +242,7 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
       scrollRafRef.current = null; // Sıfırla — növbəti scroll event-i üçün hazır ol
       handleScrollUp();            // Yuxarı scroll yoxla
       handleScrollDown();          // Aşağı scroll yoxla
+      updateFloatingDate();        // Cari tarix label-ini yenilə
     });
   }
 

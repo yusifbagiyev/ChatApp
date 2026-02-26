@@ -981,6 +981,26 @@
   border-radius: 12px;
 }
 
+/* Scroll zamanı cari tarixi göstərən sabit indicator */
+/* textContent JS-dən doldurulur (useChatScroll) — re-render yoxdur */
+.floating-date {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  align-self: center;
+  background: #7695ba;
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 450;
+  padding: 4px 12px;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.floating-date:empty {
+  display: none;
+}
+
 /* ===================================
    READ LATER SEPARATOR
    =================================== */
@@ -2429,6 +2449,7 @@
 .delete-confirm-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
 }
 
