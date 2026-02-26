@@ -1,5 +1,13 @@
+// useState — komponent daxili state (like C# reactive property)
+// useRef — re-render etmədən dəyər saxlamaq (timer id, DOM referansı)
+// useEffect — side effect (API çağrısı, event listener, cleanup)
+import { useState, useRef, useEffect } from "react";
+
 // Utility funksiyaları import et
 import { getInitials, getAvatarColor, formatTime } from "../utils/chatUtils";
+
+// API servis — backend-ə HTTP GET request göndərmək üçün
+import { apiGet } from "../services/api";
 
 // ConversationList komponenti — sol panel, söhbət siyahısı
 // Props:
@@ -9,6 +17,9 @@ import { getInitials, getAvatarColor, formatTime } from "../utils/chatUtils";
 //   onSearchChange  — axtarış mətn dəyişdikdə çağırılır
 //   onSelectChat    — istifadəçi söhbətə klikləyəndə çağırılır
 //   isLoading       — söhbətlər yüklənirkən true
+//   onSelectSearchUser    — search nəticəsindən user seçildikdə
+//   onSelectSearchChannel — search nəticəsindən channel seçildikdə
+//   onMarkAllAsRead       — bütün oxunmamış mesajları oxunmuş işarələ
 // .NET ekvivalenti: LeftPanel.razor — @foreach söhbət siyahısı
 function ConversationList({
   conversations,
@@ -20,32 +31,263 @@ function ConversationList({
   userId,
   typingUsers,
   onCreateChannel,
+  onSelectSearchUser,
+  onSelectSearchChannel,
+  onMarkAllAsRead,
 }) {
-  // Client-side filter — searchText-ə görə söhbət siyahısını filtrə et
-  // .filter() — şərtə uyan elementləri qaytarır (like LINQ .Where())
-  // toLowerCase() — böyük/kiçik hərf fərqini aradan qaldır (case-insensitive)
+  // --- Search mode state-ləri ---
+  // searchMode — true olduqda conversation siyahısı gizlənir, search nəticələri görünür
+  const [searchMode, setSearchMode] = useState(false);
+  // searchResults — backend-dən gələn nəticələr: { users: [], channels: [] }
+  const [searchResults, setSearchResults] = useState(null);
+  // searchLoading — API çağırılarkən true (loading spinner üçün)
+  const [searchLoading, setSearchLoading] = useState(false);
+  // Debounce timer ref — hər keystroke-da əvvəlki timer-i sıfırlamaq üçün
+  const searchTimerRef = useRef(null);
+
+  // panelRef — conversation-panel DOM referansı (search mode kənar klik bağlama üçün)
+  const panelRef = useRef(null);
+
+  // --- Filter dropdown state ---
+  // filterOpen — filter dropdown açıq/bağlı
+  const [filterOpen, setFilterOpen] = useState(false);
+  // filterRef — dropdown DOM referansı (kənar klik bağlama üçün)
+  const filterRef = useRef(null);
+
+  // --- Debounced search effect ---
+  // searchText dəyişdikdə 300ms gözlə, sonra API çağır
+  // searchMode aktiv olmasa çağırma
+  useEffect(() => {
+    // Search mode deyilsə heç nə etmə
+    if (!searchMode) return;
+
+    // Əvvəlki timer-i ləğv et (debounce)
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+
+    // 2 hərfdən az → nəticələri sıfırla
+    if (searchText.length < 2) {
+      setSearchResults(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    // 300ms debounce — istifadəçi yazmağı dayandırdıqdan sonra API çağır
+    setSearchLoading(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        // Hər iki endpoint-i paralel çağır (users + channels)
+        const [users, channels] = await Promise.all([
+          apiGet(`/api/users/search?q=${encodeURIComponent(searchText)}`),
+          apiGet(`/api/channels/search?query=${encodeURIComponent(searchText)}`),
+        ]);
+        setSearchResults({
+          users: users || [],
+          channels: channels || [],
+        });
+      } catch (err) {
+        console.error("Search failed:", err);
+        setSearchResults({ users: [], channels: [] });
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    // Cleanup — komponent unmount olduqda və ya dependency dəyişdikdə timer-i sil
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [searchText, searchMode]);
+
+  // --- Filter dropdown kənar klik bağlama ---
+  useEffect(() => {
+    if (!filterOpen) return;
+    function handleClickOutside(e) {
+      if (filterRef.current && !filterRef.current.contains(e.target)) {
+        setFilterOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [filterOpen]);
+
+  // --- Search mode kənar klik bağlama ---
+  // Conversation paneldən kənarda (məs. chat panel) klik → search bağla
+  useEffect(() => {
+    if (!searchMode) return;
+    function handleClickOutside(e) {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
+        exitSearchMode();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [searchMode]);
+
+  // handleSearchFocus — search input-a fokus olduqda search mode-a keç
+  function handleSearchFocus() {
+    setSearchMode(true);
+  }
+
+  // handleSearchKeyDown — ESC basıldıqda search mode-dan çıx
+  function handleSearchKeyDown(e) {
+    if (e.key === "Escape") {
+      exitSearchMode();
+    }
+  }
+
+  // exitSearchMode — search mode bağla, input təmizlə
+  function exitSearchMode() {
+    setSearchMode(false);
+    onSearchChange(""); // Input-u təmizlə
+    setSearchResults(null);
+    setSearchLoading(false);
+  }
+
+  // handleSelectUser — search nəticəsindən user-ə klik
+  function handleSelectUser(user) {
+    onSelectSearchUser(user);
+    exitSearchMode();
+  }
+
+  // handleSelectChannel — search nəticəsindən channel-ə klik
+  function handleSelectChannel(channel) {
+    onSelectSearchChannel(channel);
+    exitSearchMode();
+  }
+
+  // Client-side filter — searchMode deyilsə mövcud conversation-ları filtrə et
   const filteredConversations = conversations.filter((c) =>
     c.name.toLowerCase().includes(searchText.toLowerCase()),
   );
 
+  // --- Search nəticələrinin render funksiyası ---
+  function renderSearchResults() {
+    // Yüklənir
+    if (searchLoading) {
+      return <div className="loading-state">Searching...</div>;
+    }
+
+    // Nəticə yoxdur və ya hələ yazmayıb
+    if (!searchResults) {
+      return (
+        <div className="search-no-results">
+          Type at least 2 characters to search
+        </div>
+      );
+    }
+
+    const { users, channels } = searchResults;
+    const hasResults = users.length > 0 || channels.length > 0;
+
+    if (!hasResults) {
+      return <div className="search-no-results">No results found</div>;
+    }
+
+    return (
+      <>
+        {/* Users bölməsi */}
+        {users.length > 0 && (
+          <>
+            <div className="search-section-title">Users</div>
+            {users.map((u) => (
+              <div
+                key={u.id}
+                className="search-result-item"
+                onClick={() => handleSelectUser(u)}
+              >
+                <div
+                  className="search-result-avatar"
+                  style={{ background: getAvatarColor(u.fullName) }}
+                >
+                  {getInitials(u.fullName)}
+                </div>
+                <div className="search-result-info">
+                  <div className="search-result-name">{u.fullName}</div>
+                  {u.position && (
+                    <div className="search-result-detail">{u.position}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Channels bölməsi */}
+        {channels.length > 0 && (
+          <>
+            <div className="search-section-title">Channels</div>
+            {channels.map((ch) => (
+              <div
+                key={ch.id}
+                className="search-result-item"
+                onClick={() => handleSelectChannel(ch)}
+              >
+                <div
+                  className="search-result-avatar"
+                  style={{ background: getAvatarColor(ch.name) }}
+                >
+                  {getInitials(ch.name)}
+                </div>
+                <div className="search-result-info">
+                  <div className="search-result-name">{ch.name}</div>
+                  {ch.memberCount != null && (
+                    <div className="search-result-detail">
+                      {ch.memberCount} members
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </>
+    );
+  }
+
   return (
-    <div className="conversation-panel">
+    <div className="conversation-panel" ref={panelRef}>
       <div className="conversation-panel-header">
-        {/* Panel başlığı — filter ikonu */}
-        <button className="header-icon-btn" title="Filter">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
+        {/* Filter button — dropdown ilə "Mark all as read" */}
+        <div className="filter-dropdown-wrapper" ref={filterRef}>
+          <button
+            className="header-icon-btn"
+            title="Filter"
+            onClick={() => setFilterOpen((prev) => !prev)}
           >
-            <line x1="4" y1="6" x2="20" y2="6" />
-            <line x1="8" y1="12" x2="16" y2="12" />
-            <line x1="11" y1="18" x2="13" y2="18" />
-          </svg>
-        </button>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="8" y1="12" x2="16" y2="12" />
+              <line x1="11" y1="18" x2="13" y2="18" />
+            </svg>
+          </button>
+          {/* Filter dropdown — "Mark all as read" butonu */}
+          {filterOpen && (
+            <div className="filter-dropdown">
+              <button
+                className="filter-dropdown-item"
+                onClick={() => {
+                  onMarkAllAsRead();
+                  setFilterOpen(false);
+                  exitSearchMode();
+                }}
+              >
+                Mark all as read
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="search-wrapper">
           <svg
             className="search-icon"
@@ -60,14 +302,25 @@ function ConversationList({
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           {/* Controlled input — value state-dən gəlir */}
-          {/* onChange — hər dəfə dəyişdikdə parent-ə bildir (setSearchText çağrılır) */}
+          {/* onFocus → search mode başla, onKeyDown → ESC ilə bağla */}
           <input
             type="text"
             placeholder="Find employee or chat"
             className="search-input"
             value={searchText}
             onChange={(e) => onSearchChange(e.target.value)}
+            onFocus={handleSearchFocus}
+            onKeyDown={handleSearchKeyDown}
           />
+          {/* Search mode-da X button göstər — search bağlamaq üçün */}
+          {searchMode && (
+            <button className="search-clear-btn" onClick={exitSearchMode}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
         </div>
         {/* Yeni söhbət düyməsi — Bitrix24 stili */}
         <button className="header-icon-btn create-btn" title="New group" onClick={onCreateChannel}>
@@ -87,10 +340,12 @@ function ConversationList({
         </button>
       </div>
 
-      {/* Söhbət siyahısı */}
+      {/* Söhbət siyahısı / Search nəticələri */}
       <div className="conversation-list">
-        {/* Şərti render — 3 hal: yüklənir / boşdur / siyahı göstər */}
-        {isLoading ? (
+        {/* Search mode aktiv → search nəticələri göstər */}
+        {searchMode ? (
+          renderSearchResults()
+        ) : isLoading ? (
           // Yüklənir...
           <div className="loading-state">Loading...</div>
         ) : filteredConversations.length === 0 ? (

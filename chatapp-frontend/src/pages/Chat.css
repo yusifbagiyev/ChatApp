@@ -232,6 +232,145 @@
   color: var(--gray-400);
 }
 
+/* Search clear button — search mode-da input-un sağında X düyməsi */
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: var(--gray-200);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--gray-500);
+  padding: 0;
+}
+.search-clear-btn:hover {
+  background: var(--gray-300);
+  color: var(--gray-700);
+}
+
+/* ===================================
+   FILTER DROPDOWN
+   =================================== */
+
+/* Filter button wrapper — dropdown-u position etmək üçün relative */
+.filter-dropdown-wrapper {
+  position: relative;
+}
+
+/* Filter dropdown — filter butonunun altında açılır */
+.filter-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  background: var(--white);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  min-width: 180px;
+  padding: 4px;
+  overflow: hidden;
+}
+
+/* Filter dropdown item — hər seçim */
+.filter-dropdown-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--gray-700);
+  white-space: nowrap;
+  font-family: inherit;
+  border-radius: 6px;
+}
+.filter-dropdown-item:hover {
+  background: var(--gray-50);
+}
+
+/* ===================================
+   SEARCH RESULTS
+   =================================== */
+
+/* Bölmə başlığı — "Users", "Channels" */
+.search-section-title {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--gray-400);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Search nəticə item — conversation-item ilə oxşar amma sadə */
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  margin: 0 4px;
+  transition: background var(--transition-base);
+}
+.search-result-item:hover {
+  background: var(--gray-50);
+}
+
+/* Search result avatar — dairəvi avatar */
+.search-result-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Search result info — ad + vəzifə/member sayı */
+.search-result-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.search-result-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-result-detail {
+  font-size: 12px;
+  color: var(--gray-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* No results / minimum karakter mesajı */
+.search-no-results {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--gray-400);
+  font-size: 14px;
+  text-align: center;
+}
+
 /* ===================================
    CONVERSATION LIST
    =================================== */

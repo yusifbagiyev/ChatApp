@@ -48,8 +48,7 @@ namespace ChatApp.Modules.Channels.Application.Queries.SearchChannels
                 var allAccessibleChannels = publicChannels
                     .Union(userChannels)
                     .Where(c => !c.IsArchived)
-                    .Where(c => c.Name.Contains(request.SearchTerm, StringComparison.OrdinalIgnoreCase) ||
-                               (c.Description != null && c.Description.Contains(request.SearchTerm, StringComparison.OrdinalIgnoreCase)))
+                    .Where(c => c.Name.Contains(request.SearchTerm, StringComparison.OrdinalIgnoreCase))
                     .Distinct()
                     .Select(c => new ChannelDto(
                         c.Id,

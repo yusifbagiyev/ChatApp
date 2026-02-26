@@ -488,6 +488,77 @@ function Chat() {
     }
   }
 
+  // handleSelectSearchUser — search nəticəsindən user seçildikdə
+  // Mövcud conversation varsa seç, yoxdursa POST /api/conversations ilə yarat
+  async function handleSelectSearchUser(selectedUser) {
+    // 1. Mövcud conversations-da bu user ilə conversation varmı?
+    const existing = conversations.find((c) => c.otherUserId === selectedUser.id);
+    if (existing) {
+      handleSelectChat(existing);
+      setSearchText("");
+      return;
+    }
+
+    // 2. Yoxdursa — yeni conversation yarat
+    try {
+      const result = await apiPost("/api/conversations", {
+        otherUserId: selectedUser.id,
+      });
+
+      // 3. Conversations siyahısını yenilə
+      await loadConversations();
+
+      // 4. Yeni yaradılmış conversation-ı tap və seç
+      // loadConversations setConversations çağırır, amma biz birbaşa result-dan istifadə edirik
+      const newChat = {
+        id: result.conversationId,
+        name: selectedUser.fullName,
+        type: 0,
+        otherUserId: selectedUser.id,
+        unreadCount: 0,
+        lastMessage: null,
+        lastMessageAtUtc: null,
+      };
+      handleSelectChat(newChat);
+    } catch (err) {
+      console.error("Failed to create conversation:", err);
+    }
+    setSearchText("");
+  }
+
+  // handleSelectSearchChannel — search nəticəsindən channel seçildikdə
+  // Conversations array-da channel-ı tap və seç
+  function handleSelectSearchChannel(channel) {
+    const existing = conversations.find((c) => c.id === channel.id);
+    if (existing) {
+      handleSelectChat(existing);
+    }
+    setSearchText("");
+  }
+
+  // handleMarkAllAsRead — bütün oxunmamış conversation-ların mesajlarını oxunmuş işarələ
+  // Filter button → "Mark all as read" seçildikdə çağırılır
+  async function handleMarkAllAsRead() {
+    // unreadCount > 0 olan conversation-ları tap
+    const unreadConvos = conversations.filter((c) => c.unreadCount > 0);
+    if (unreadConvos.length === 0) return;
+
+    // Hər biri üçün uyğun endpoint çağır (paralel)
+    // type 1 → Channel, type 0 → DM
+    await Promise.all(
+      unreadConvos.map((c) => {
+        if (c.type === 1) {
+          return apiPost(`/api/channels/${c.id}/messages/mark-as-read`).catch(() => {});
+        }
+        // DM (type 0) və Notes
+        return apiPost(`/api/conversations/${c.id}/messages/mark-all-read`).catch(() => {});
+      }),
+    );
+
+    // Conversations siyahısını yenilə (unreadCount → 0)
+    await loadConversations();
+  }
+
   // handleOpenCreateChannel — pencil button klikləndikdə channel yaratma paneli açılır
   function handleOpenCreateChannel() {
     // Draft saxla
@@ -1492,6 +1563,9 @@ function Chat() {
           isLoading={isLoading}
           userId={user.id}
           typingUsers={typingUsers}
+          onSelectSearchUser={handleSelectSearchUser}
+          onSelectSearchChannel={handleSelectSearchChannel}
+          onMarkAllAsRead={handleMarkAllAsRead}
         />
 
         {/* chat-panel — sağ panel, mesajlar */}
