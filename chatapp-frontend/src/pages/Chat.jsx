@@ -160,8 +160,14 @@ function Chat() {
   // readLaterMessageId — "sonra oxu" olaraq işarələnmiş mesajın id-si (separator üçün)
   const [readLaterMessageId, setReadLaterMessageId] = useState(null);
 
+  // newMessagesStartId — conversation açılanda ilk oxunmamış mesajın id-si (separator üçün)
+  const [newMessagesStartId, setNewMessagesStartId] = useState(null);
+
   // pendingScrollToReadLater — conversation açılanda separator-a scroll etmək lazım olduqda true
   const pendingScrollToReadLaterRef = useRef(false);
+
+  // pendingUnreadCountRef — around mode-da unreadCount saxla, ən sona çatanda separator hesabla
+  const pendingUnreadCountRef = useRef(0);
 
   // deleteConfirmOpen — "Delete messages?" modal-ı açıq/bağlı
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -181,6 +187,16 @@ function Chat() {
 
   // --- CUSTOM HOOKS ---
 
+  // handleReachedBottom — around mode-da ən sona çatanda new messages separator hesabla
+  // pendingUnreadCountRef > 0 olduqda: messages[unread-1] = ilk oxunmamış mesaj (DESC)
+  const handleReachedBottom = useCallback(() => {
+    const pending = pendingUnreadCountRef.current;
+    if (pending > 0 && pending <= messages.length) {
+      setNewMessagesStartId(messages[pending - 1].id);
+      pendingUnreadCountRef.current = 0;
+    }
+  }, [messages]);
+
   // useChatScroll — infinite scroll (yuxarı scroll → köhnə mesajlar yüklə)
   // handleScroll — scroll event handler (throttled)
   // hasMoreRef — daha köhnə mesaj varmı? false → daha yükləmə
@@ -193,7 +209,7 @@ function Chat() {
     hasMoreDownRef,
     loadingOlder,
     scrollRestoreRef,
-  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages);
+  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, handleReachedBottom);
 
   // --- EFFECT-LƏR ---
 
@@ -504,12 +520,15 @@ function Chat() {
     setSelectedChat(chat);
     setMessages([]);
     setPinnedMessages([]);
-    // Bu chat-ın unreadCount-unu sıfırla
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === chat.id ? { ...c, unreadCount: 0 } : c,
-      ),
-    );
+    // Around mode-da unreadCount-u saxla — IntersectionObserver azaldacaq
+    // Normal mode-da sıfırla — son mesajlar birbaşa görünür
+    if (!chat.lastReadLaterMessageId) {
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === chat.id ? { ...c, unreadCount: 0 } : c,
+        ),
+      );
+    }
     setPinBarExpanded(false);
     setCurrentPinIndex(0);
     setSelectMode(false);
@@ -521,6 +540,7 @@ function Chat() {
     setDeleteConfirmOpen(false);
     setReadersPanel(null);
     setReadLaterMessageId(null); // Əvvəlki chatın read later mark-ını sıfırla
+    setNewMessagesStartId(null); // Əvvəlki chatın new messages separator-ını sıfırla
     hasMoreRef.current = true; // Yenidən köhnə mesaj yükləmək mümkündür
     hasMoreDownRef.current = false; // Around mode yox
 
@@ -546,7 +566,7 @@ function Chat() {
       // Read later varsa: həm də DELETE read-later çağır (icon-u conversation list-dən sil)
       if (hasReadLater) {
         const clearEndpoint = chat.type === 0
-          ? `/api/conversations/${chat.id}/read-later`
+          ? `/api/conversations/${chat.id}/messages/read-later`
           : `/api/channels/${chat.id}/read-later`;
         promises.push(apiDelete(clearEndpoint).catch(() => {}));
       }
@@ -576,6 +596,25 @@ function Chat() {
       } else {
         setShouldScrollBottom(true); // Normal: ən aşağıya scroll et
       }
+      // "New messages" separator — unreadCount əsasında ilk oxunmamış mesajı tap
+      const unread = chat.unreadCount || 0;
+      if (hasReadLater) {
+        // Around mode — msgData read-later ətrafındadır, son mesajlar deyil
+        // unreadCount-u ref-ə saxla, ən sona scroll etdikdə hesablansın (onReachedBottom)
+        pendingUnreadCountRef.current = unread;
+        setNewMessagesStartId(null);
+      } else {
+        // Normal mode — msgData ən son mesajlardır (DESC)
+        // msgData[unreadCount-1] = ən köhnə oxunmamış = xronoloji birinci unread
+        pendingUnreadCountRef.current = 0;
+        if (unread > 0 && unread <= msgData.length) {
+          setNewMessagesStartId(msgData[unread - 1].id);
+        } else {
+          setNewMessagesStartId(null);
+        }
+      }
+
+      // Backend həm normal həm around endpoint-lərdə DESC qaytarır (yeni→köhnə)
       setMessages(msgData);
 
       // Yeni chatın SignalR qrupuna qoşul
@@ -1127,6 +1166,7 @@ function Chat() {
         // pendingHighlightRef — setMessages-dən SONRA useLayoutEffect işlətmək üçün
         // Mesajlar render olunandan sonra highlight edəcəyik
         pendingHighlightRef.current = messageId;
+        // Backend around endpoint DESC qaytarır — birbaşa set et
         setMessages(data);
       } catch (err) {
         console.error("Failed to load messages around target:", err);
@@ -1152,8 +1192,8 @@ function Chat() {
   // [...messages].reverse() — messages DESC-dir, ASC-ə çevir (köhnə → yeni)
   // .NET: IEnumerable.Where(...).GroupBy(...)
   const grouped = useMemo(
-    () => groupMessagesByDate([...messages].reverse(), readLaterMessageId),
-    [messages, readLaterMessageId],
+    () => groupMessagesByDate([...messages].reverse(), readLaterMessageId, newMessagesStartId),
+    [messages, readLaterMessageId, newMessagesStartId],
   );
 
   // hasOthersSelected — seçilmiş mesajların arasında başqasının mesajı varmı?
@@ -1329,6 +1369,14 @@ function Chat() {
                       </div>
                     );
                   }
+                  if (item.type === "newMessages") {
+                    // New messages separator — ilk oxunmamış mesajdan əvvəl göstərilir
+                    return (
+                      <div key="new-messages" className="new-messages-separator">
+                        <span>New messages</span>
+                      </div>
+                    );
+                  }
                   const msg = item.data;
                   // isOwn — bu mesaj cari istifadəçinindirsə true
                   const isOwn = msg.senderId === user.id;
@@ -1340,6 +1388,7 @@ function Chat() {
                     !nextItem ||
                     nextItem.type === "date" ||
                     nextItem.type === "readLater" ||
+                    nextItem.type === "newMessages" ||
                     nextItem.data.senderId !== msg.senderId;
 
                   return (

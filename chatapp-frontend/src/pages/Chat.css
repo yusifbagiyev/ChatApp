@@ -974,7 +974,7 @@
   background: #7695ba;
   color: var(--white);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 450;
   padding: 4px 12px;
   border-radius: 12px;
 }
@@ -996,7 +996,24 @@
 .read-later-separator span {
   color: #000;
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 450;
+}
+
+/* New messages separator — read-later ilə eyni görünüş */
+.new-messages-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 8px 0;
+  padding: 8px 0;
+  background: rgba(240, 248, 247, 0.6);
+}
+
+.new-messages-separator span {
+  color: #000;
+  font-size: 13px;
+  font-weight: 450;
 }
 
 /* ===================================
@@ -1103,7 +1120,7 @@
   padding: 2px 0 4px;
   color: #39b9d6;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 450;
   font-style: italic;
 }
 
@@ -1445,7 +1462,7 @@
 
 .reaction-badge-count {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 450;
   color: var(--gray-600);
   line-height: 1;
 }
@@ -1503,7 +1520,7 @@
 .reaction-tooltip-name {
   font-size: 13px;
   color: var(--gray-800);
-  font-weight: 500;
+  font-weight: 450;
 }
 
 /* ===================================
@@ -1549,7 +1566,7 @@
 .status-bar-typing {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.85);
-  font-weight: 500;
+  font-weight: 450;
   font-style: italic;
 }
 
@@ -1578,7 +1595,7 @@
   background: none;
   color: rgba(255, 255, 255, 0.9);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 450;
   text-decoration: underline;
   cursor: pointer;
   padding: 0;
@@ -1692,7 +1709,7 @@
 
 .readers-panel-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 450;
   color: var(--gray-800);
 }
 
@@ -2129,7 +2146,7 @@
 
 .forward-item-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 450;
   color: var(--gray-900);
   white-space: nowrap;
   overflow: hidden;
@@ -2178,7 +2195,7 @@
 
 .chat-empty h2 {
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 450;
   color: var(--gray-500);
   margin: 0;
 }
@@ -2281,7 +2298,7 @@
 
 .select-toolbar-count {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 450;
   color: var(--gray-600);
   white-space: nowrap;
 }
@@ -2306,7 +2323,7 @@
   border-radius: 8px;
   border: none;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 450;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -2438,7 +2455,7 @@
   background: transparent;
   color: var(--gray-500);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 450;
   letter-spacing: 0.5px;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -2526,7 +2543,7 @@
   background: transparent;
   padding: 8px 0;
   font-size: 22px;
-  font-weight: 500;
+  font-weight: 450;
   color: var(--gray-900);
   outline: none;
   transition: border-color var(--transition-base);
@@ -2663,7 +2680,7 @@
   background: transparent;
   color: #2e87bf;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 450;
   cursor: pointer;
   transition: all var(--transition-fast);
   font-family: inherit;
@@ -3046,7 +3063,7 @@
 .add-member-dept-label {
   font-size: 11px;
   color: #2e87bf;
-  font-weight: 500;
+  font-weight: 450;
   line-height: 1;
 }
 
@@ -3102,7 +3119,7 @@
 
 .add-member-user-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 450;
   color: var(--gray-800);
   flex: 1;
   min-width: 0;

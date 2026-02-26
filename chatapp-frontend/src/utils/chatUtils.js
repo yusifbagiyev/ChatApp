@@ -155,8 +155,9 @@ export function getLastSeenText(dateString) {
 //   type === "message" → <MessageBubble />
 //
 // readLaterMessageId (optional) — "sonra oxu" olaraq işarələnmiş mesajın id-si.
-// Varsa, həmin mesajdan ƏVVƏL "Read later" separator əlavə olunur.
-export function groupMessagesByDate(msgs, readLaterMessageId) {
+// newMessagesStartId (optional) — ilk oxunmamış mesajın id-si.
+// Varsa, həmin mesajdan ƏVVƏL müvafiq separator əlavə olunur.
+export function groupMessagesByDate(msgs, readLaterMessageId, newMessagesStartId) {
   const groups = [];
   let currentDate = "";                          // Hal-hazırdakı tarix label-i
 
@@ -177,6 +178,11 @@ export function groupMessagesByDate(msgs, readLaterMessageId) {
     // Read later separator — işarələnmiş mesajdan ƏVVƏL göstər
     if (readLaterMessageId && msg.id === readLaterMessageId) {
       groups.push({ type: "readLater" });
+    }
+
+    // New messages separator — ilk oxunmamış mesajdan ƏVVƏL göstər
+    if (newMessagesStartId && msg.id === newMessagesStartId) {
+      groups.push({ type: "newMessages" });
     }
 
     groups.push({ type: "message", data: msg }); // Mesajı əlavə et

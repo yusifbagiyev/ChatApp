@@ -19,7 +19,9 @@ import { getChatEndpoint, MESSAGE_PAGE_SIZE } from "../utils/chatUtils";
 // messages: hal-hazırdakı mesajlar array-ı (ən yeni index 0-da, ən köhnə sonda)
 // selectedChat: hansı chat açıqdır
 // setMessages: messages state-ini yeniləmək üçün
-export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages) {
+// onReachedBottom — around mode-da ən son mesajlara çatdıqda callback
+// (new messages separator pozisiyasını hesablamaq üçün)
+export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, onReachedBottom) {
 
   // ─── useRef-lər ─────────────────────────────────────────────────────────────
   // useRef nədir? DOM referansı ya da "mutable container" üçün.
@@ -101,8 +103,16 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
 
       // Köhnə mesajları messages array-ının SONUNA əlavə et
       // (Yeni mesajlar yuxarıda, köhnə mesajlar aşağıda — desc order)
-      // [...prev, ...olderMessages] — spread operator ilə merge et
-      setMessages((prev) => [...prev, ...olderMessages]);
+      // Deduplication: around mode-da overlap ola bilər, eyni id-li mesajları əlavə etmə
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const unique = olderMessages.filter((m) => !existingIds.has(m.id));
+        if (unique.length === 0) {
+          hasMoreRef.current = false; // Hamısı dublikatdır → daha köhnə yoxdur
+          return prev;
+        }
+        return [...prev, ...unique];
+      });
 
       // useLayoutEffect (Chat.jsx-də) bu dəyişikliyi görüb scroll-u restore edəcək
     } catch (err) {
@@ -155,12 +165,22 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
 
       if (!newerMessages || newerMessages.length === 0) {
         hasMoreDownRef.current = false; // Daha yeni mesaj yoxdur
+        onReachedBottom?.(); // Ən sona çatdı — new messages separator hesablansın
         return;
       }
 
       // .reverse() — server ən köhnəni birinci qaytarır, biz ən yenini birinci istəyirik
-      // [...newerMessages.reverse(), ...prev] — yeni mesajları başa əlavə et
-      setMessages((prev) => [...newerMessages.reverse(), ...prev]);
+      // Deduplication: around mode-da overlap ola bilər, eyni id-li mesajları əlavə etmə
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const unique = newerMessages.filter((m) => !existingIds.has(m.id));
+        if (unique.length === 0) {
+          hasMoreDownRef.current = false; // Hamısı dublikatdır → daha yeni yoxdur
+          onReachedBottom?.(); // Ən sona çatdı — new messages separator hesablansın
+          return prev;
+        }
+        return [...unique.reverse(), ...prev];
+      });
     } catch (err) {
       console.error("Failed to load newer messages:", err);
       // "Session expired" → daha aşağıya yükləmə cəhd etmə

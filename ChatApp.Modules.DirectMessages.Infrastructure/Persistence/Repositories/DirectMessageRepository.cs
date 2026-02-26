@@ -136,9 +136,9 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 .Take(halfCount)
                 .ToListAsync(cancellationToken);
 
-            // 5. Birləşdir və sırala
+            // 5. Birləşdir və DESC sırala (digər endpoint-lərlə konsistent)
             var results = beforeMessages.Concat(afterMessages)
-                .OrderBy(m => m.CreatedAtUtc)
+                .OrderByDescending(m => m.CreatedAtUtc)
                 .ToList();
 
             return await MapResultsAsync(results, sanitizeContent: true, cancellationToken);
