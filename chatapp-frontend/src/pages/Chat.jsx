@@ -112,6 +112,11 @@ function Chat() {
   // highlightTimerRef — highlight setTimeout ID-si (unmount-da təmizləmək üçün)
   const highlightTimerRef = useRef(null);
 
+  // allReadPatchRef — unreadCount===0 ilə girdikdə true olur
+  // useChatScroll-da scroll ilə yüklənən mesajları da isRead:true patch etmək üçün
+  // Backend channel mesajları üçün oxunmuş olsa belə isRead:false qaytarır
+  const allReadPatchRef = useRef(false);
+
   // shouldScrollBottom — yeni mesaj gəldikdə / chat seçildikdə aşağıya scroll et
   const [shouldScrollBottom, setShouldScrollBottom] = useState(false);
 
@@ -166,8 +171,11 @@ function Chat() {
   // newMessagesStartId — conversation açılanda ilk oxunmamış mesajın id-si (separator üçün)
   const [newMessagesStartId, setNewMessagesStartId] = useState(null);
 
-  // pendingScrollToReadLater — conversation açılanda separator-a scroll etmək lazım olduqda true
+  // pendingScrollToReadLater — around mode-da separator-a scroll etmək lazım olduqda true
   const pendingScrollToReadLaterRef = useRef(false);
+
+  // pendingScrollToUnread — normal mode-da new messages separator-a scroll etmək üçün
+  const pendingScrollToUnreadRef = useRef(false);
 
   // deleteConfirmOpen — "Delete messages?" modal-ı açıq/bağlı
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -199,7 +207,7 @@ function Chat() {
     hasMoreDownRef,
     loadingOlder,
     scrollRestoreRef,
-  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages);
+  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef);
 
   // --- EFFECT-LƏR ---
 
@@ -212,6 +220,8 @@ function Chat() {
     return () => {
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      // Gözləyən batch-i göndər + timer təmizlə
+      flushReadBatch();
     };
   }, []);
 
@@ -306,11 +316,59 @@ function Chat() {
     }
   }, [messages]);
 
+  // New messages separator-a scroll — unread mesaj olduqda separator görünsün
+  useLayoutEffect(() => {
+    if (!pendingScrollToUnreadRef.current) return;
+    pendingScrollToUnreadRef.current = false;
+
+    const area = messagesAreaRef.current;
+    if (!area) return;
+
+    const separator = area.querySelector(".new-messages-separator");
+    if (separator) {
+      separator.scrollIntoView({ behavior: "instant", block: "center" });
+    } else {
+      // Separator yoxdursa (bütün mesajlar unread, separator yuxarıda) → ən aşağıya scroll et
+      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+    }
+  }, [messages]);
+
   // IntersectionObserver — görünüş sahəsinə girən oxunmamış mesajları "read" et
   // observerRef — observer instance-ını saxla (yalnız selectedChat dəyişdikdə yenidən yarat)
   // processedMsgIdsRef — artıq "read" edilmiş mesajları izlə (dublikat API call qarşısını al)
   const observerRef = useRef(null);
   const processedMsgIdsRef = useRef(new Set());
+
+  // ─── Batch mark-as-read — mesajları buferdə yığ, debounce ilə göndər ───
+  // 25 individual request əvəzinə 2-3 batch (hər biri ~8-10 paralel request)
+  const readBatchRef = useRef(new Set());       // gözləyən mesaj id-ləri
+  const readBatchTimerRef = useRef(null);        // debounce timer (300ms)
+  const readBatchChatRef = useRef(null);         // { chatId, chatType }
+
+  // flushReadBatch — buferdəki mesajları paralel göndər və sıfırla
+  // Çağırılır: (1) debounce bitəndə, (2) conversation dəyişdikdə, (3) unmount-da
+  function flushReadBatch() {
+    const ids = readBatchRef.current;
+    const chatInfo = readBatchChatRef.current;
+    if (ids.size === 0 || !chatInfo) return;
+
+    const batch = [...ids];
+    readBatchRef.current = new Set();
+    if (readBatchTimerRef.current) {
+      clearTimeout(readBatchTimerRef.current);
+      readBatchTimerRef.current = null;
+    }
+
+    // Bütün mesajları paralel göndər (Promise.all)
+    const { chatId, chatType } = chatInfo;
+    Promise.all(
+      batch.map((msgId) =>
+        chatType === "0"
+          ? apiPost(`/api/conversations/${chatId}/messages/${msgId}/read`)
+          : apiPost(`/api/channels/${chatId}/messages/${msgId}/mark-as-read`),
+      ),
+    ).catch((err) => console.error("Failed to batch mark as read:", err));
+  }
 
   // Effect 1: Observer yaratma/silmə — YALNIZ selectedChat dəyişdikdə
   useEffect(() => {
@@ -335,12 +393,11 @@ function Chat() {
             }
             processedMsgIdsRef.current.add(msgId);
 
-            // Chat tipinə görə doğru "mark as read" API-ni çağır
-            if (convType === "0") {
-              apiPost(`/api/conversations/${convId}/messages/${msgId}/read`);
-            } else if (convType === "1") {
-              apiPost(`/api/channels/${convId}/messages/${msgId}/mark-as-read`);
-            }
+            // Bufferə əlavə et — debounce ilə batch göndəriləcək
+            readBatchRef.current.add(msgId);
+            readBatchChatRef.current = { chatId: convId, chatType: convType };
+            if (readBatchTimerRef.current) clearTimeout(readBatchTimerRef.current);
+            readBatchTimerRef.current = setTimeout(flushReadBatch, 300);
 
             // Conversation list-dəki unreadCount-u azalt
             setConversations((prev) =>
@@ -520,6 +577,12 @@ function Chat() {
       }
     }
 
+    // Əvvəlki chatda yazırdısa, dərhal dayandır
+    stopTypingSignal();
+
+    // Əvvəlki chatın gözləyən mark-as-read mesajlarını göndər
+    flushReadBatch();
+
     // Əvvəlki chatın SignalR qrupundan ayrıl
     if (selectedChat) {
       if (selectedChat.type === 0) {
@@ -537,15 +600,7 @@ function Chat() {
     setSelectedChat(chat);
     setMessages([]);
     setPinnedMessages([]);
-    // Around mode-da unreadCount-u saxla — IntersectionObserver azaldacaq
-    // Normal mode-da sıfırla — son mesajlar birbaşa görünür
-    if (!chat.lastReadLaterMessageId) {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === chat.id ? { ...c, unreadCount: 0 } : c,
-        ),
-      );
-    }
+    // unreadCount dərhal sıfırlanmır — IntersectionObserver mesajlar göründükcə 1-1 azaldır
     setPinBarExpanded(false);
     setCurrentPinIndex(0);
     setSelectMode(false);
@@ -621,7 +676,13 @@ function Chat() {
           ),
         );
       } else {
-        setShouldScrollBottom(true); // Normal: ən aşağıya scroll et
+        const unreadForScroll = chat.unreadCount || 0;
+        if (unreadForScroll > 0) {
+          // Unread mesaj var → separator-a scroll et (aşağıya deyil)
+          pendingScrollToUnreadRef.current = true;
+        } else {
+          setShouldScrollBottom(true); // Unread yoxdur → ən aşağıya scroll et
+        }
       }
       // "New messages" separator — ilk oxunmamış mesajın ID-sini tap
       const unread = chat.unreadCount || 0;
@@ -633,15 +694,26 @@ function Chat() {
         } else {
           setNewMessagesStartId(null);
         }
-      } else if (!hasReadLater && unread > 0 && unread <= msgData.length) {
+      } else if (!hasReadLater && unread > 0 && msgData.length > 0) {
         // Normal mode — msgData ən son mesajlardır (DESC)
-        setNewMessagesStartId(msgData[unread - 1].id);
+        // unread <= msgData.length → separator tam düzgün yerdə
+        // unread > msgData.length → bütün yüklənmiş mesajlar unread → separator ən köhnədə
+        const idx = Math.min(unread, msgData.length) - 1;
+        setNewMessagesStartId(msgData[idx].id);
       } else {
         setNewMessagesStartId(null);
       }
 
-      // Backend həm normal həm around endpoint-lərdə DESC qaytarır (yeni→köhnə)
-      setMessages(msgData);
+      // ─── Mark-as-read strategiya ──────────────────────────────────────────────
+      // unreadCount === 0 → backend hələ isRead:false qaytara bilir (xüsusilə channel-larda)
+      // Bu halda patch et ki, IntersectionObserver lazımsız request göndərməsin
+      // unreadCount > 0 → patch etmə, observer scroll ilə tək-tək mark edəcək (düzgün davranış)
+      allReadPatchRef.current = (!hasReadLater && unread === 0);
+      setMessages(
+        allReadPatchRef.current
+          ? msgData.map((m) => m.isRead ? m : { ...m, isRead: true })
+          : msgData,
+      );
 
       // Yeni chatın SignalR qrupuna qoşul
       if (chat.type === 0) {
@@ -956,6 +1028,8 @@ function Chat() {
     if (!messageText.trim() || !selectedChat) return;
 
     const text = messageText.trim();
+    // Typing siqnalını dərhal dayandır — mesaj göndərilib
+    stopTypingSignal();
     setMessageText(""); // Yazma sahəsini dərhal sıfırla (UI cavabdehliyi)
 
     // Draft sil — mesaj göndərildi
@@ -1112,6 +1186,32 @@ function Chat() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [emojiOpen]);
 
+  // stopTypingSignal — typing siqnalını dərhal dayandır
+  // Mesaj göndəriləndə / conversation dəyişdirildikdə çağırılır
+  function stopTypingSignal() {
+    if (!isTypingRef.current) return; // Artıq yazılmır — heç nə etmə
+    isTypingRef.current = false;
+    // Gözləyən timeout-u sil — artıq lazım deyil
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    // "isTyping: false" siqnalı göndər
+    if (!selectedChat || selectedChat.type === 2 || selectedChat.isNotes) return;
+    const conn = getConnection();
+    if (!conn) return;
+    if (selectedChat.type === 0) {
+      conn.invoke(
+        "TypingInConversation",
+        selectedChat.id,
+        selectedChat.otherUserId,
+        false,
+      );
+    } else if (selectedChat.type === 1) {
+      conn.invoke("TypingInChannel", selectedChat.id, false);
+    }
+  }
+
   // sendTypingSignal — istifadəçi yazarkən SignalR hub-a "typing" siqnalı göndər
   // Debounce pattern: TYPING_DEBOUNCE_MS sonra "stopped typing" göndər
   function sendTypingSignal() {
@@ -1140,19 +1240,9 @@ function Chat() {
       clearTimeout(typingTimeoutRef.current);
     }
 
-    // TYPING_DEBOUNCE_MS ms sonra "isTyping: false" göndər
+    // TYPING_DEBOUNCE_MS ms sonra "stopped typing" göndər
     typingTimeoutRef.current = setTimeout(() => {
-      isTypingRef.current = false;
-      if (selectedChat.type === 0) {
-        conn.invoke(
-          "TypingInConversation",
-          selectedChat.id,
-          selectedChat.otherUserId,
-          false, // isTyping = false
-        );
-      } else if (selectedChat.type === 1) {
-        conn.invoke("TypingInChannel", selectedChat.id, false);
-      }
+      stopTypingSignal();
     }, TYPING_DEBOUNCE_MS);
   }
 

@@ -19,7 +19,8 @@ import { getChatEndpoint, MESSAGE_PAGE_SIZE } from "../utils/chatUtils";
 // messages: hal-hazırdakı mesajlar array-ı (ən yeni index 0-da, ən köhnə sonda)
 // selectedChat: hansı chat açıqdır
 // setMessages: messages state-ini yeniləmək üçün
-export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages) {
+// allReadPatchRef: unreadCount===0 ilə girdikdə true — scroll ilə yüklənən mesajları isRead:true patch et
+export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef) {
 
   // ─── useRef-lər ─────────────────────────────────────────────────────────────
   // useRef nədir? DOM referansı ya da "mutable container" üçün.
@@ -110,7 +111,12 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
           // Scroll yalnız API boş cavab qaytaranda dayanır (length === 0 check).
           return prev;
         }
-        return [...prev, ...unique];
+        // allReadPatchRef true → bütün mesajlar artıq oxunub, isRead:true patch et
+        // Backend channel mesajları üçün oxunmuş olsa belə isRead:false qaytarır
+        const final = allReadPatchRef?.current
+          ? unique.map((m) => m.isRead ? m : { ...m, isRead: true })
+          : unique;
+        return [...prev, ...final];
       });
 
       // useLayoutEffect (Chat.jsx-də) bu dəyişikliyi görüb scroll-u restore edəcək
@@ -178,7 +184,12 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
           // Scroll yalnız API boş cavab qaytaranda dayanır (yuxarıdakı length === 0 check).
           return prev;
         }
-        return [...unique.reverse(), ...prev];
+        // allReadPatchRef true → bütün mesajlar artıq oxunub, isRead:true patch et
+        const reversed = unique.reverse();
+        const final = allReadPatchRef?.current
+          ? reversed.map((m) => m.isRead ? m : { ...m, isRead: true })
+          : reversed;
+        return [...final, ...prev];
       });
     } catch (err) {
       console.error("Failed to load newer messages:", err);
