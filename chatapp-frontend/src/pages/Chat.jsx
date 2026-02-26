@@ -559,6 +559,89 @@ function Chat() {
     await loadConversations();
   }
 
+  // ─── Context menu handler-ləri ─────────────────────────────────────────────
+
+  // handleTogglePin — conversation-ı pin/unpin et
+  async function handleTogglePin(conv) {
+    try {
+      const endpoint = conv.type === 1
+        ? `/api/channels/${conv.id}/toggle-pin`
+        : `/api/conversations/${conv.id}/messages/toggle-pin`;
+      const result = await apiPost(endpoint);
+      setConversations((prev) =>
+        prev.map((c) => c.id === conv.id ? { ...c, isPinned: result.isPinned } : c),
+      );
+    } catch (err) {
+      console.error("Failed to toggle pin:", err);
+    }
+  }
+
+  // handleToggleMute — conversation-ı mute/unmute et
+  async function handleToggleMute(conv) {
+    try {
+      const endpoint = conv.type === 1
+        ? `/api/channels/${conv.id}/toggle-mute`
+        : `/api/conversations/${conv.id}/messages/toggle-mute`;
+      const result = await apiPost(endpoint);
+      setConversations((prev) =>
+        prev.map((c) => c.id === conv.id ? { ...c, isMuted: result.isMuted } : c),
+      );
+    } catch (err) {
+      console.error("Failed to toggle mute:", err);
+    }
+  }
+
+  // handleToggleReadLater — conversation-ı "sonra oxu" işarələ / sil
+  async function handleToggleReadLater(conv) {
+    try {
+      const endpoint = conv.type === 1
+        ? `/api/channels/${conv.id}/toggle-read-later`
+        : `/api/conversations/${conv.id}/messages/toggle-read-later`;
+      const result = await apiPost(endpoint);
+      setConversations((prev) =>
+        prev.map((c) => c.id === conv.id ? { ...c, isMarkedReadLater: result.isMarkedReadLater } : c),
+      );
+    } catch (err) {
+      console.error("Failed to toggle read later:", err);
+    }
+  }
+
+  // handleHideConversation — conversation-ı siyahıdan gizlə
+  async function handleHideConversation(conv) {
+    try {
+      const endpoint = conv.type === 1
+        ? `/api/channels/${conv.id}/hide`
+        : `/api/conversations/${conv.id}/messages/hide`;
+      await apiPost(endpoint);
+      // Siyahıdan sil
+      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      // Gizlədilən chat hazırda seçilmişdirsə → seçimi sıfırla
+      if (selectedChat && selectedChat.id === conv.id) {
+        setSelectedChat(null);
+        setMessages([]);
+      }
+    } catch (err) {
+      console.error("Failed to hide conversation:", err);
+    }
+  }
+
+  // handleLeaveChannel — channel-dan ayrıl
+  async function handleLeaveChannel(conv) {
+    try {
+      await apiPost(`/api/channels/${conv.id}/members/leave`);
+      // Siyahıdan sil
+      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      // Channel hazırda seçilmişdirsə → seçimi sıfırla
+      if (selectedChat && selectedChat.id === conv.id) {
+        leaveChannel(conv.id);
+        setSelectedChat(null);
+        setMessages([]);
+      }
+    } catch (err) {
+      console.error("Failed to leave channel:", err);
+    }
+  }
+
   // handleOpenCreateChannel — pencil button klikləndikdə channel yaratma paneli açılır
   function handleOpenCreateChannel() {
     // Draft saxla
@@ -1566,6 +1649,11 @@ function Chat() {
           onSelectSearchUser={handleSelectSearchUser}
           onSelectSearchChannel={handleSelectSearchChannel}
           onMarkAllAsRead={handleMarkAllAsRead}
+          onTogglePin={handleTogglePin}
+          onToggleMute={handleToggleMute}
+          onToggleReadLater={handleToggleReadLater}
+          onHide={handleHideConversation}
+          onLeaveChannel={handleLeaveChannel}
         />
 
         {/* chat-panel — sağ panel, mesajlar */}

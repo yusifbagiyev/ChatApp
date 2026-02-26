@@ -34,6 +34,11 @@ function ConversationList({
   onSelectSearchUser,
   onSelectSearchChannel,
   onMarkAllAsRead,
+  onTogglePin,
+  onToggleMute,
+  onToggleReadLater,
+  onHide,
+  onLeaveChannel,
 }) {
   // --- Search mode state-ləri ---
   // searchMode — true olduqda conversation siyahısı gizlənir, search nəticələri görünür
@@ -47,6 +52,11 @@ function ConversationList({
 
   // panelRef — conversation-panel DOM referansı (search mode kənar klik bağlama üçün)
   const panelRef = useRef(null);
+
+  // --- Context menu state ---
+  // contextMenu — sağ klik ilə açılan menu: { conv, x, y } və ya null
+  const [contextMenu, setContextMenu] = useState(null);
+  const contextMenuRef = useRef(null);
 
   // --- Filter dropdown state ---
   // filterOpen — filter dropdown açıq/bağlı
@@ -113,6 +123,32 @@ function ConversationList({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [filterOpen]);
+
+  // --- Context menu kənar klik bağlama ---
+  useEffect(() => {
+    if (!contextMenu) return;
+    function handleClickOutside(e) {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
+        setContextMenu(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [contextMenu]);
+
+  // handleContextMenu — conversation item üzərində sağ klik
+  function handleContextMenu(e, conv) {
+    e.preventDefault(); // Brauzer default context menu-nu ləğv et
+    setContextMenu({ conv, x: e.clientX, y: e.clientY });
+  }
+
+  // Context menu action handler — action çağır, menu bağla
+  function handleContextAction(action) {
+    const conv = contextMenu?.conv;
+    if (!conv) return;
+    setContextMenu(null);
+    action(conv);
+  }
 
   // --- Search mode kənar klik bağlama ---
   // Conversation paneldən kənarda (məs. chat panel) klik → search bağla
@@ -399,6 +435,7 @@ function ConversationList({
                 key={c.id}
                 className={`conversation-item ${selectedChatId === c.id ? "selected" : ""}`}
                 onClick={() => onSelectChat(c)}
+                onContextMenu={(e) => handleContextMenu(e, c)}
               >
                 {/* Avatar + typing indicator wrapper */}
                 <div className="conversation-avatar-wrapper">
@@ -478,6 +515,71 @@ function ConversationList({
           })
         )}
       </div>
+
+      {/* Context menu — conversation üzərində sağ klik */}
+      {contextMenu && (
+        <div
+          className="conv-context-menu"
+          ref={contextMenuRef}
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          {/* Mark to read later */}
+          <button
+            className="conv-context-item"
+            onClick={() => handleContextAction(onToggleReadLater)}
+          >
+            {contextMenu.conv.isMarkedReadLater ? "Unmark read later" : "Mark to read later"}
+          </button>
+
+          {/* Pin */}
+          <button
+            className="conv-context-item"
+            onClick={() => handleContextAction(onTogglePin)}
+          >
+            {contextMenu.conv.isPinned ? "Unpin" : "Pin"}
+          </button>
+
+          {/* Mute */}
+          <button
+            className="conv-context-item"
+            onClick={() => handleContextAction(onToggleMute)}
+          >
+            {contextMenu.conv.isMuted ? "Unmute" : "Mute"}
+          </button>
+
+          {/* DM + DepartmentUser: View profile, Find chats */}
+          {(contextMenu.conv.type === 0 || contextMenu.conv.type === 2) && (
+            <>
+              <button className="conv-context-item" onClick={() => { setContextMenu(null); }}>
+                View profile
+              </button>
+              <button className="conv-context-item" onClick={() => { setContextMenu(null); }}>
+                Find chats with this user
+              </button>
+            </>
+          )}
+
+          {/* Hide — DM üçün yalnız lastMessage varsa (conversation mövcuddursa) */}
+          {(contextMenu.conv.type === 1 || contextMenu.conv.lastMessage) && (
+            <button
+              className="conv-context-item"
+              onClick={() => handleContextAction(onHide)}
+            >
+              Hide
+            </button>
+          )}
+
+          {/* Channel-only: Leave */}
+          {contextMenu.conv.type === 1 && (
+            <button
+              className="conv-context-item"
+              onClick={() => handleContextAction(onLeaveChannel)}
+            >
+              Leave
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

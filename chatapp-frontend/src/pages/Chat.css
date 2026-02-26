@@ -296,6 +296,42 @@
 }
 
 /* ===================================
+   CONVERSATION CONTEXT MENU
+   =================================== */
+
+/* Context menu — action-menu ilə eyni görünüş, fixed position */
+.conv-context-menu {
+  position: fixed;
+  background: var(--white);
+  border-radius: 20px;
+  padding: 6px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+/* Context menu item */
+.conv-context-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-family: inherit;
+  text-align: left;
+}
+
+.conv-context-item:hover {
+  background: var(--gray-50);
+}
+
+/* ===================================
    SEARCH RESULTS
    =================================== */
 
