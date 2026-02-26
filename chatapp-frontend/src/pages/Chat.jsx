@@ -636,7 +636,7 @@ function Chat() {
       ];
 
       // Read later varsa: həm də DELETE read-later çağır (icon-u conversation list-dən sil)
-      // + unread varsa: birinci unread mesajın ID-si üçün ən son mesajları paralel yüklə
+      // + unread varsa: separator pozisiyası üçün ən son mesajları paralel yüklə
       if (hasReadLater) {
         const clearEndpoint = chat.type === 0
           ? `/api/conversations/${chat.id}/messages/read-later`
@@ -645,10 +645,9 @@ function Chat() {
 
         const unread = chat.unreadCount || 0;
         if (unread > 0) {
-          // Ən son unread mesajları yüklə (separator pozisiyası üçün)
-          // Promise.all ilə paralel icra olunur — əlavə gözləmə yoxdur
+          // pageSize max 30 — çox olsa aşağıda əlavə səhifə yüklənəcək
           promises.push(
-            apiGet(`${msgBase}?pageSize=${unread}`).catch(() => null),
+            apiGet(`${msgBase}?pageSize=${Math.min(unread, MESSAGE_PAGE_SIZE)}`).catch(() => null),
           );
         }
       }
@@ -660,6 +659,52 @@ function Chat() {
         (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
       );
       setPinnedMessages(sortedPins);
+
+      // ─── Separator üçün əlavə səhifə yüklə ─────────────────────────────────
+      // unread > ilk yüklənmiş mesaj sayı → separator sərhədi hələ yüklənməyib
+      // Before cursor ilə əlavə 1 səhifə yüklə (pageSize=30 dəyişmir)
+      const unread = chat.unreadCount || 0;
+      let finalMsgData = msgData || [];
+      let finalLatestForSep = latestForSeparator;
+
+      if (unread > MESSAGE_PAGE_SIZE) {
+        // Normal mode — msgData-dan əlavə səhifə
+        if (!hasReadLater && finalMsgData.length > 0 && unread > finalMsgData.length) {
+          const oldest = finalMsgData[finalMsgData.length - 1];
+          const beforeDate = oldest.createdAtUtc || oldest.sentAt;
+          if (beforeDate) {
+            try {
+              const extra = await apiGet(
+                `${msgBase}?pageSize=${MESSAGE_PAGE_SIZE}&before=${encodeURIComponent(beforeDate)}`,
+              );
+              if (extra && extra.length > 0) {
+                const ids = new Set(finalMsgData.map((m) => m.id));
+                finalMsgData = [...finalMsgData, ...extra.filter((m) => !ids.has(m.id))];
+              }
+            } catch (err) {
+              console.error("Separator extra page failed:", err);
+            }
+          }
+        }
+        // ReadLater mode — latestForSeparator-dan əlavə səhifə
+        if (hasReadLater && finalLatestForSep && finalLatestForSep.length > 0 && unread > finalLatestForSep.length) {
+          const oldest = finalLatestForSep[finalLatestForSep.length - 1];
+          const beforeDate = oldest.createdAtUtc || oldest.sentAt;
+          if (beforeDate) {
+            try {
+              const extra = await apiGet(
+                `${msgBase}?pageSize=${MESSAGE_PAGE_SIZE}&before=${encodeURIComponent(beforeDate)}`,
+              );
+              if (extra && extra.length > 0) {
+                const ids = new Set(finalLatestForSep.map((m) => m.id));
+                finalLatestForSep = [...finalLatestForSep, ...extra.filter((m) => !ids.has(m.id))];
+              }
+            } catch (err) {
+              console.error("ReadLater separator extra page failed:", err);
+            }
+          }
+        }
+      }
 
       if (hasReadLater) {
         // Around mode — marked message ətrafında yüklə (highlight yox, unread qalmalıdır)
@@ -676,30 +721,33 @@ function Chat() {
           ),
         );
       } else {
-        const unreadForScroll = chat.unreadCount || 0;
-        if (unreadForScroll > 0) {
+        if (unread > 0) {
           // Unread mesaj var → separator-a scroll et (aşağıya deyil)
           pendingScrollToUnreadRef.current = true;
         } else {
           setShouldScrollBottom(true); // Unread yoxdur → ən aşağıya scroll et
         }
       }
+
       // "New messages" separator — ilk oxunmamış mesajın ID-sini tap
-      const unread = chat.unreadCount || 0;
-      if (hasReadLater && latestForSeparator) {
+      if (hasReadLater && finalLatestForSep) {
         // Around mode — birinci unread mesajın ID-sini paralel yüklənmiş datadan al
-        // latestForSeparator: DESC (yeni→köhnə), sonuncu element = ən köhnə unread
-        if (latestForSeparator.length >= unread) {
-          setNewMessagesStartId(latestForSeparator[unread - 1].id);
+        // finalLatestForSep: DESC (yeni→köhnə), index [unread-1] = ən köhnə unread
+        if (finalLatestForSep.length >= unread) {
+          setNewMessagesStartId(finalLatestForSep[unread - 1].id);
         } else {
           setNewMessagesStartId(null);
         }
-      } else if (!hasReadLater && unread > 0 && msgData.length > 0) {
-        // Normal mode — msgData ən son mesajlardır (DESC)
-        // unread <= msgData.length → separator tam düzgün yerdə
-        // unread > msgData.length → bütün yüklənmiş mesajlar unread → separator ən köhnədə
-        const idx = Math.min(unread, msgData.length) - 1;
-        setNewMessagesStartId(msgData[idx].id);
+      } else if (!hasReadLater && unread > 0 && finalMsgData.length > 0) {
+        // Normal mode — finalMsgData ən son mesajlardır (DESC)
+        if (unread <= finalMsgData.length) {
+          // Separator düzgün yerdə — unread-inci mesajdan əvvəl
+          setNewMessagesStartId(finalMsgData[unread - 1].id);
+        } else {
+          // Əlavə səhifədən sonra da kifayət deyil (çox nadir: unread > 60)
+          // Separator göstərmə — ən aşağıya scroll
+          setNewMessagesStartId(null);
+        }
       } else {
         setNewMessagesStartId(null);
       }
@@ -711,8 +759,8 @@ function Chat() {
       allReadPatchRef.current = (!hasReadLater && unread === 0);
       setMessages(
         allReadPatchRef.current
-          ? msgData.map((m) => m.isRead ? m : { ...m, isRead: true })
-          : msgData,
+          ? finalMsgData.map((m) => m.isRead ? m : { ...m, isRead: true })
+          : finalMsgData,
       );
 
       // Yeni chatın SignalR qrupuna qoşul

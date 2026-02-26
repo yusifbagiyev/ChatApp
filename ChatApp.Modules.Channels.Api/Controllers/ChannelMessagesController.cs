@@ -62,8 +62,8 @@ namespace ChatApp.Modules.Channels.Api.Controllers
                 return Unauthorized();
 
             // Validate pagination
-            if (pageSize < 1 || pageSize > 100)
-                return BadRequest(new { error = "Page size must be between 1 and 100" });
+            if (pageSize < 1 || pageSize > 30)
+                return BadRequest(new { error = "Page size must be between 1 and 30" });
 
             var result = await _mediator.Send(
                 new GetChannelMessagesQuery(channelId, userId, pageSize, before),
