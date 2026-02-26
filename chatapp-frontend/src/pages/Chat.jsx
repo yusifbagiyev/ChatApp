@@ -216,11 +216,19 @@ function Chat() {
   useEffect(() => {
     loadConversations();
 
+    // Səhifə refresh/bağlanma — typing siqnalını dayandır (Ctrl+R, tab bağlama vs.)
+    const handleBeforeUnload = () => {
+      stopTypingSignal();
+      flushReadBatch();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
     // Unmount cleanup — timer/timeout memory leak-lərin qarşısını al
     return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      // Gözləyən batch-i göndər + timer təmizlə
+      stopTypingSignal(); // Component unmount — typing dayandır
       flushReadBatch();
     };
   }, []);
@@ -1343,9 +1351,22 @@ function Chat() {
   // handleKeyDown — textarea-da klaviatura hadisəsi
   // Enter → mesaj göndər (Shift+Enter → yeni sətir)
   function handleKeyDown(e) {
-    sendTypingSignal(); // Hər düymə basılışında typing siqnalı göndər
+    // Modifier/shortcut düymələr typing siqnalı göndərməsin
+    // Ctrl+R, Ctrl+C, Alt+Tab vs. — bunlar yazı deyil, typing indicator göstərməməlidir
+    if (e.ctrlKey || e.altKey || e.metaKey) {
+      // Enter hər halda yoxla (bəzi OS-lərdə Ctrl+Enter istifadə olunur)
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSendMessage();
+      }
+      return;
+    }
+    // Tək modifier düymələr (Shift, CapsLock, Fn vs.) — yazı deyil
+    if (e.key === "Shift" || e.key === "CapsLock") return;
+
+    sendTypingSignal();
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); // Enter-in default davranışını (yeni sətir) dayandır
+      e.preventDefault();
       handleSendMessage();
     }
   }
