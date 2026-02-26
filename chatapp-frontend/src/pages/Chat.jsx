@@ -109,6 +109,9 @@ function Chat() {
   // useLayoutEffect-də istifadə olunur
   const pendingHighlightRef = useRef(null);
 
+  // highlightTimerRef — highlight setTimeout ID-si (unmount-da təmizləmək üçün)
+  const highlightTimerRef = useRef(null);
+
   // shouldScrollBottom — yeni mesaj gəldikdə / chat seçildikdə aşağıya scroll et
   const [shouldScrollBottom, setShouldScrollBottom] = useState(false);
 
@@ -204,6 +207,12 @@ function Chat() {
   // [] — boş dependency array = yalnız ilk render-də işlə (like OnInitializedAsync)
   useEffect(() => {
     loadConversations();
+
+    // Unmount cleanup — timer/timeout memory leak-lərin qarşısını al
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
   }, []);
 
   // useChatSignalR — real-time event-ləri dinlə (NewMessage, UserOnline, Typing, etc.)
@@ -273,13 +282,13 @@ function Chat() {
     const target = area.querySelector(`[data-bubble-id="${messageId}"]`);
     if (target) {
       target.scrollIntoView({ behavior: "instant", block: "center" });
-      // CSS class əlavə et → highlight animasiyası başlar
+      // Əvvəlki highlight varsa təmizlə (dublikat qarşısı)
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
       target.classList.add("highlight-message");
-      // HIGHLIGHT_DURATION_MS ms sonra class sil (animasiya biter)
-      setTimeout(
-        () => target.classList.remove("highlight-message"),
-        HIGHLIGHT_DURATION_MS,
-      );
+      highlightTimerRef.current = setTimeout(() => {
+        target.classList.remove("highlight-message");
+        highlightTimerRef.current = null;
+      }, HIGHLIGHT_DURATION_MS);
     }
   }, [messages]);
 
@@ -298,22 +307,33 @@ function Chat() {
   }, [messages]);
 
   // IntersectionObserver — görünüş sahəsinə girən oxunmamış mesajları "read" et
-  // .NET ekvivalenti: element viewport-a girəndə API çağrısı
+  // observerRef — observer instance-ını saxla (yalnız selectedChat dəyişdikdə yenidən yarat)
+  // processedMsgIdsRef — artıq "read" edilmiş mesajları izlə (dublikat API call qarşısını al)
+  const observerRef = useRef(null);
+  const processedMsgIdsRef = useRef(new Set());
+
+  // Effect 1: Observer yaratma/silmə — YALNIZ selectedChat dəyişdikdə
   useEffect(() => {
     const area = messagesAreaRef.current;
     if (!area || !selectedChat) return;
 
-    // IntersectionObserver — element viewport-a girəndə callback çağırır
-    // root: area — scroll container-i viewport kimi istifadə et
-    // threshold: 0.5 — elementin 50%-i görünəndə işlə
+    // Yeni chat — köhnə processed set-i sıfırla
+    processedMsgIdsRef.current = new Set();
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            // data-* attribut-lardan məlumat al (MessageBubble-da set edilib)
             const msgId = entry.target.dataset.msgId;
             const convId = entry.target.dataset.convId;
             const convType = entry.target.dataset.convType;
+
+            // Dublikat yoxla — eyni mesaj üçün bir dəfə kifayətdir
+            if (processedMsgIdsRef.current.has(msgId)) {
+              observer.unobserve(entry.target);
+              return;
+            }
+            processedMsgIdsRef.current.add(msgId);
 
             // Chat tipinə görə doğru "mark as read" API-ni çağır
             if (convType === "0") {
@@ -332,25 +352,35 @@ function Chat() {
               }),
             );
 
-            // Bu elementi artıq izləmə (bir dəfə kifayətdir)
             observer.unobserve(entry.target);
           }
         }
       },
-      {
-        root: area,
-        threshold: 0.5,
-      },
+      { root: area, threshold: 0.5 },
     );
 
-    // data-unread="true" olan bütün mesajları izlə
-    const unreadElements = area.querySelectorAll("[data-unread='true']");
-    unreadElements.forEach((el) => observer.observe(el));
+    observerRef.current = observer;
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
+  }, [selectedChat]);
 
-    // Cleanup — component unmount olduqda / messages dəyişdikdə observer-i dayandır
-    // like IDisposable.Dispose() in C#
-    return () => observer.disconnect();
-  }, [messages, selectedChat]);
+  // Effect 2: Yeni unread elementləri observe et — messages dəyişdikdə
+  // Observer yenidən YARADILMIR, yalnız yeni elementlər əlavə olunur
+  useEffect(() => {
+    const observer = observerRef.current;
+    const area = messagesAreaRef.current;
+    if (!observer || !area) return;
+
+    const unreadElements = area.querySelectorAll("[data-unread='true']");
+    unreadElements.forEach((el) => {
+      // Artıq processed olan mesajları izləmə
+      if (!processedMsgIdsRef.current.has(el.dataset.msgId)) {
+        observer.observe(el);
+      }
+    });
+  }, [messages]);
 
   // --- API FUNKSIYALARI ---
 
@@ -1138,11 +1168,12 @@ function Chat() {
       if (el) {
         // Var — birbaşa smooth scroll et + highlight
         el.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
         el.classList.add("highlight-message");
-        setTimeout(
-          () => el.classList.remove("highlight-message"),
-          HIGHLIGHT_DURATION_MS,
-        );
+        highlightTimerRef.current = setTimeout(() => {
+          el.classList.remove("highlight-message");
+          highlightTimerRef.current = null;
+        }, HIGHLIGHT_DURATION_MS);
         return;
       }
 

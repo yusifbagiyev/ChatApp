@@ -106,7 +106,8 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
         const existingIds = new Set(prev.map((m) => m.id));
         const unique = olderMessages.filter((m) => !existingIds.has(m.id));
         if (unique.length === 0) {
-          hasMoreRef.current = false; // Hamısı dublikatdır → daha köhnə yoxdur
+          // hasMoreRef = false ETMƏ! Stale closure ilə eyni data gələ bilər.
+          // Scroll yalnız API boş cavab qaytaranda dayanır (length === 0 check).
           return prev;
         }
         return [...prev, ...unique];
@@ -172,7 +173,9 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
         const existingIds = new Set(prev.map((m) => m.id));
         const unique = newerMessages.filter((m) => !existingIds.has(m.id));
         if (unique.length === 0) {
-          hasMoreDownRef.current = false; // Hamısı dublikatdır → daha yeni yoxdur
+          // hasMoreDownRef = false ETMƏ! Stale closure səbəbindən eyni data gələ bilər.
+          // React re-render sonrası yenidən düzgün cursor ilə yüklənəcək.
+          // Scroll yalnız API boş cavab qaytaranda dayanır (yuxarıdakı length === 0 check).
           return prev;
         }
         return [...unique.reverse(), ...prev];
