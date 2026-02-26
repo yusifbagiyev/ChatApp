@@ -324,15 +324,15 @@
 }
 
 .conversation-avatar {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--white);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   background: var(--primary-gradient);
 }
@@ -370,7 +370,9 @@
 }
 
 @keyframes typingBounce {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     transform: translateY(0);
     opacity: 0.4;
   }
@@ -602,15 +604,15 @@
 }
 
 .chat-header-avatar {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--white);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   background: var(--primary-gradient);
 }
@@ -1043,21 +1045,21 @@
 
 /* Avatar slot — boş olanda da yer tutur ki bubble-lar düz xətdə qalsın */
 .message-avatar-slot {
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
 }
 
 .message-avatar {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--white);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   background: var(--primary-gradient);
 }
@@ -1084,6 +1086,7 @@
   color: var(--gray-900);
   line-height: 1.5;
   word-wrap: break-word;
+  padding-right: 20px;
 }
 
 .message-meta {
@@ -1091,7 +1094,6 @@
   align-items: center;
   justify-content: flex-end;
   gap: 3px;
-  margin-top: 4px;
 }
 
 .message-modified {
@@ -1328,7 +1330,6 @@
   background: var(--gray-50);
 }
 
-
 .action-menu-item svg {
   color: var(--gray-400);
   flex-shrink: 0;
@@ -1545,7 +1546,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background: #A3BAD4;
+  background: #a3bad4;
   border-radius: 10px;
 }
 
@@ -1909,7 +1910,7 @@
   min-width: 34px;
   flex-shrink: 0;
   border: none;
-  background: #00ACE3;
+  background: #00ace3;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -2435,7 +2436,7 @@
   padding: 8px 24px;
   border-radius: 8px;
   border: none;
-  background: #23B0D8;
+  background: #23b0d8;
   color: var(--white);
   font-size: 13px;
   font-weight: 600;
@@ -2474,7 +2475,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #F1F4F6;
+  background: #f1f4f6;
   overflow: hidden;
 }
 
@@ -2551,7 +2552,7 @@
 }
 
 .create-channel-name-input:focus {
-  border-bottom-color: #2FC6F6;
+  border-bottom-color: #2fc6f6;
 }
 
 .create-channel-name-input.error {
@@ -2695,7 +2696,7 @@
 
 .create-channel-card {
   margin: 0 20px 12px;
-  background: #FCFDFD;
+  background: #fcfdfd;
   border-radius: 8px;
   border: 1px solid #dde0e6;
   overflow: hidden;
@@ -2789,7 +2790,9 @@
   border-color: #2196f3;
 }
 
-.create-channel-radio input[type="radio"]:checked + .create-channel-radio-dot::after {
+.create-channel-radio
+  input[type="radio"]:checked
+  + .create-channel-radio-dot::after {
   content: "";
   width: 8px;
   height: 8px;
@@ -2828,7 +2831,9 @@
   resize: vertical;
   min-height: 100px;
   max-height: 200px;
-  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
   font-family: inherit;
   line-height: 1.5;
   background: var(--white);
@@ -2859,7 +2864,7 @@
   padding: 10px 30px;
   border: 1px solid #a8d41a;
   border-radius: 4px;
-  background: #BBED21;
+  background: #bbed21;
   color: var(--gray-900);
   font-size: 12px;
   font-weight: 700;
