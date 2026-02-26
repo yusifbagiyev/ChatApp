@@ -468,10 +468,28 @@
 }
 
 .conversation-item:hover {
-  background: var(--gray-50);
+  background: #f1f4f6;
 }
 
-.conversation-item.selected {
+.conversation-item.pinned {
+  background: #f1f4f6;
+}
+
+.conversation-item.pinned::after {
+  background: var(--gray-200);
+}
+
+.conversation-item.pinned:hover {
+  background: #ebf0f5;
+}
+
+.conversation-item.selected,
+.conversation-item.selected.pinned {
+  background: var(--selected-chat);
+}
+
+.conversation-item.selected:hover,
+.conversation-item.selected.pinned:hover {
   background: var(--selected-chat);
 }
 
@@ -733,6 +751,69 @@
 .read-later-icon svg {
   width: 16px;
   height: 16px;
+}
+
+/* ===================================
+   CONVERSATION NAME WRAPPER
+   =================================== */
+
+.conversation-name-wrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+/* ===================================
+   PIN ICON (Conversation List)
+   =================================== */
+
+.conv-pin-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--gray-400);
+}
+
+.conv-pin-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ===================================
+   MUTE ICON (Conversation List + Chat Header)
+   =================================== */
+
+.conv-mute-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 4px;
+  color: var(--gray-400);
+}
+
+.conv-mute-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.chat-header-mute-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--gray-400);
+}
+
+.chat-header-mute-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Selected conversation — yeni icon-lar ağ olsun */
+.conversation-item.selected .conv-mute-icon,
+.conversation-item.selected .conv-pin-icon {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* ===================================

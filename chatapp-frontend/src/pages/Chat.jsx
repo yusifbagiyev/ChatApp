@@ -490,6 +490,7 @@ function Chat() {
 
   // handleSelectSearchUser — search nəticəsindən user seçildikdə
   // Mövcud conversation varsa seç, yoxdursa POST /api/conversations ilə yarat
+  // Hidden conversation: listdə yoxdur amma backend-də mövcuddur — listə əlavə etmədən aç
   async function handleSelectSearchUser(selectedUser) {
     // 1. Mövcud conversations-da bu user ilə conversation varmı?
     const existing = conversations.find((c) => c.otherUserId === selectedUser.id);
@@ -499,22 +500,20 @@ function Chat() {
       return;
     }
 
-    // 2. Yoxdursa — yeni conversation yarat
+    // 2. Yoxdursa — yeni conversation yarat (və ya hidden olanı backend-dən al)
     try {
       const result = await apiPost("/api/conversations", {
         otherUserId: selectedUser.id,
       });
 
-      // 3. Conversations siyahısını yenilə
-      await loadConversations();
-
-      // 4. Yeni yaradılmış conversation-ı tap və seç
-      // loadConversations setConversations çağırır, amma biz birbaşa result-dan istifadə edirik
+      // 3. Conversation-ı listə əlavə etmədən birbaşa aç
+      // Mesaj göndərdikdən və ya yeni mesaj gəldikdən sonra listdə görünəcək
       const newChat = {
         id: result.conversationId,
         name: selectedUser.fullName,
         type: 0,
         otherUserId: selectedUser.id,
+        otherUserPosition: selectedUser.position,
         unreadCount: 0,
         lastMessage: null,
         lastMessageAtUtc: null,
@@ -527,11 +526,24 @@ function Chat() {
   }
 
   // handleSelectSearchChannel — search nəticəsindən channel seçildikdə
-  // Conversations array-da channel-ı tap və seç
+  // handleSelectSearchChannel — search nəticəsindən channel seçildikdə
+  // Conversations array-da varsa seç, yoxdursa (hidden) birbaşa aç
   function handleSelectSearchChannel(channel) {
     const existing = conversations.find((c) => c.id === channel.id);
     if (existing) {
       handleSelectChat(existing);
+    } else {
+      // Hidden channel — listdə yoxdur, birbaşa aç
+      const hiddenChat = {
+        id: channel.id,
+        name: channel.name,
+        type: 1,
+        memberCount: channel.memberCount,
+        unreadCount: 0,
+        lastMessage: null,
+        lastMessageAtUtc: null,
+      };
+      handleSelectChat(hiddenChat);
     }
     setSearchText("");
   }
@@ -571,6 +583,10 @@ function Chat() {
       setConversations((prev) =>
         prev.map((c) => c.id === conv.id ? { ...c, isPinned: result.isPinned } : c),
       );
+      // Seçili chat eyni conversation-dırsa, selectedChat-ı da yenilə
+      if (selectedChat && selectedChat.id === conv.id) {
+        setSelectedChat((prev) => ({ ...prev, isPinned: result.isPinned }));
+      }
     } catch (err) {
       console.error("Failed to toggle pin:", err);
     }
@@ -586,6 +602,10 @@ function Chat() {
       setConversations((prev) =>
         prev.map((c) => c.id === conv.id ? { ...c, isMuted: result.isMuted } : c),
       );
+      // Seçili chat eyni conversation-dırsa, selectedChat-ı da yenilə
+      if (selectedChat && selectedChat.id === conv.id) {
+        setSelectedChat((prev) => ({ ...prev, isMuted: result.isMuted }));
+      }
     } catch (err) {
       console.error("Failed to toggle mute:", err);
     }
@@ -601,6 +621,10 @@ function Chat() {
       setConversations((prev) =>
         prev.map((c) => c.id === conv.id ? { ...c, isMarkedReadLater: result.isMarkedReadLater } : c),
       );
+      // Seçili chat eyni conversation-dırsa, selectedChat-ı da yenilə
+      if (selectedChat && selectedChat.id === conv.id) {
+        setSelectedChat((prev) => ({ ...prev, isMarkedReadLater: result.isMarkedReadLater }));
+      }
     } catch (err) {
       console.error("Failed to toggle read later:", err);
     }
@@ -613,16 +637,20 @@ function Chat() {
         ? `/api/channels/${conv.id}/hide`
         : `/api/conversations/${conv.id}/messages/hide`;
       await apiPost(endpoint);
-      // Siyahıdan sil
-      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
-      // Gizlədilən chat hazırda seçilmişdirsə → seçimi sıfırla
-      if (selectedChat && selectedChat.id === conv.id) {
-        setSelectedChat(null);
-        setMessages([]);
-      }
     } catch (err) {
       console.error("Failed to hide conversation:", err);
     }
+    // API uğurlu və ya uğursuz olsa belə UI-dan sil
+    // (backend-də artıq hide olub, UI sync olmalıdır)
+    setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+    // Functional updater — closure problemini həll edir
+    setSelectedChat((current) => {
+      if (current && current.id === conv.id) {
+        setMessages([]);
+        return null;
+      }
+      return current;
+    });
   }
 
   // handleLeaveChannel — channel-dan ayrıl
@@ -785,6 +813,17 @@ function Chat() {
 
     // lastReadLaterMessageId varsa — around endpoint ilə yüklə, əks halda normal
     const hasReadLater = !!chat.lastReadLaterMessageId;
+
+    // isMarkedReadLater varsa — daxil olduqda avtomatik unmark et
+    if (chat.isMarkedReadLater) {
+      const rlEndpoint = chat.type === 1
+        ? `/api/channels/${chat.id}/toggle-read-later`
+        : `/api/conversations/${chat.id}/messages/toggle-read-later`;
+      apiPost(rlEndpoint).catch(() => {});
+      setConversations((prev) =>
+        prev.map((c) => c.id === chat.id ? { ...c, isMarkedReadLater: false } : c),
+      );
+    }
 
     try {
       const msgBase = getChatEndpoint(chat.id, chat.type, "/messages");
@@ -1347,6 +1386,29 @@ function Chat() {
       await apiPost(endpoint, {
         content: text,
         replyToMessageId: replyTo ? replyTo.id : null, // Reply varsa id-ni göndər
+      });
+
+      // Hidden conversation-a mesaj göndərildikdə — siyahıda yoxdursa əlavə et
+      setConversations((prev) => {
+        const existsInList = prev.some((c) => c.id === chatId);
+        if (!existsInList) {
+          // selectedChat-dan conversation yaradıb siyahıya əlavə et
+          const newConv = {
+            id: chatId,
+            name: selectedChat.name,
+            type: chatType,
+            avatarUrl: selectedChat.avatarUrl,
+            otherUserId: selectedChat.otherUserId,
+            otherUserPosition: selectedChat.otherUserPosition,
+            lastMessage: text,
+            lastMessageAtUtc: new Date().toISOString(),
+            lastMessageSenderId: user.id,
+            lastMessageStatus: "Sent",
+            unreadCount: 0,
+          };
+          return [newConv, ...prev];
+        }
+        return prev;
       });
 
       // Mesajları yenidən yüklə (SignalR yoksa fallback)

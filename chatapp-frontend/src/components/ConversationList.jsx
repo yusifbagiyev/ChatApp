@@ -200,15 +200,28 @@ function ConversationList({
     c.name.toLowerCase().includes(searchText.toLowerCase()),
   );
 
+  // Pinlənmiş conversations yuxarıda göstərilir
+  const sortedConversations = [...filteredConversations].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return 0;
+  });
+
   // --- Search nəticələrinin render funksiyası ---
+  // Bütün nəticələr (conversations, users, channels) birləşdirilir, dublikatlar çıxarılır
   function renderSearchResults() {
-    // Yüklənir
     if (searchLoading) {
       return <div className="loading-state">Searching...</div>;
     }
 
-    // Nəticə yoxdur və ya hələ yazmayıb
-    if (!searchResults) {
+    // Client-side: mövcud conversations arasında axtarış
+    const matchedConversations = searchText.length >= 2
+      ? conversations.filter((c) =>
+          c.name.toLowerCase().includes(searchText.toLowerCase()),
+        )
+      : [];
+
+    if (!searchResults && matchedConversations.length === 0) {
       return (
         <div className="search-no-results">
           Type at least 2 characters to search
@@ -216,70 +229,93 @@ function ConversationList({
       );
     }
 
-    const { users, channels } = searchResults;
-    const hasResults = users.length > 0 || channels.length > 0;
+    const users = searchResults?.users || [];
+    const channels = searchResults?.channels || [];
 
-    if (!hasResults) {
+    // Dublikat çıxarma üçün Set-lər
+    const convIds = new Set(conversations.map((c) => c.id));
+    const convOtherUserIds = new Set(
+      conversations.filter((c) => c.otherUserId).map((c) => c.otherUserId),
+    );
+
+    // Backend-dən gələn user-lərdən mövcud conversation-ı olanları çıxar
+    const filteredUsers = users.filter((u) => !convOtherUserIds.has(u.id));
+    // Backend-dən gələn channel-lardan mövcud conversation-ı olanları çıxar
+    const filteredChannels = channels.filter((ch) => !convIds.has(ch.id));
+
+    // Hamısını birləşdir — vahid siyahı, bölmə başlıqları yox
+    // Hər element: { key, name, avatarBg, initials, detail, onClick, isNotes }
+    const allResults = [];
+
+    // 1. Mövcud conversations (Notes, DM, Channel)
+    for (const c of matchedConversations) {
+      allResults.push({
+        key: `conv-${c.id}`,
+        name: c.name,
+        avatarBg: c.isNotes ? "#2FC6F6" : getAvatarColor(c.name),
+        initials: c.isNotes ? null : getInitials(c.name),
+        isNotes: c.isNotes,
+        detail: c.isNotes ? "Your personal notes" : c.type === 1 ? "Group chat" : "User",
+        onClick: () => { onSelectChat(c); exitSearchMode(); },
+      });
+    }
+
+    // 2. Backend users (conversation-ı olmayanlar)
+    for (const u of filteredUsers) {
+      allResults.push({
+        key: `user-${u.id}`,
+        name: u.fullName,
+        avatarBg: getAvatarColor(u.fullName),
+        initials: getInitials(u.fullName),
+        isNotes: false,
+        detail: "User",
+        onClick: () => handleSelectUser(u),
+      });
+    }
+
+    // 3. Backend channels (conversation-ı olmayanlar)
+    for (const ch of filteredChannels) {
+      allResults.push({
+        key: `chan-${ch.id}`,
+        name: ch.name,
+        avatarBg: getAvatarColor(ch.name),
+        initials: getInitials(ch.name),
+        isNotes: false,
+        detail: "Group chat",
+        onClick: () => handleSelectChannel(ch),
+      });
+    }
+
+    if (allResults.length === 0) {
       return <div className="search-no-results">No results found</div>;
     }
 
     return (
       <>
-        {/* Users bölməsi */}
-        {users.length > 0 && (
-          <>
-            <div className="search-section-title">Users</div>
-            {users.map((u) => (
-              <div
-                key={u.id}
-                className="search-result-item"
-                onClick={() => handleSelectUser(u)}
-              >
-                <div
-                  className="search-result-avatar"
-                  style={{ background: getAvatarColor(u.fullName) }}
-                >
-                  {getInitials(u.fullName)}
-                </div>
-                <div className="search-result-info">
-                  <div className="search-result-name">{u.fullName}</div>
-                  {u.position && (
-                    <div className="search-result-detail">{u.position}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-
-        {/* Channels bölməsi */}
-        {channels.length > 0 && (
-          <>
-            <div className="search-section-title">Channels</div>
-            {channels.map((ch) => (
-              <div
-                key={ch.id}
-                className="search-result-item"
-                onClick={() => handleSelectChannel(ch)}
-              >
-                <div
-                  className="search-result-avatar"
-                  style={{ background: getAvatarColor(ch.name) }}
-                >
-                  {getInitials(ch.name)}
-                </div>
-                <div className="search-result-info">
-                  <div className="search-result-name">{ch.name}</div>
-                  {ch.memberCount != null && (
-                    <div className="search-result-detail">
-                      {ch.memberCount} members
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </>
-        )}
+        {allResults.map((item) => (
+          <div
+            key={item.key}
+            className="search-result-item"
+            onClick={item.onClick}
+          >
+            <div
+              className="search-result-avatar"
+              style={{ background: item.avatarBg }}
+            >
+              {item.isNotes ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                </svg>
+              ) : (
+                item.initials
+              )}
+            </div>
+            <div className="search-result-info">
+              <div className="search-result-name">{item.name}</div>
+              <div className="search-result-detail">{item.detail}</div>
+            </div>
+          </div>
+        ))}
       </>
     );
   }
@@ -384,11 +420,11 @@ function ConversationList({
         ) : isLoading ? (
           // Yüklənir...
           <div className="loading-state">Loading...</div>
-        ) : filteredConversations.length === 0 ? (
+        ) : sortedConversations.length === 0 ? (
           // Nəticə yoxdur
           <div className="empty-state">No conversations yet</div>
         ) : (
-          filteredConversations.map((c) => {
+          sortedConversations.map((c) => {
             // Öz mesajımdırmı? — tick icon göstərmək üçün
             const isOwnLastMessage = c.lastMessageSenderId === userId;
 
@@ -433,7 +469,7 @@ function ConversationList({
             return (
               <div
                 key={c.id}
-                className={`conversation-item ${selectedChatId === c.id ? "selected" : ""}`}
+                className={`conversation-item${selectedChatId === c.id ? " selected" : ""}${c.isPinned ? " pinned" : ""}`}
                 onClick={() => onSelectChat(c)}
                 onContextMenu={(e) => handleContextMenu(e, c)}
               >
@@ -472,7 +508,19 @@ function ConversationList({
                 <div className="conversation-info">
                   {/* Üst sıra: ad + tick + tarix */}
                   <div className="conversation-top-row">
-                    <span className="conversation-name">{c.name}</span>
+                    <div className="conversation-name-wrapper">
+                      <span className="conversation-name">{c.name}</span>
+                      {/* Mute icon — mute olunmuş conversation üçün adın yanında */}
+                      {c.isMuted && (
+                        <span className="conv-mute-icon" title="Muted">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                            <line x1="23" y1="9" x2="17" y2="15" />
+                            <line x1="17" y1="9" x2="23" y2="15" />
+                          </svg>
+                        </span>
+                      )}
+                    </div>
                     <div className="conversation-time-wrapper">
                       {/* Tick icon — time-ın solunda, yalnız öz mesajımda (Notes-da yox) */}
                       {isOwnLastMessage && c.type !== 2 && !c.isNotes && c.lastMessage && (
@@ -497,8 +545,16 @@ function ConversationList({
                       {previewPrefix}
                       {previewContent}
                     </span>
-                    {/* Read later icon — mesaj səviyyəsində mark varsa bookmark göstər */}
-                    {c.lastReadLaterMessageId && (
+                    {/* Pin icon — pinlənmiş conversation üçün */}
+                    {c.isPinned && (
+                      <span className="conv-pin-icon" title="Pinned">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ transform: "rotate(45deg)" }}>
+                          <path d="M16 2a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v1h1.5v5.26a2.5 2.5 0 0 1-1.39 2.24L6.5 11.56A1.5 1.5 0 0 0 5.83 13v1.5h5.67V22a.5.5 0 0 0 1 0v-7.5h5.67V13a1.5 1.5 0 0 0-.67-1.44l-1.61-1.06A2.5 2.5 0 0 1 14.5 8.26V3H16V2Z" />
+                        </svg>
+                      </span>
+                    )}
+                    {/* Read later icon — mesaj və ya conversation səviyyəsində mark varsa bookmark göstər */}
+                    {(c.lastReadLaterMessageId || c.isMarkedReadLater) && (
                       <span className="read-later-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
@@ -523,29 +579,34 @@ function ConversationList({
           ref={contextMenuRef}
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
-          {/* Mark to read later */}
-          <button
-            className="conv-context-item"
-            onClick={() => handleContextAction(onToggleReadLater)}
-          >
-            {contextMenu.conv.isMarkedReadLater ? "Unmark read later" : "Mark to read later"}
-          </button>
+          {/* Mark to read later, Pin, Mute — yalnız mövcud mesaj olan conversation-larda göstər */}
+          {contextMenu.conv.lastMessage && (
+            <>
+              <button
+                className="conv-context-item"
+                onClick={() => handleContextAction(onToggleReadLater)}
+              >
+                {contextMenu.conv.isMarkedReadLater ? "Unmark read later" : "Mark to read later"}
+              </button>
 
-          {/* Pin */}
-          <button
-            className="conv-context-item"
-            onClick={() => handleContextAction(onTogglePin)}
-          >
-            {contextMenu.conv.isPinned ? "Unpin" : "Pin"}
-          </button>
+              <button
+                className="conv-context-item"
+                onClick={() => handleContextAction(onTogglePin)}
+              >
+                {contextMenu.conv.isPinned ? "Unpin" : "Pin"}
+              </button>
 
-          {/* Mute */}
-          <button
-            className="conv-context-item"
-            onClick={() => handleContextAction(onToggleMute)}
-          >
-            {contextMenu.conv.isMuted ? "Unmute" : "Mute"}
-          </button>
+              {/* Mute — Notes-da göstərmə */}
+              {!contextMenu.conv.isNotes && (
+                <button
+                  className="conv-context-item"
+                  onClick={() => handleContextAction(onToggleMute)}
+                >
+                  {contextMenu.conv.isMuted ? "Unmute" : "Mute"}
+                </button>
+              )}
+            </>
+          )}
 
           {/* DM + DepartmentUser: View profile, Find chats */}
           {(contextMenu.conv.type === 0 || contextMenu.conv.type === 2) && (
