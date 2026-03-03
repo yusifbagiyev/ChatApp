@@ -145,12 +145,6 @@ const MessageBubble = memo(function MessageBubble({
       data-bubble-id={msg.id}
       // selectMode aktiv + mesaj silinməyibsə klik → toggle select
       onClick={selectMode && !msg.isDeleted ? () => onToggleSelect(msg.id) : undefined}
-      // selectMode deyilsə hover → action düymələrini göstər/gizlə
-      onMouseEnter={selectMode ? undefined : () => setShowActions(true)}
-      onMouseLeave={selectMode ? undefined : () => {
-        // Menyu YA reaction açıqdırsa hover leave-da gizlətmə
-        if (!menuOpen && !reactionOpen) setShowActions(false);
-      }}
       // Spread operator ilə şərti data-* atributları əlavə et
       // !isOwn + !msg.isRead → IntersectionObserver üçün lazımdır
       {...(!isOwn &&
@@ -192,10 +186,16 @@ const MessageBubble = memo(function MessageBubble({
 
       {/* message-bubble — mesajın vizual balonu */}
       {/* onContextMenu — sağ klik → menyu aç */}
+      {/* message-bubble — mesajın vizual balonu */}
+      {/* hover trigger burada — yalnız bubble ətrafında action menyu görünsün */}
       <div
         className={`message-bubble ${isOwn ? "own" : ""}`}
+        onMouseEnter={selectMode ? undefined : () => setShowActions(true)}
+        onMouseLeave={selectMode ? undefined : () => {
+          if (!menuOpen && !reactionOpen) setShowActions(false);
+        }}
         onContextMenu={selectMode ? undefined : (e) => {
-          e.preventDefault(); // Brauzerin default sağ klik menyusunu dayandır
+          e.preventDefault();
           setMenuOpen(true);
           setReactionOpen(false);
           setShowActions(true);
