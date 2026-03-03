@@ -62,7 +62,7 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
 
                 // Filter out messages sent by the user (don't mark own messages as read)
                 var messagesToMark = await _unitOfWork.ChannelMessages
-                    .GetChannelMessagesAsync(request.ChannelId, int.MaxValue, null, cancellationToken);
+                    .GetChannelMessagesAsync(request.ChannelId, int.MaxValue, null, null, cancellationToken);
 
                 var filteredMessageIds = messagesToMark
                     .Where(m => unreadMessageIds.Contains(m.Id) && m.SenderId != request.UserId)

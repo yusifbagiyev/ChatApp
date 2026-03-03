@@ -18,19 +18,21 @@ namespace ChatApp.Modules.Channels.Domain.Entities
         public bool IsMuted { get; private set; }
         public bool IsMarkedReadLater { get; private set; }
         public bool IsHidden { get; private set; }
+        public bool CanViewHistory { get; private set; }
 
         // Navigation properties
         public Channel Channel { get; private set; } = null!;
 
         private ChannelMember() : base() { }
 
-        public ChannelMember(Guid channelId, Guid userId, MemberRole role) : base()
+        public ChannelMember(Guid channelId, Guid userId, MemberRole role, bool canViewHistory = true) : base()
         {
             ChannelId = channelId;
             UserId = userId;
             Role = role;
             JoinedAtUtc = DateTime.UtcNow;
             IsActive = true;
+            CanViewHistory = canViewHistory;
         }
 
         public void UpdateRole(MemberRole newRole)

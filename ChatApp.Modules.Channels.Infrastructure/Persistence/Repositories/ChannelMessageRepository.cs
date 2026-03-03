@@ -162,10 +162,16 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             Guid channelId,
             int pageSize = 30,
             DateTime? beforeUtc = null,
+            DateTime? visibleFromUtc = null,
             CancellationToken cancellationToken = default)
         {
             var query = BuildBaseQuery()
                 .Where(r => r.ChannelId == channelId); // Removed IsDeleted filter - show deleted messages as "This message was deleted"
+
+            if (visibleFromUtc.HasValue)
+            {
+                query = query.Where(m => m.CreatedAtUtc >= visibleFromUtc.Value);
+            }
 
             if (beforeUtc.HasValue)
             {
@@ -184,6 +190,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             Guid channelId,
             Guid messageId,
             int count = 50,
+            DateTime? visibleFromUtc = null,
             CancellationToken cancellationToken = default)
         {
             // 1. Hədəf mesajın tarixini tap
@@ -198,9 +205,14 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             var targetDate = targetMessage.CreatedAtUtc;
             var halfCount = count / 2;
 
-            // 2. Base query (projection)
+            // 2. Base query (projection) + visibility filter
             var baseQuery = BuildBaseQuery()
                 .Where(r => r.ChannelId == channelId);
+
+            if (visibleFromUtc.HasValue)
+            {
+                baseQuery = baseQuery.Where(m => m.CreatedAtUtc >= visibleFromUtc.Value);
+            }
 
             // 3. Hədəf mesajdan ƏVVƏL olan mesajlar (hədəf daxil)
             var beforeMessages = await baseQuery
@@ -228,11 +240,19 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             Guid channelId,
             DateTime beforeUtc,
             int limit = 100,
+            DateTime? visibleFromUtc = null,
             CancellationToken cancellationToken = default)
         {
-            var results = await BuildBaseQuery()
+            var query = BuildBaseQuery()
                 .Where(r => r.ChannelId == channelId
-                         && r.CreatedAtUtc < beforeUtc)
+                         && r.CreatedAtUtc < beforeUtc);
+
+            if (visibleFromUtc.HasValue)
+            {
+                query = query.Where(m => m.CreatedAtUtc >= visibleFromUtc.Value);
+            }
+
+            var results = await query
                 .OrderByDescending(m => m.CreatedAtUtc)
                 .Take(limit)
                 .ToListAsync(cancellationToken);
@@ -244,11 +264,19 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             Guid channelId,
             DateTime afterUtc,
             int limit = 100,
+            DateTime? visibleFromUtc = null,
             CancellationToken cancellationToken = default)
         {
-            var results = await BuildBaseQuery()
+            var query = BuildBaseQuery()
                 .Where(r => r.ChannelId == channelId
-                         && r.CreatedAtUtc > afterUtc)
+                         && r.CreatedAtUtc > afterUtc);
+
+            if (visibleFromUtc.HasValue)
+            {
+                query = query.Where(m => m.CreatedAtUtc >= visibleFromUtc.Value);
+            }
+
+            var results = await query
                 .OrderBy(m => m.CreatedAtUtc)
                 .Take(limit)
                 .ToListAsync(cancellationToken);

@@ -71,6 +71,11 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Configurations
             builder.Property(m => m.LastReadLaterMessageId)
                 .HasColumnName("last_read_later_message_id");
 
+            builder.Property(m => m.CanViewHistory)
+                .HasColumnName("can_view_history")
+                .IsRequired()
+                .HasDefaultValue(true);
+
             // Indexes
             builder.HasIndex(m => new { m.ChannelId, m.UserId })
                 .IsUnique()

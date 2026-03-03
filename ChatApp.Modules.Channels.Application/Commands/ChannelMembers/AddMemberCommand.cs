@@ -15,7 +15,8 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
     public record AddMemberCommand(
         Guid ChannelId,
         Guid UserId,
-        Guid AddedBy
+        Guid AddedBy,
+        bool ShowChatHistory = true
     ) : IRequest<Result>;
 
 
@@ -63,7 +64,7 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
                 channel.ValidateAddMember(request.UserId, request.AddedBy);
 
                 // Persistence: child entity öz repository-si vasitəsilə əlavə olunur
-                var newMember = new ChannelMember(request.ChannelId, request.UserId, MemberRole.Member);
+                var newMember = new ChannelMember(request.ChannelId, request.UserId, MemberRole.Member, request.ShowChatHistory);
                 await _unitOfWork.ChannelMembers.AddAsync(newMember, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 

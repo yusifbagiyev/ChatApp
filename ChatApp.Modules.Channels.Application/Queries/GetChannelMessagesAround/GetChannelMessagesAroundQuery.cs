@@ -56,11 +56,18 @@ namespace ChatApp.Modules.Channels.Application.Queries.GetChannelMessagesAround
                     }
                 }
 
+                // Üzvün tarixçə görünürlüyünü yoxla
+                var member = await _unitOfWork.ChannelMembers.GetMemberAsync(
+                    request.ChannelId, request.RequestedBy, cancellationToken);
+                DateTime? visibleFromUtc = (member != null && !member.CanViewHistory)
+                    ? member.JoinedAtUtc : null;
+
                 // Get messages around the target message
                 var messages = await _unitOfWork.ChannelMessages.GetMessagesAroundAsync(
                     request.ChannelId,
                     request.MessageId,
                     request.Count,
+                    visibleFromUtc,
                     cancellationToken);
 
                 if (messages.Count == 0)

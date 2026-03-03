@@ -71,7 +71,7 @@ namespace ChatApp.Modules.Channels.Api.Controllers
                 return Unauthorized();
 
             var result = await _mediator.Send(
-                new AddMemberCommand(channelId, request.UserId, currentUserId),
+                new AddMemberCommand(channelId, request.UserId, currentUserId, request.ShowChatHistory),
                 cancellationToken);
 
             if (result.IsFailure)

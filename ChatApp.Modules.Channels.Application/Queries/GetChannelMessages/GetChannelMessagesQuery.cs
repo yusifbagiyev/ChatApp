@@ -60,11 +60,18 @@ namespace ChatApp.Modules.Channels.Application.Queries.GetChannelMessages
                     }
                 }
 
+                // Üzvün tarixçə görünürlüyünü yoxla
+                var member = await _unitOfWork.ChannelMembers.GetMemberAsync(
+                    request.ChannelId, request.RequestedBy, cancellationToken);
+                DateTime? visibleFromUtc = (member != null && !member.CanViewHistory)
+                    ? member.JoinedAtUtc : null;
+
                 // Get messages (repository will handle pagination and joining with user data)
                 var messages = await _unitOfWork.ChannelMessages.GetChannelMessagesAsync(
                     request.ChannelId,
                     request.PageSize,
                     request.BeforeUtc,
+                    visibleFromUtc,
                     cancellationToken);
 
                 // Populate channel member cache for typing indicators
