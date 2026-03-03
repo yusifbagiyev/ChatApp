@@ -20,6 +20,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
         public async Task<Channel?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return await _context.Channels
+                .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
         }
 
@@ -44,7 +45,6 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                                                 channel.Type,
                                                 channel.CreatedBy,
                                                 CreatorEmail = creator.Email,
-                                                channel.IsArchived,
                                                 channel.CreatedAtUtc
                                             })
                                            .FirstOrDefaultAsync(cancellationToken);
@@ -78,7 +78,6 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                 channelWithCreator.Type,
                 channelWithCreator.CreatedBy,
                 channelWithCreator.CreatorEmail,
-                channelWithCreator.IsArchived,
                 members.Count,
                 members,
                 channelWithCreator.CreatedAtUtc
@@ -96,7 +95,6 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             return await _context.Channels
                 .Include(c => c.Members)
                 .Where(c => c.Members.Any(m => m.UserId == userId && m.IsActive))
-                .Where(c => !c.IsArchived)
                 .OrderByDescending(c => c.CreatedAtUtc)
                 .ToListAsync(cancellationToken);
         }
@@ -107,7 +105,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             var channelsWithLastMessage = await (
                 from channel in _context.Channels
                 join member in _context.ChannelMembers on channel.Id equals member.ChannelId
-                where member.UserId == userId && member.IsActive && !channel.IsArchived && !member.IsHidden
+                where member.UserId == userId && member.IsActive && !member.IsHidden
                 // Get last message for each channel (LEFT JOIN) - Include deleted messages to show "This message was deleted"
                 let lastMessage = (from msg in _context.ChannelMessages
                                    join sender in _context.Set<UserReadModel>() on msg.SenderId equals sender.Id
@@ -158,9 +156,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                     channel.Type,
                     channel.CreatedBy,
                     MemberCount = memberCount,
-                    channel.IsArchived,
                     channel.CreatedAtUtc,
-                    channel.ArchivedAtUtc,
                     channel.AvatarUrl,
                     LastMessageContent = lastMessage == null ? null :
                         lastMessage.IsDeleted ? "This message was deleted" :
@@ -271,9 +267,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                     c.Type,
                     c.CreatedBy,
                     c.MemberCount,
-                    c.IsArchived,
                     c.CreatedAtUtc,
-                    c.ArchivedAtUtc,
                     c.AvatarUrl,
                     c.LastMessageContent,
                     c.LastMessageAtUtc,
@@ -320,7 +314,6 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             return await _context.Channels
                 .Include(c => c.Members)
                 .Where(c => c.Type == ChannelType.Public)
-                .Where(c => !c.IsArchived)
                 .OrderByDescending(c => c.CreatedAtUtc)
                 .ToListAsync(cancellationToken);
         }

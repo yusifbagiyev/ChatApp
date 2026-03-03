@@ -715,7 +715,6 @@ function Chat() {
       avatarUrl: channelData.avatarUrl,
       createdBy: channelData.createdBy,
       memberCount: channelData.memberCount,
-      isArchived: channelData.isArchived,
       lastMessage: channelData.lastMessageContent,
       lastMessageAtUtc: channelData.lastMessageAtUtc,
       lastMessageSenderId: channelData.lastMessageSenderId,

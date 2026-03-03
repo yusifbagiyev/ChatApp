@@ -50,6 +50,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence
                 entity.Ignore(e => e.FullName);
 
                 // Mark as query-only (no tracking, no inserts/updates)
+                // EF Core migrations yaratdıqda users cədvəlini yenidən yaratmağa cəhd edər və bu, ya xətaya, ya da təkrarlanan cədvəl yaranmasına səbəb olar.
                 entity.ToTable(tb => tb.ExcludeFromMigrations());
             });
 

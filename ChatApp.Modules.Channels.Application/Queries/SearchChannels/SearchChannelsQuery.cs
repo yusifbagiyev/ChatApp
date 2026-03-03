@@ -47,7 +47,6 @@ namespace ChatApp.Modules.Channels.Application.Queries.SearchChannels
                 // Combine and filter by search term
                 var allAccessibleChannels = publicChannels
                     .Union(userChannels)
-                    .Where(c => !c.IsArchived)
                     .Where(c => c.Name.Contains(request.SearchTerm, StringComparison.OrdinalIgnoreCase))
                     .Distinct()
                     .Select(c => new ChannelDto(
@@ -57,9 +56,7 @@ namespace ChatApp.Modules.Channels.Application.Queries.SearchChannels
                         c.Type,
                         c.CreatedBy,
                         c.Members.Count(m => m.IsActive),
-                        c.IsArchived,
                         c.CreatedAtUtc,
-                        c.ArchivedAtUtc,
                         c.AvatarUrl
                     ))
                     .OrderByDescending(c => c.CreatedAtUtc)

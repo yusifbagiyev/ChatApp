@@ -8,7 +8,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace ChatApp.Modules.Channels.Api.Controllers
@@ -19,20 +18,10 @@ namespace ChatApp.Modules.Channels.Api.Controllers
     [ApiController]
     [Route("api/channels/{channelId:guid}/members")]
     [Authorize]
-    public class ChannelMembersController : ControllerBase
+    public class ChannelMembersController(
+        IMediator mediator) : ControllerBase
     {
-        private readonly IMediator _mediator;
-        private readonly ILogger<ChannelMembersController> _logger;
-
-        public ChannelMembersController(
-            IMediator mediator,
-            ILogger<ChannelMembersController> logger)
-        {
-            _mediator = mediator;
-            _logger = logger;
-        }
-
-
+        private readonly IMediator _mediator = mediator;
 
         /// <summary>
         /// Gets all members of a channel

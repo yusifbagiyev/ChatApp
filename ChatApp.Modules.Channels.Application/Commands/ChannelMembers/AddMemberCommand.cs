@@ -37,24 +37,16 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
 
 
 
-    public class AddMemberCommandHandler : IRequestHandler<AddMemberCommand, Result>
+    public class AddMemberCommandHandler(
+        IUnitOfWork unitOfWork,
+        IEventBus eventBus,
+        ISignalRNotificationService notificationService,
+        ILogger<AddMemberCommandHandler> logger) : IRequestHandler<AddMemberCommand, Result>
     {
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly IEventBus _eventBus;
-        private readonly ISignalRNotificationService _notificationService;
-        private readonly ILogger<AddMemberCommandHandler> _logger;
-
-        public AddMemberCommandHandler(
-            IUnitOfWork unitOfWork,
-            IEventBus eventBus,
-            ISignalRNotificationService notificationService,
-            ILogger<AddMemberCommandHandler> logger)
-        {
-            _unitOfWork = unitOfWork;
-            _eventBus = eventBus;
-            _notificationService = notificationService;
-            _logger = logger;
-        }
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly IEventBus _eventBus = eventBus;
+        private readonly ISignalRNotificationService _notificationService = notificationService;
+        private readonly ILogger<AddMemberCommandHandler> _logger = logger;
 
         public async Task<Result> Handle(
             AddMemberCommand request,
@@ -64,33 +56,30 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
             {
                 var channel = await _unitOfWork.Channels.GetByIdWithMembersAsync(
                     request.ChannelId,
-                    cancellationToken) 
+                    cancellationToken)
                     ?? throw new NotFoundException($"Channel with ID {request.ChannelId} not found");
 
-                // Check if user is already a member
-                var existingMember = await _unitOfWork.ChannelMembers.GetMemberAsync(
-                    request.ChannelId,
-                    request.UserId,
-                    cancellationToken);
-
-                if (existingMember != null && existingMember.IsActive)
+                // Check if user is already an active member
+                if (channel.UserHasAccessToChannel(request.UserId))
                 {
                     return Result.Failure("User is already a member of this channel");
                 }
 
-                // If member existed but left, reactivate
-                if (existingMember != null && !existingMember.IsActive)
+                // Əvvəl çıxmış qeyri-aktiv üzvlüyü sil (unique constraint: ChannelId + UserId)
+                var existingInactive = await _unitOfWork.ChannelMembers.GetMemberAsync(
+                    request.ChannelId, request.UserId, cancellationToken);
+
+                if (existingInactive != null)
                 {
-                    existingMember.Rejoin();
-                    await _unitOfWork.ChannelMembers.UpdateAsync(existingMember, cancellationToken);
-                }
-                else
-                {
-                    // Add new member
-                    var newMember = new ChannelMember(request.ChannelId, request.UserId, MemberRole.Member);
-                    await _unitOfWork.ChannelMembers.AddAsync(newMember, cancellationToken);
+                    await _unitOfWork.ChannelMembers.DeleteAsync(existingInactive, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
                 }
 
+                // Yeni üzv əlavə et
+                var newMember = new ChannelMember(request.ChannelId, request.UserId, MemberRole.Member);
+                channel.AddMember(newMember);
+
+                await _unitOfWork.Channels.UpdateAsync(channel, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 // Publish event
@@ -107,9 +96,7 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
                     Type = (int)channel.Type,
                     CreatedBy = channel.CreatedBy,
                     MemberCount = channel.Members?.Count(m => m.IsActive) ?? 1,
-                    IsArchived = channel.IsArchived,
                     CreatedAtUtc = channel.CreatedAtUtc,
-                    ArchivedAtUtc = channel.ArchivedAtUtc,
                     AvatarUrl = channel.AvatarUrl,
                     LastMessageContent = (string?)null,
                     LastMessageAtUtc = (DateTime?)null,

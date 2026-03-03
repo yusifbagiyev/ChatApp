@@ -9,7 +9,6 @@ namespace ChatApp.Modules.Channels.Application.DTOs.Responses
         ChannelType Type,
         Guid CreatedBy,
         string CreatedByEmail,
-        bool IsArchived,
         int MemberCount,
         List<ChannelMemberDto> Members,
         DateTime CreatedAtUtc

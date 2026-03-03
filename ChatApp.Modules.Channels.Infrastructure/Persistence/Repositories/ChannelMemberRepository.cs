@@ -36,26 +36,34 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<List<ChannelMemberDto>> GetChannelMembersWithUserDataAsync(Guid channelId, CancellationToken cancellationToken = default)
+        public async Task<List<ChannelMemberDto>> GetChannelMembersWithUserDataAsync(
+            Guid channelId, 
+            CancellationToken cancellationToken = default)
         {
             // Database join with users table
-            return await (from member in _context.ChannelMembers
-                          join user in _context.Set<UserReadModel>() on member.UserId equals user.Id
-                          where member.ChannelId == channelId && member.IsActive
-                          orderby member.Role descending, member.JoinedAtUtc
-                          select new ChannelMemberDto(
-                              member.Id,
-                              member.ChannelId,
-                              member.UserId,
-                              user.Email,
-                              user.FullName,
-                              user.AvatarUrl,
-                              member.Role,
-                              member.JoinedAtUtc,
-                              member.IsActive,
-                              member.LastReadLaterMessageId
-                          ))
-                         .ToListAsync(cancellationToken);
+            return await _context.ChannelMembers
+                .AsNoTracking()
+                .Where(m=> m.ChannelId == channelId && m.IsActive)
+                .Join(
+                    _context.Set<UserReadModel>().AsNoTracking(),
+                    member=>member.UserId,
+                    user=>user.Id,
+                    (member, user) => new {member, user})
+                .OrderByDescending(x=> x.member.Role)
+                    .ThenBy(x=> x.member.JoinedAtUtc)
+                .Select(x=>new ChannelMemberDto(
+                    x.member.Id,
+                    x.member.ChannelId,
+                    x.member.UserId,
+                    x.user.Email,
+                    x.user.FullName,
+                    x.user.AvatarUrl,
+                    x.member.Role,
+                    x.member.JoinedAtUtc,
+                    x.member.IsActive,
+                    x.member.LastReadLaterMessageId
+                ))
+                .ToListAsync(cancellationToken);
         }
 
         public async Task<MemberRole?> GetUserRoleAsync(Guid channelId, Guid userId, CancellationToken cancellationToken = default)

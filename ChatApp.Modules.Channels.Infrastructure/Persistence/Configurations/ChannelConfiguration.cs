@@ -34,15 +34,6 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Configurations
                 .HasColumnName("created_by")
                 .IsRequired();
 
-            builder.Property(c => c.IsArchived)
-                .HasColumnName("is_archived")
-                .IsRequired()
-                .HasDefaultValue(false);
-
-            builder.Property(c => c.ArchivedAtUtc)
-                .HasColumnName("archived_at_utc")
-                .HasColumnType("timestamp with time zone");
-
             builder.Property(c => c.AvatarUrl)
                 .HasColumnName("avatar_url")
                 .HasMaxLength(500);
@@ -67,9 +58,6 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Configurations
 
             builder.HasIndex(c => c.CreatedBy)
                 .HasDatabaseName("ix_channels_created_by");
-
-            builder.HasIndex(c => c.IsArchived)
-                .HasDatabaseName("ix_channels_is_archived");
 
             // Relationships
             builder.HasMany(c => c.Members)

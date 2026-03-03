@@ -46,14 +46,6 @@ namespace ChatApp.Modules.Channels.Domain.Entities
             UpdateTimestamp();
         }
 
-        public void Rejoin()
-        {
-            IsActive = true;
-            LeftAtUtc = null;
-            JoinedAtUtc = DateTime.UtcNow;
-            UpdateTimestamp();
-        }
-
         public void MarkMessageAsLater(Guid messageId)
         {
             LastReadLaterMessageId = messageId;

@@ -11,18 +11,12 @@ namespace ChatApp.Modules.Channels.Application.Queries.GetChannelMembers
         Guid RequestedBy
     ) : IRequest<Result<List<ChannelMemberDto>>>;
 
-    public class GetChannelMembersQueryHandler : IRequestHandler<GetChannelMembersQuery, Result<List<ChannelMemberDto>>>
+    public class GetChannelMembersQueryHandler(
+        IUnitOfWork unitOfWork,
+        ILogger<GetChannelMembersQueryHandler> logger) : IRequestHandler<GetChannelMembersQuery, Result<List<ChannelMemberDto>>>
     {
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly ILogger<GetChannelMembersQueryHandler> _logger;
-
-        public GetChannelMembersQueryHandler(
-            IUnitOfWork unitOfWork,
-            ILogger<GetChannelMembersQueryHandler> logger)
-        {
-            _unitOfWork = unitOfWork;
-            _logger = logger;
-        }
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly ILogger<GetChannelMembersQueryHandler> _logger = logger;
 
         public async Task<Result<List<ChannelMemberDto>>> Handle(
             GetChannelMembersQuery request,
@@ -40,17 +34,11 @@ namespace ChatApp.Modules.Channels.Application.Queries.GetChannelMembers
                 }
 
                 // For private channels, verify user is a member
-                if (channel.Type == Domain.Enums.ChannelType.Private)
+                var hasAccess= channel.UserHasAccessToChannel(request.RequestedBy);
+                if (!hasAccess)
                 {
-                    var isMember = await _unitOfWork.Channels.IsUserMemberAsync(
-                        request.ChannelId,
-                        request.RequestedBy,
-                        cancellationToken);
-
-                    if (!isMember)
-                    {
-                        return Result.Failure<List<ChannelMemberDto>>("You don't have access to this private channel");
-                    }
+                    _logger?.LogWarning($"User {request.RequestedBy} has not access to this channel {request.ChannelId}");
+                    return Result.Failure<List<ChannelMemberDto>>("You dont have an access to private channel");
                 }
 
                 // Repository handles the database join

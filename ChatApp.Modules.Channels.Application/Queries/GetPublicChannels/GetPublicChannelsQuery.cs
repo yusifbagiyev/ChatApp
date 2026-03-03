@@ -30,7 +30,6 @@ namespace ChatApp.Modules.Channels.Application.Queries.GetPublicChannels
                 var channels = await _unitOfWork.Channels.GetPublicChannelsAsync(cancellationToken);
 
                 var channelDtos = channels
-                    .Where(c => !c.IsArchived)
                     .Select(c => new ChannelDto(
                         c.Id,
                         c.Name,
@@ -38,9 +37,7 @@ namespace ChatApp.Modules.Channels.Application.Queries.GetPublicChannels
                         c.Type,
                         c.CreatedBy,
                         c.Members.Count(m => m.IsActive),
-                        c.IsArchived,
                         c.CreatedAtUtc,
-                        c.ArchivedAtUtc,
                         c.AvatarUrl
                     ))
                     .OrderByDescending(c => c.CreatedAtUtc)

@@ -238,36 +238,6 @@ namespace ChatApp.Modules.Channels.Api.Controllers
 
 
         /// <summary>
-        /// Deletes (archives) a channel - only owner can delete
-        /// </summary>
-        [HttpDelete("{channelId:guid}")]
-        [RequirePermission("Channels.Manage")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteChannel(
-            [FromRoute] Guid channelId,
-            CancellationToken cancellationToken)
-        {
-            var userId = GetCurrentUserId();
-            if (userId == Guid.Empty)
-                return Unauthorized();
-
-            var result = await _mediator.Send(
-                new DeleteChannelCommand(channelId, userId),
-                cancellationToken);
-
-            if (result.IsFailure)
-                return BadRequest(new { error = result.Error });
-
-            return Ok(new { message = "Channel deleted successfully" });
-        }
-
-
-
-        /// <summary>
         /// Toggle pin status for a channel
         /// </summary>
         [HttpPost("{channelId:guid}/toggle-pin")]

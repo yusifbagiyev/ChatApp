@@ -9,8 +9,6 @@ namespace ChatApp.Modules.Channels.Domain.Entities
         public string? Description { get; private set; }
         public ChannelType Type { get; private set; }
         public Guid CreatedBy { get; private set; }
-        public bool IsArchived { get; private set; }
-        public DateTime? ArchivedAtUtc { get; private set; }
         public string? AvatarUrl { get; private set; }
 
         // Navigation properties
@@ -38,7 +36,6 @@ namespace ChatApp.Modules.Channels.Domain.Entities
             Description = description;
             Type = type;
             CreatedBy = createdBy;
-            IsArchived = false;
 
             // Creator automatically becomes owner
             var ownerMember = new ChannelMember(Id, createdBy, MemberRole.Owner);
@@ -78,26 +75,12 @@ namespace ChatApp.Modules.Channels.Domain.Entities
             UpdateTimestamp();
         }
 
-        public void Archive()
-        {
-            IsArchived = true;
-            ArchivedAtUtc = DateTime.UtcNow;
-            UpdateTimestamp();
-        }
-
-        public void Unarchive()
-        {
-            IsArchived = false;
-            ArchivedAtUtc = null;
-            UpdateTimestamp();
-        }
-
         public void AddMember(ChannelMember member)
         {
             if(Type==ChannelType.Private && (member.Role!=MemberRole.Admin && member.Role != MemberRole.Owner))
                 throw new InvalidOperationException("Cannot add member with role other than Admin or Owner to a private channel");
 
-            if (_members.Any(m => m.UserId == member.UserId))
+            if (_members.Any(m => m.UserId == member.UserId && m.IsActive))
                 throw new InvalidOperationException("User is already a member of this channel");
 
             _members.Add(member);
@@ -139,6 +122,11 @@ namespace ChatApp.Modules.Channels.Domain.Entities
             currentOwner.UpdateRole(MemberRole.Admin);
             newOwner.UpdateRole(MemberRole.Owner);
             UpdateTimestamp();
+        }
+
+        public bool UserHasAccessToChannel(Guid userId)
+        {
+            return _members.Any(m => m.UserId == userId && m.IsActive);
         }
     }
 }

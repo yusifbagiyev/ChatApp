@@ -82,27 +82,24 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
                     request.UserId,
                     cancellationToken);
 
+                if (existingMember != null && existingMember.IsActive)
+                {
+                    return Result.Failure("You are already a member of this channel");
+                }
+
+                // Əvvəl çıxmış qeyri-aktiv üzvlüyü sil
                 if (existingMember != null)
                 {
-                    if (existingMember.IsActive)
-                    {
-                        return Result.Failure("You are already a member of this channel");
-                    }
-
-                    // Reactivate membership if previously left
-                    existingMember.Rejoin();
-                    await _unitOfWork.ChannelMembers.UpdateAsync(existingMember, cancellationToken);
+                    await _unitOfWork.ChannelMembers.DeleteAsync(existingMember, cancellationToken);
                 }
-                else
-                {
-                    // Create new membership
-                    var newMember = new ChannelMember(
-                        request.ChannelId,
-                        request.UserId,
-                        MemberRole.Member);
 
-                    await _unitOfWork.ChannelMembers.AddAsync(newMember, cancellationToken);
-                }
+                // Yeni üzvlük yarat
+                var newMember = new ChannelMember(
+                    request.ChannelId,
+                    request.UserId,
+                    MemberRole.Member);
+
+                await _unitOfWork.ChannelMembers.AddAsync(newMember, cancellationToken);
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
