@@ -682,27 +682,36 @@ function Chat() {
     }
   }
 
-  // handleHideConversation — conversation-ı siyahıdan gizlə
-  async function handleHideConversation(conv) {
+  // handleToggleHide — conversation-ı hide/unhide toggle et
+  async function handleToggleHide(conv) {
     try {
       const endpoint = conv.type === 1
         ? `/api/channels/${conv.id}/hide`
         : `/api/conversations/${conv.id}/messages/hide`;
-      await apiPost(endpoint);
-    } catch (err) {
-      console.error("Failed to hide conversation:", err);
-    }
-    // API uğurlu və ya uğursuz olsa belə UI-dan sil
-    // (backend-də artıq hide olub, UI sync olmalıdır)
-    setConversations((prev) => prev.filter((c) => c.id !== conv.id));
-    // Functional updater — closure problemini həll edir
-    setSelectedChat((current) => {
-      if (current && current.id === conv.id) {
-        setMessages([]);
-        return null;
+      const result = await apiPost(endpoint);
+
+      if (result.isHidden) {
+        // Gizlədildi — siyahıdan sil, sidebar bağla
+        setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+        setSelectedChat((current) => {
+          if (current && current.id === conv.id) {
+            setMessages([]);
+            return null;
+          }
+          return current;
+        });
+      } else {
+        // Unhide olundu — isHidden bayrağını yenilə
+        setConversations((prev) =>
+          prev.map((c) => c.id === conv.id ? { ...c, isHidden: false } : c),
+        );
+        if (selectedChat && selectedChat.id === conv.id) {
+          setSelectedChat((prev) => ({ ...prev, isHidden: false }));
+        }
       }
-      return current;
-    });
+    } catch (err) {
+      console.error("Failed to toggle hide:", err);
+    }
   }
 
   // handleLeaveChannel — channel-dan ayrıl
@@ -2181,7 +2190,7 @@ function Chat() {
           onTogglePin={handleTogglePin}
           onToggleMute={handleToggleMute}
           onToggleReadLater={handleToggleReadLater}
-          onHide={handleHideConversation}
+          onHide={handleToggleHide}
           onLeaveChannel={handleLeaveChannel}
           onFindChatsWithUser={(otherUserId) => {
             setShowSidebar(true);
@@ -2453,24 +2462,30 @@ function Chat() {
                     {selectedChat.isNotes ? (
                       <>
                         <button className="ds-dropdown-item" onClick={() => setShowSidebarMenu(false)}>View profile</button>
-                        <button className="ds-dropdown-item" onClick={() => { handleHideConversation(selectedChat); setShowSidebarMenu(false); setShowSidebar(false); }}>Hide</button>
+                        <button className="ds-dropdown-item" onClick={() => { handleToggleHide(selectedChat); setShowSidebarMenu(false); setShowSidebar(false); }}>
+                          {selectedChat.isHidden ? "Unhide" : "Hide"}
+                        </button>
                       </>
                     ) : selectedChat.type === 0 ? (
                       <>
                         <button className="ds-dropdown-item" onClick={() => setShowSidebarMenu(false)}>View profile</button>
                         <button className="ds-dropdown-item" onClick={() => { setShowSidebarMenu(false); handleOpenChatsWithUser(selectedChat.otherUserId, "sidebar"); }}>Find chats with this user</button>
-                        <button className="ds-dropdown-item" onClick={() => { handleHideConversation(selectedChat); setShowSidebarMenu(false); setShowSidebar(false); }}>Hide</button>
+                        <button className="ds-dropdown-item" onClick={() => { handleToggleHide(selectedChat); setShowSidebarMenu(false); setShowSidebar(false); }}>
+                          {selectedChat.isHidden ? "Unhide" : "Hide"}
+                        </button>
                         <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => setShowSidebarMenu(false)}>Delete</button>
                       </>
                     ) : (
                       <>
                         {(channelMembers[selectedChat.id]?.[user.id]?.role >= 2 || channelMembers[selectedChat.id]?.[user.id]?.role === "Admin" || channelMembers[selectedChat.id]?.[user.id]?.role === "Owner") && (
-                          <button className="ds-dropdown-item" onClick={() => { setShowAddMember(true); setShowSidebarMenu(false); }}>Add members</button>
+                          <button className="ds-dropdown-item ds-dropdown-accent" onClick={() => { setShowAddMember(true); setShowSidebarMenu(false); }}>Add members</button>
                         )}
                         {(channelMembers[selectedChat.id]?.[user.id]?.role === 3 || channelMembers[selectedChat.id]?.[user.id]?.role === "Owner") && (
                           <button className="ds-dropdown-item" onClick={handleEditChannel}>Edit</button>
                         )}
-                        <button className="ds-dropdown-item" onClick={() => { handleHideConversation(selectedChat); setShowSidebarMenu(false); setShowSidebar(false); }}>Hide</button>
+                        <button className="ds-dropdown-item" onClick={() => { handleToggleHide(selectedChat); setShowSidebarMenu(false); setShowSidebar(false); }}>
+                          {selectedChat.isHidden ? "Unhide" : "Hide"}
+                        </button>
                         <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { handleLeaveChannel(selectedChat); setShowSidebarMenu(false); setShowSidebar(false); }}>Leave</button>
                         <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => setShowSidebarMenu(false)}>Delete</button>
                       </>

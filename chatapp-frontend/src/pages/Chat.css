@@ -985,19 +985,19 @@
 .pinned-bar-title {
   font-size: 12px;
   font-weight: 600;
-  color: #39b9d6;
+  color: #67A4D5;
 }
 
 .pinned-bar-preview {
   font-size: 13px;
-  color: var(--gray-600);
+  color: #000000;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .pinned-bar-preview strong {
-  color: #959ca4;
+  color: #989BA9;
   font-weight: 600;
 }
 
@@ -3569,6 +3569,11 @@
 
 .ds-dropdown-danger {
   color: var(--error-color);
+}
+
+.ds-dropdown-accent {
+  color: #00ace3;
+  font-weight: 600;
 }
 
 /* Scrollable body — boz arxa fon (kartlar ağ görünsün) */

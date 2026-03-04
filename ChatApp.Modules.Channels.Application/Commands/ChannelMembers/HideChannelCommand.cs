@@ -9,7 +9,7 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
     public record HideChannelCommand(
         Guid ChannelId,
         Guid UserId
-    ) : IRequest<Result>;
+    ) : IRequest<Result<bool>>; // Returns true if hidden, false if unhidden
 
     public class HideChannelCommandValidator : AbstractValidator<HideChannelCommand>
     {
@@ -23,7 +23,7 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
         }
     }
 
-    public class HideChannelCommandHandler : IRequestHandler<HideChannelCommand, Result>
+    public class HideChannelCommandHandler : IRequestHandler<HideChannelCommand, Result<bool>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<HideChannelCommandHandler> _logger;
@@ -36,7 +36,7 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
             _logger = logger;
         }
 
-        public async Task<Result> Handle(
+        public async Task<Result<bool>> Handle(
             HideChannelCommand request,
             CancellationToken cancellationToken)
         {
@@ -48,34 +48,44 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
                     cancellationToken);
 
                 if (member == null)
-                    return Result.Failure("User is not a member of this channel");
+                    return Result.Failure<bool>("User is not a member of this channel");
 
-                // Mesaj yoxdursa hide etmək olmaz
-                var hasMessages = await _unitOfWork.ChannelMessages.HasMessagesAsync(
-                    request.ChannelId,
-                    cancellationToken);
+                if (member.IsHidden)
+                {
+                    // Artıq gizlidirsə — unhide et
+                    member.Unhide();
+                }
+                else
+                {
+                    // Mesaj yoxdursa hide etmək olmaz
+                    var hasMessages = await _unitOfWork.ChannelMessages.HasMessagesAsync(
+                        request.ChannelId,
+                        cancellationToken);
 
-                if (!hasMessages)
-                    return Result.Failure("Cannot hide channel without messages");
+                    if (!hasMessages)
+                        return Result.Failure<bool>("Cannot hide channel without messages");
 
-                member.Hide();
+                    member.Hide();
+                }
+
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 _logger?.LogInformation(
-                    "Channel {ChannelId} hidden for user {UserId}",
+                    "Channel {ChannelId} hide toggled to {IsHidden} for user {UserId}",
                     request.ChannelId,
+                    member.IsHidden,
                     request.UserId);
 
-                return Result.Success();
+                return Result.Success(member.IsHidden);
             }
             catch (Exception ex)
             {
                 _logger?.LogError(
                     ex,
-                    "Error hiding channel {ChannelId} for user {UserId}",
+                    "Error toggling hide for channel {ChannelId} by user {UserId}",
                     request.ChannelId,
                     request.UserId);
-                return Result.Failure(ex.Message);
+                return Result.Failure<bool>(ex.Message);
             }
         }
     }

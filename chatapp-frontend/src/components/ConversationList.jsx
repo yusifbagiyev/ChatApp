@@ -614,13 +614,13 @@ function ConversationList({
             </>
           )}
 
-          {/* Hide — DM üçün yalnız lastMessage varsa (conversation mövcuddursa) */}
+          {/* Hide/Unhide — DM üçün yalnız lastMessage varsa (conversation mövcuddursa) */}
           {(contextMenu.conv.type === 1 || contextMenu.conv.lastMessage) && (
             <button
               className="conv-context-item"
               onClick={() => handleContextAction(onHide)}
             >
-              Hide
+              {contextMenu.conv.isHidden ? "Unhide" : "Hide"}
             </button>
           )}
 

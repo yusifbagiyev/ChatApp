@@ -737,7 +737,7 @@ namespace ChatApp.Modules.DirectMessages.Api.Controllers
 
 
         /// <summary>
-        /// Hide a conversation from conversation list
+        /// Toggle hide/unhide a conversation from conversation list
         /// </summary>
         [HttpPost("hide")]
         [RequirePermission("Messages.Read")]
@@ -759,7 +759,7 @@ namespace ChatApp.Modules.DirectMessages.Api.Controllers
             if (result.IsFailure)
                 return BadRequest(new { error = result.Error });
 
-            return Ok();
+            return Ok(new { isHidden = result.Value });
         }
 
 

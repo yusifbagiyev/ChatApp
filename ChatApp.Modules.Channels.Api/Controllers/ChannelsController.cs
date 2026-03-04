@@ -295,7 +295,7 @@ namespace ChatApp.Modules.Channels.Api.Controllers
 
 
         /// <summary>
-        /// Hide a channel from conversation list
+        /// Toggle hide/unhide a channel from conversation list
         /// </summary>
         [HttpPost("{channelId:guid}/hide")]
         [RequirePermission("Channels.Read")]
@@ -317,7 +317,7 @@ namespace ChatApp.Modules.Channels.Api.Controllers
             if (result.IsFailure)
                 return BadRequest(new { error = result.Error });
 
-            return Ok();
+            return Ok(new { isHidden = result.Value });
         }
 
 
