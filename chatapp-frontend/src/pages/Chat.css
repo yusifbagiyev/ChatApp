@@ -1372,9 +1372,25 @@
   position: relative;
 }
 
+/* Görünməz hover zona — sağa + aşağıya genişlənir (more + react butonlarını əhatə edir) */
+.message-bubble::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: -15px;
+  right: -50px;
+  width: 50px;
+}
+
 .message-bubble.own {
   background: var(--bubble-own);
   margin-left: auto;
+}
+
+/* Öz mesajında hover zona sola + aşağıya genişlənir */
+.message-bubble.own::after {
+  right: auto;
+  left: -50px;
 }
 
 .message-content {
@@ -1523,43 +1539,117 @@
    BUBBLE HOVER ACTIONS
    =================================== */
 
-.bubble-actions {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  left: calc(100% + 2px);
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--white);
-  border-radius: 16px;
-  padding: 2px 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-  z-index: 5;
-  white-space: nowrap;
+/* More + React butonları — default gizli, hover/actions-locked ilə görünür */
+.bubble-more-wrap,
+.bubble-react-wrap {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
 }
 
-.bubble-actions.own {
+/* Hover olduqda butonları göstər */
+.message-bubble:hover .bubble-more-wrap,
+.message-bubble:hover .bubble-react-wrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Menu açıq olduqda — more butonu görünsün, react butonu gizlənsin */
+.message-bubble.menu-open .bubble-more-wrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+.message-bubble.menu-open .bubble-react-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Reaction picker açıq olduqda — hər iki buton görünsün (hover kimi) */
+.message-bubble.reaction-open .bubble-more-wrap,
+.message-bubble.reaction-open .bubble-react-wrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Picker üzərindədirsə — more butonu və react butonun özü gizlənsin, wrap qalsın (picker üçün) */
+.message-bubble.picker-hovered .bubble-more-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+.message-bubble.picker-hovered .bubble-react-wrap > .bubble-action-btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Select mode-da heç vaxt göstərmə */
+.message-bubble.select-mode .bubble-more-wrap,
+.message-bubble.select-mode .bubble-react-wrap {
+  display: none;
+}
+
+/* More butonu — bubble-ın sağ kənarında, ortadan yuxarıda (own: sol kənarında) */
+.bubble-more-wrap {
+  position: absolute;
+  top: 30%;
+  transform: translateY(-50%);
+  left: calc(100% + 4px);
+  z-index: 5;
+}
+.bubble-more-wrap.own {
   left: auto;
-  right: calc(100% + 2px);
+  right: calc(100% + 4px);
+}
+
+/* React butonu — bubble-ın sağ alt küncündə çölə çıxır (own: sol alt) */
+.bubble-react-wrap {
+  position: absolute;
+  bottom: -5px;
+  right: -18px;
+  z-index: 5;
+}
+.bubble-react-wrap.own {
+  right: auto;
+  left: -18px;
 }
 
 .bubble-action-btn {
   width: 26px;
   height: 26px;
   border: none;
-  background: transparent;
-  border-radius: 6px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gray-400);
   cursor: pointer;
   transition: all var(--transition-fast);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
-.bubble-action-btn:hover {
-  background: var(--gray-100);
+/* React butonu — kiçik, açıq boz arxa fon */
+.bubble-react-wrap .bubble-action-btn {
+  width: 22px;
+  height: 22px;
+  background: #EAF2F1;
+  color: #b5bbbf;
+}
+.bubble-react-wrap .bubble-action-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* More butonu — açıq boz arxa fon */
+.bubble-more-wrap .bubble-action-btn {
+  background: #EAF2F1;
+  color: var(--gray-500);
+}
+
+.bubble-react-wrap .bubble-action-btn:hover {
+  background: #d9e8e6;
+  color: var(--gray-700);
+}
+
+.bubble-more-wrap .bubble-action-btn:hover {
+  background: #d9e8e6;
   color: var(--gray-700);
 }
 
@@ -1570,8 +1660,7 @@
 .action-menu {
   position: absolute;
   top: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
   background: var(--white);
   border-radius: 10px;
   padding: 4px 0;
@@ -1592,9 +1681,8 @@
 }
 
 .action-menu.own {
+  right: 0;
   left: auto;
-  right: 50%;
-  transform: translateX(50%);
 }
 
 .action-menu.flip-up {
@@ -1645,36 +1733,33 @@
    REACTION PICKER
    =================================== */
 
+/* Reaction picker — default gizli, hover ilə açılır */
+/* Qarşı tərəfin mesajı → sola yapışıq, sağa doğru açılır (mərkəzə doğru) */
 .reaction-picker {
   position: absolute;
-  bottom: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 100%;
+  left: -8px;
+  right: auto;
   background: var(--white);
-  border-radius: 12px;
-  padding: 6px;
+  border-radius: 22px;
+  padding: 5px 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
 }
 
+/* Picker açıq olduqda göstər */
+.bubble-react-wrap.picker-open .reaction-picker {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Öz mesajım → sağa yapışıq, sola doğru açılır (mərkəzə doğru) */
 .reaction-picker.own {
   left: auto;
-  right: 50%;
-  transform: translateX(50%);
-}
-
-.reaction-picker.flip-down {
-  bottom: auto;
-  top: calc(100% + 4px);
-}
-
-.reaction-picker.flip-down::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  left: 0;
-  right: 0;
-  height: 4px;
+  right: -8px;
 }
 
 .reaction-quick {
@@ -1682,7 +1767,8 @@
   align-items: center;
   gap: 2px;
   flex-wrap: wrap;
-  width: 228px;
+  width: max-content;
+  max-width: 280px;
 }
 
 .reaction-emoji-btn {

@@ -53,29 +53,34 @@ const MessageBubble = memo(function MessageBubble({
 }) {
   // --- LOKAL STATE ---
 
-  // showActions — hover olduqda action düymələri göstər (reaction + more)
-  const [showActions, setShowActions] = useState(false);
-
-  // menuOpen — "⋮" düyməsinə klik → MessageActionMenu açıq/bağlı
+  // menuOpen — "⋯" düyməsinə klik → MessageActionMenu açıq/bağlı
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // reactionOpen — "😊" düyməsinə klik → reaction picker açıq/bağlı
+  // reactionOpen — reaction düyməsinə klik → reaction picker açıq/bağlı
   const [reactionOpen, setReactionOpen] = useState(false);
 
   // reactionExpanded — "⌄" düyməsinə klik → genişləndirilmiş emoji siyahısı
   const [reactionExpanded, setReactionExpanded] = useState(false);
 
   // reactionTooltipOpen — hansı emoji-nin tooltip-i açıqdır? (null = heç biri)
-  // string: emoji (məsələn "👍") → həmin emoji-nin kim react etdiyini göstər
   const [reactionTooltipOpen, setReactionTooltipOpen] = useState(null);
 
   // reactionDetailsLoading — API-dən kim react etdi yüklənirkən true
   const [reactionDetailsLoading, setReactionDetailsLoading] = useState(false);
 
+  // pickerHovered — mouse picker-in üzərindədirsə true (butonları gizlətmək üçün)
+  const [pickerHovered, setPickerHovered] = useState(false);
+
   // --- DOM REFERANSLARI ---
   const menuRef = useRef(null);     // MessageActionMenu div-i
   const reactionRef = useRef(null); // Reaction picker div-i
   const tooltipRef = useRef(null);  // Reaction tooltip div-i
+  const pickerTimerRef = useRef(null); // Picker bağlanma gecikmə timer-i
+
+  // Komponent unmount olduqda timer-i təmizlə (memory leak qarşısını al)
+  useEffect(() => {
+    return () => clearTimeout(pickerTimerRef.current);
+  }, []);
 
   // --- KƏNAR KLİK HANDLER ---
   // menuOpen YA reactionOpen YA reactionTooltipOpen açıqdırsa event listener qeydiyyat et
@@ -188,20 +193,14 @@ const MessageBubble = memo(function MessageBubble({
       )}
 
       {/* message-bubble — mesajın vizual balonu */}
-      {/* onContextMenu — sağ klik → menyu aç */}
-      {/* message-bubble — mesajın vizual balonu */}
-      {/* hover trigger burada — yalnız bubble ətrafında action menyu görünsün */}
+      {/* CSS :hover ilə butonlar göstərilir — JS hover state lazım deyil */}
+      {/* actions-locked class: menyu/reaction açıq olduqda butonlar görünməyə davam etsin */}
       <div
-        className={`message-bubble ${isOwn ? "own" : ""}`}
-        onMouseEnter={selectMode ? undefined : () => setShowActions(true)}
-        onMouseLeave={selectMode ? undefined : () => {
-          if (!menuOpen && !reactionOpen) setShowActions(false);
-        }}
+        className={`message-bubble ${isOwn ? "own" : ""}${menuOpen ? " menu-open" : ""}${reactionOpen ? " reaction-open" : ""}${pickerHovered ? " picker-hovered" : ""}${selectMode ? " select-mode" : ""}`}
         onContextMenu={selectMode ? undefined : (e) => {
           e.preventDefault();
           setMenuOpen(true);
           setReactionOpen(false);
-          setShowActions(true);
         }}
       >
         {/* Forwarded label — yönləndirilmiş mesaj */}
@@ -356,30 +355,9 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
 
-        {/* Hover action düymələri + menyular */}
-        {/* Yalnız selectMode yox + (hover YA menyu YA reaction açıqdırsa) */}
-        {!selectMode && (showActions || menuOpen || reactionOpen) && (
-          <div className={`bubble-actions ${isOwn ? "own" : ""}`}>
-            {/* Reaction düyməsi — silinmiş mesajda göstərmə */}
-            {!msg.isDeleted && (
-              <button
-                className="bubble-action-btn"
-                title="Reactions"
-                onClick={() => {
-                  setReactionOpen(!reactionOpen); // Toggle
-                  setMenuOpen(false);
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                  <line x1="9" y1="9" x2="9.01" y2="9" />
-                  <line x1="15" y1="9" x2="15.01" y2="9" />
-                </svg>
-              </button>
-            )}
-
-            {/* More düyməsi — "⋮" → MessageActionMenu açır */}
+        {/* More butonu — həmişə DOM-da, CSS :hover ilə görünür */}
+        {!selectMode && (
+          <div className={`bubble-more-wrap ${isOwn ? "own" : ""}`}>
             <button
               className="bubble-action-btn"
               title="More"
@@ -388,14 +366,14 @@ const MessageBubble = memo(function MessageBubble({
                 setReactionOpen(false);
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="5" r="1" />
-                <circle cx="12" cy="12" r="1" />
-                <circle cx="12" cy="19" r="1" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="19" cy="12" r="2" />
               </svg>
             </button>
 
-            {/* Action menu dropdown */}
+            {/* Action menu dropdown — more butonuna bağlı */}
             {menuOpen && (
               <MessageActionMenu
                 msg={msg}
@@ -412,53 +390,73 @@ const MessageBubble = memo(function MessageBubble({
                 readLaterMessageId={readLaterMessageId}
                 onSelect={onSelect}
                 onDelete={onDelete}
-                onClose={() => {
-                  setMenuOpen(false);
-                  setShowActions(false);
-                }}
+                onClose={() => setMenuOpen(false)}
               />
             )}
+          </div>
+        )}
 
-            {/* Reaction picker — silinməmiş mesaj + reactionOpen */}
-            {!msg.isDeleted && reactionOpen && (
-              <div
-                className={`reaction-picker ${isOwn ? "own" : ""}`}
-                ref={reactionRef}
-              >
-                <div className="reaction-quick">
-                  {/* reactionExpanded true → genişləndirilmiş, false → sürətli siyahı */}
-                  {(reactionExpanded
-                    ? EXPANDED_REACTION_EMOJIS
-                    : QUICK_REACTION_EMOJIS
-                  ).map((emoji) => (
-                    <button
-                      key={emoji}
-                      className="reaction-emoji-btn"
-                      onClick={() => {
-                        // onReaction — Chat.jsx-dəki handleReaction çağırır
-                        onReaction && onReaction(msg, emoji);
-                        setReactionOpen(false);
-                        setReactionExpanded(false);
-                      }}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+        {/* React butonu + picker — hover ilə açılır, CSS ilə göstərilir */}
+        {!selectMode && !msg.isDeleted && (
+          <div
+            className={`bubble-react-wrap ${isOwn ? "own" : ""}${reactionOpen ? " picker-open" : ""}`}
+            onMouseEnter={() => {
+              clearTimeout(pickerTimerRef.current);
+              setReactionOpen(true);
+              setMenuOpen(false);
+            }}
+            onMouseLeave={() => {
+              // Picker-dən çıxanda dərhal bağlama — 1500ms gözlə
+              pickerTimerRef.current = setTimeout(() => {
+                setReactionOpen(false);
+                setReactionExpanded(false);
+                setPickerHovered(false);
+              }, 1500);
+            }}
+          >
+            <button className="bubble-action-btn" title="Reactions">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2 20h2V10H2v10zm19.8-9.2c-.3-.4-.8-.6-1.3-.6h-5.6l.8-4c.1-.5 0-1-.4-1.4-.3-.3-.8-.5-1.3-.5h-.3c-.4.1-.7.4-.9.8L10.6 10H8v10h8.3c.7 0 1.3-.4 1.5-1l2.7-7c.2-.4.1-.9-.2-1.2z" />
+              </svg>
+            </button>
 
-                  {/* Genişləndir düyməsi — yalnız collapsed vəziyyətdə göstər */}
-                  {!reactionExpanded && (
-                    <button
-                      className="reaction-expand-btn"
-                      onClick={() => setReactionExpanded(true)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+            {/* Reaction picker — hover ilə açılır */}
+            <div
+              className={`reaction-picker ${isOwn ? "own" : ""}`}
+              ref={reactionRef}
+              onMouseEnter={() => setPickerHovered(true)}
+              onMouseLeave={() => setPickerHovered(false)}
+            >
+              <div className="reaction-quick">
+                {(reactionExpanded
+                  ? EXPANDED_REACTION_EMOJIS
+                  : QUICK_REACTION_EMOJIS
+                ).map((emoji) => (
+                  <button
+                    key={emoji}
+                    className="reaction-emoji-btn"
+                    onClick={() => {
+                      onReaction && onReaction(msg, emoji);
+                      setReactionOpen(false);
+                      setReactionExpanded(false);
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+
+                {!reactionExpanded && (
+                  <button
+                    className="reaction-expand-btn"
+                    onClick={() => setReactionExpanded(true)}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
