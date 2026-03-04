@@ -95,6 +95,8 @@ function Chat() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showSidebarMenu, setShowSidebarMenu] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [favoriteMessages, setFavoriteMessages] = useState([]); // Favori mesajlar siyahısı
+  const [favoritesLoading, setFavoritesLoading] = useState(false); // Favorilər yüklənir
   const [favMenuId, setFavMenuId] = useState(null); // Favorite mesajın more menu-su açıq olan mesaj id-si
   const [favSearchOpen, setFavSearchOpen] = useState(false); // Favorites search input açıq/bağlı
   const [favSearchText, setFavSearchText] = useState(""); // Favorites axtarış mətni
@@ -117,6 +119,16 @@ function Chat() {
   const [membersPanelList, setMembersPanelList] = useState([]); // Members panel — paginated siyahı
   const [membersPanelHasMore, setMembersPanelHasMore] = useState(true); // Daha çox üzv var?
   const [membersPanelLoading, setMembersPanelLoading] = useState(false); // Yüklənir?
+
+  // Search panel state-ləri — chat daxili mesaj axtarışı
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResultsList, setSearchResultsList] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchHasMore, setSearchHasMore] = useState(false);
+  const [searchPage, setSearchPage] = useState(1);
+  const [searchFromSidebar, setSearchFromSidebar] = useState(false); // back/close buton logic
+  const searchTimerRef = useRef(null);
 
   // Mesajlar siyahısı — aktiv chatın mesajları
   // Backend DESC qaytarır (yeni → köhnə), biz tersine çeviririk
@@ -531,6 +543,26 @@ function Chat() {
     }
   }
 
+  // loadFavoriteMessages — seçilmiş chatın favori mesajlarını yüklə
+  async function loadFavoriteMessages(chat) {
+    try {
+      setFavoritesLoading(true);
+      const endpoint = getChatEndpoint(chat.id, chat.type, "/messages/favorites");
+      if (!endpoint) return;
+      const data = await apiGet(endpoint);
+      // DESC sıralama — ən son favorilərə əlavə olunan birinci görünsün
+      const sorted = (data || []).sort(
+        (a, b) => new Date(b.favoritedAtUtc) - new Date(a.favoritedAtUtc),
+      );
+      setFavoriteMessages(sorted);
+    } catch (err) {
+      console.error("Failed to load favorite messages:", err);
+      setFavoriteMessages([]);
+    } finally {
+      setFavoritesLoading(false);
+    }
+  }
+
   // handleSelectSearchUser — search nəticəsindən user seçildikdə
   // Mövcud conversation varsa seç, yoxdursa POST /api/conversations ilə yarat
   // Hidden conversation: listdə yoxdur amma backend-də mövcuddur — listə əlavə etmədən aç
@@ -728,6 +760,101 @@ function Chat() {
       }
     } catch (err) {
       console.error("Failed to leave channel:", err);
+    }
+  }
+
+  // ─── Search panel handler-ləri ──────────────────────────────────────────────
+
+  // handleOpenSearch — search panelini aç
+  function handleOpenSearch() {
+    if (showSearchPanel) {
+      // Artıq açıqdırsa — bağla
+      handleCloseSearch();
+      return;
+    }
+    setSearchFromSidebar(showSidebar); // sidebar açıq idisə → back buton
+    setShowSidebar(true);
+    setShowSearchPanel(true);
+    // Digər panelləri bağla
+    setShowFavorites(false);
+    setShowAllLinks(false);
+    setShowFilesMedia(false);
+    setShowMembersPanel(false);
+    setShowChatsWithUser(false);
+  }
+
+  // handleCloseSearch — search panelini bağla
+  function handleCloseSearch() {
+    setShowSearchPanel(false);
+    setSearchQuery("");
+    setSearchResultsList([]);
+    setSearchPage(1);
+    setSearchHasMore(false);
+    if (!searchFromSidebar) {
+      setShowSidebar(false); // birbaşa search açılmışdısa sidebar da bağla
+    }
+    setSearchFromSidebar(false);
+  }
+
+  // Debounced search — searchQuery dəyişdikdə 400ms sonra API sorğusu
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    const q = searchQuery.trim();
+    if (!q || q.length < 2 || !selectedChat) {
+      setSearchResultsList([]);
+      setSearchHasMore(false);
+      setSearchLoading(false);
+      return;
+    }
+
+    setSearchLoading(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const scope = selectedChat.type === 1 ? 3 : 4; // SpecificChannel : SpecificConversation
+        const idParam = selectedChat.type === 1
+          ? `channelId=${selectedChat.id}`
+          : `conversationId=${selectedChat.id}`;
+        const data = await apiGet(
+          `/api/search?q=${encodeURIComponent(q)}&scope=${scope}&${idParam}&page=1&pageSize=20`,
+        );
+        setSearchResultsList(data.results || []);
+        setSearchHasMore(data.hasNextPage || false);
+        setSearchPage(1);
+      } catch (err) {
+        console.error("Search failed:", err);
+        setSearchResultsList([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 400);
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery, selectedChat]);
+
+  // loadMoreSearchResults — infinite scroll üçün növbəti səhifə
+  async function loadMoreSearchResults() {
+    if (searchLoading || !searchHasMore || !selectedChat) return;
+    setSearchLoading(true);
+    try {
+      const q = searchQuery.trim();
+      const nextPage = searchPage + 1;
+      const scope = selectedChat.type === 1 ? 3 : 4;
+      const idParam = selectedChat.type === 1
+        ? `channelId=${selectedChat.id}`
+        : `conversationId=${selectedChat.id}`;
+      const data = await apiGet(
+        `/api/search?q=${encodeURIComponent(q)}&scope=${scope}&${idParam}&page=${nextPage}&pageSize=20`,
+      );
+      setSearchResultsList((prev) => [...prev, ...(data.results || [])]);
+      setSearchHasMore(data.hasNextPage || false);
+      setSearchPage(nextPage);
+    } catch (err) {
+      console.error("Load more search results failed:", err);
+    } finally {
+      setSearchLoading(false);
     }
   }
 
@@ -995,6 +1122,13 @@ function Chat() {
     setShowCreateChannel(false);
     setEditChannelData(null);
 
+    // Search paneli açıqdırsa bağla
+    setShowSearchPanel(false);
+    setSearchQuery("");
+    setSearchResultsList([]);
+    setSearchPage(1);
+    setSearchHasMore(false);
+
     // Draft saxla — əvvəlki chatın yazısını yadda saxla
     if (selectedChat) {
       const currentText = messageText.trim();
@@ -1044,6 +1178,7 @@ function Chat() {
     setPinBarExpanded(false);
     setCurrentPinIndex(0);
     setShowFavorites(false);
+    setFavoriteMessages([]);
     setFavMenuId(null);
     setFavSearchOpen(false);
     setFavSearchText("");
@@ -1101,6 +1236,9 @@ function Chat() {
       const msgBase = getChatEndpoint(chat.id, chat.type, "/messages");
       if (!msgBase) return;
       const pinEndpoint = `${msgBase}/pinned`;
+
+      // Favori mesajları paralel yüklə (fire-and-forget — əsas axına təsir etmir)
+      loadFavoriteMessages(chat);
 
       // Read later varsa around endpoint, yoxdursa normal endpoint
       const msgEndpoint = hasReadLater
@@ -1403,7 +1541,8 @@ function Chat() {
     [selectedChat],
   ); // Dependency: selectedChat dəyişdikdə funksiyanı yenilə
 
-  // handleFavoriteMessage — mesajı favorilərə əlavə et / çıxar
+  // handleFavoriteMessage — mesajı favorilərə əlavə et (POST)
+  // Uğurlu olduqda favoriteMessages siyahısına əlavə et (favoriteIds avtomatik yenilənir)
   const handleFavoriteMessage = useCallback(
     async (msg) => {
       if (!selectedChat) return;
@@ -1415,8 +1554,35 @@ function Chat() {
         );
         if (!endpoint) return;
         await apiPost(endpoint);
+        // Favori siyahısına əlavə et — favoriteIds useMemo avtomatik yenilənəcək
+        setFavoriteMessages((prev) => [
+          { ...msg, favoritedAtUtc: new Date().toISOString() },
+          ...prev,
+        ]);
       } catch (err) {
-        console.error("Failed to toggle favorite:", err);
+        console.error("Failed to add favorite:", err);
+      }
+    },
+    [selectedChat],
+  );
+
+  // handleRemoveFavorite — mesajı favorilərdən çıxar (DELETE)
+  // Uğurlu olduqda favoriteMessages siyahısından sil (favoriteIds avtomatik yenilənir)
+  const handleRemoveFavorite = useCallback(
+    async (msg) => {
+      if (!selectedChat) return;
+      try {
+        const endpoint = getChatEndpoint(
+          selectedChat.id,
+          selectedChat.type,
+          `/messages/${msg.id}/favorite`,
+        );
+        if (!endpoint) return;
+        await apiDelete(endpoint);
+        // Favori siyahısından çıxar — favoriteIds useMemo avtomatik yenilənəcək
+        setFavoriteMessages((prev) => prev.filter((m) => m.id !== msg.id));
+      } catch (err) {
+        console.error("Failed to remove favorite:", err);
       }
     },
     [selectedChat],
@@ -2023,6 +2189,13 @@ function Chat() {
     });
   }, [selectedMessages, messages, user.id]);
 
+  // favoriteIds — favori mesajların ID-ləri Set-i (O(1) lookup üçün)
+  // MessageBubble-da isFavorite yoxlaması üçün istifadə olunur
+  const favoriteIds = useMemo(
+    () => new Set(favoriteMessages.map((m) => m.id)),
+    [favoriteMessages],
+  );
+
   // URL regex — mesaj content-indən linkləri çıxarmaq üçün
   // Hər mesajdan bütün URL-ləri tapır, hər URL üçün ayrı obyekt qaytarır
   const linkMessages = useMemo(() => {
@@ -2221,6 +2394,8 @@ function Chat() {
                 onOpenAddMember={() => setShowAddMember(true)}
                 onToggleSidebar={() => setShowSidebar((v) => !v)}
                 sidebarOpen={showSidebar}
+                onOpenSearch={handleOpenSearch}
+                searchOpen={showSearchPanel}
               />
 
               {/* loadingOlder — yuxarı scroll edəndə köhnə mesajlar yüklənirkən spinner */}
@@ -2308,6 +2483,8 @@ function Chat() {
                       onForward={handleForwardMsg}
                       onPin={handlePinMessage}
                       onFavorite={handleFavoriteMessage}
+                      onRemoveFavorite={handleRemoveFavorite}
+                      isFavorite={favoriteIds.has(msg.id)}
                       onMarkLater={handleMarkLater}
                       readLaterMessageId={readLaterMessageId}
                       onSelect={handleEnterSelectMode}
@@ -2589,13 +2766,13 @@ function Chat() {
                   className="ds-info-row ds-info-clickable"
                   role="button"
                   tabIndex={0}
-                  onClick={() => setShowFavorites(true)}
+                  onClick={() => { setShowFavorites(true); loadFavoriteMessages(selectedChat); }}
                 >
                   <svg className="ds-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="0.5">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
                   <span className="ds-info-link">Favorite messages</span>
-                  <span className="ds-badge">{pinnedMessages.length}</span>
+                  <span className="ds-badge">{favoriteMessages.length}</span>
                 </div>
 
                 {/* All links */}
@@ -2698,12 +2875,14 @@ function Chat() {
                   )}
                 </div>
                 <div className="ds-favorites-list">
-                  {(() => {
+                  {favoritesLoading ? (
+                    <div className="ds-favorites-empty">Loading...</div>
+                  ) : (() => {
                     // Axtarış mətninə görə filterlə
                     const query = favSearchText.trim().toLowerCase();
                     const filtered = query
-                      ? pinnedMessages.filter((m) => m.content?.toLowerCase().includes(query))
-                      : pinnedMessages;
+                      ? favoriteMessages.filter((m) => m.content?.toLowerCase().includes(query))
+                      : favoriteMessages;
 
                     if (filtered.length === 0) {
                       return (
@@ -2803,7 +2982,7 @@ function Chat() {
                                   <button
                                     className="ds-dropdown-item ds-dropdown-danger"
                                     onClick={() => {
-                                      handlePinMessage({ ...msg, isPinned: true });
+                                      handleRemoveFavorite(msg);
                                       setFavMenuId(null);
                                     }}
                                   >
@@ -3005,6 +3184,129 @@ function Chat() {
                       );
                     });
                   })()}
+                </div>
+              </div>
+            )}
+
+            {/* Search panel — chat daxili mesaj axtarışı */}
+            {showSearchPanel && (
+              <div className="ds-favorites-panel">
+                <div className="ds-favorites-header">
+                  {/* searchFromSidebar ? back buton : close buton */}
+                  <button className="ds-favorites-back" onClick={handleCloseSearch}>
+                    {searchFromSidebar ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Search input — həmişə göstərilir */}
+                  <div className="ds-search-input-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Find in chat"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      autoFocus
+                    />
+                    {searchQuery && (
+                      <button className="ds-search-clear" onClick={() => setSearchQuery("")}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="15" y1="9" x2="9" y2="15" />
+                          <line x1="9" y1="9" x2="15" y2="15" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Nəticələr */}
+                <div
+                  className="ds-favorites-list"
+                  onScroll={(e) => {
+                    const { scrollTop, scrollHeight, clientHeight } = e.target;
+                    if (scrollHeight - scrollTop - clientHeight < 50 && searchHasMore && !searchLoading) {
+                      loadMoreSearchResults();
+                    }
+                  }}
+                >
+                  {searchResultsList.length === 0 && !searchLoading ? (
+                    <div className="ds-search-empty">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: 12, opacity: 0.5 }}>
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                      {searchQuery.trim().length >= 2
+                        ? "No messages found."
+                        : "This view will show found messages."}
+                    </div>
+                  ) : (
+                    (() => {
+                      const q = searchQuery.trim().toLowerCase();
+                      let lastDate = "";
+                      return searchResultsList.map((r) => {
+                        const d = new Date(r.createdAtUtc);
+                        const dateStr = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+                        const showDate = dateStr !== lastDate;
+                        if (showDate) lastDate = dateStr;
+                        return (
+                          <div key={r.messageId}>
+                            {showDate && (
+                              <div className="ds-favorites-date">
+                                <span>{dateStr}</span>
+                              </div>
+                            )}
+                            <div
+                              className="ds-favorites-item"
+                              style={{ cursor: "pointer" }}
+                              onClick={() => handleScrollToMessage(r.messageId)}
+                            >
+                              <div className="ds-favorites-avatar" style={{ background: getAvatarColor(r.senderFullName) }}>
+                                {r.senderAvatarUrl ? (
+                                  <img src={r.senderAvatarUrl} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                                ) : (
+                                  getInitials(r.senderFullName)
+                                )}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className="ds-favorites-sender">{r.senderFullName}</div>
+                                <div className="ds-favorites-text">
+                                  {q && r.content ? (() => {
+                                    const lowerContent = r.content.toLowerCase();
+                                    const parts = [];
+                                    let lastIdx = 0;
+                                    let searchIdx = lowerContent.indexOf(q, lastIdx);
+                                    while (searchIdx !== -1) {
+                                      if (searchIdx > lastIdx) parts.push(r.content.slice(lastIdx, searchIdx));
+                                      parts.push(<mark key={searchIdx}>{r.content.slice(searchIdx, searchIdx + q.length)}</mark>);
+                                      lastIdx = searchIdx + q.length;
+                                      searchIdx = lowerContent.indexOf(q, lastIdx);
+                                    }
+                                    if (lastIdx < r.content.length) parts.push(r.content.slice(lastIdx));
+                                    return parts;
+                                  })() : r.content}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()
+                  )}
+                  {searchLoading && (
+                    <div className="ds-search-empty" style={{ padding: "20px" }}>Loading...</div>
+                  )}
                 </div>
               </div>
             )}

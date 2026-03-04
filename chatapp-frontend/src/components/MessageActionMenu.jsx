@@ -15,6 +15,8 @@ import { memo } from "react";
 //   onForward — Forward seçildi
 //   onPin     — Pin/Unpin seçildi
 //   onFavorite — Add to Favorites seçildi
+//   onRemoveFavorite — Remove from Favorites seçildi
+//   isFavorite — bu mesaj favori siyahısındadırmı
 //   onMarkLater — Mark to read later seçildi
 //   onSelect  — Select seçildi (çox mesaj seçmə rejiminə gir)
 //   onDelete  — Delete seçildi (yalnız isOwn)
@@ -28,6 +30,8 @@ const MessageActionMenu = memo(function MessageActionMenu({
   onForward,
   onPin,
   onFavorite,
+  onRemoveFavorite,
+  isFavorite,
   onMarkLater,
   readLaterMessageId,
   onSelect,
@@ -112,28 +116,38 @@ const MessageActionMenu = memo(function MessageActionMenu({
             <span>{msg.isPinned ? "Unpin" : "Pin"}</span>
             {/* Ternary: isPinned → çarpaz xətlə pin ikonu (unpin), deyilsə normal pin */}
             {msg.isPinned ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ transform: "rotate(45deg)" }}>
-                <path d="M12 17v5" />
-                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
-                <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="2" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 4v6l-2 4v2h10v-2l-2-4V4" />
+                <line x1="12" y1="16" x2="12" y2="21" />
+                <line x1="8" y1="4" x2="16" y2="4" />
+                <line x1="4" y1="21" x2="20" y2="3" strokeWidth="2.5" />
               </svg>
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: "rotate(45deg)" }}>
-                <path d="M12 17v5" />
-                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 4v6l-2 4v2h10v-2l-2-4V4" />
+                <line x1="12" y1="16" x2="12" y2="21" />
+                <line x1="8" y1="4" x2="16" y2="4" />
               </svg>
             )}
           </button>
 
-          {/* Add to Favorites — sevimli mesajlar siyahısına əlavə et */}
+          {/* Add to Favorites / Remove from Favorites — isFavorite-a görə toggle */}
           <button
             className="action-menu-item"
-            onClick={() => handleAction(onFavorite, msg)}
+            onClick={() => handleAction(isFavorite ? onRemoveFavorite : onFavorite, msg)}
           >
-            <span>Add to Favorites</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
+            <span>{isFavorite ? "Remove from Favorites" : "Add to Favorites"}</span>
+            {isFavorite ? (
+              // Dolu ulduz — favori olduğunu göstərir
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            ) : (
+              // Boş ulduz — favori deyil
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            )}
           </button>
 
           {/* Mark to read later — yalnız qarşı tərəfin mesajında + bu mesaj artıq mark olunmayıbsa */}

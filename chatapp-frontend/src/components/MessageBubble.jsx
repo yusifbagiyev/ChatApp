@@ -25,8 +25,9 @@ import MessageActionMenu from "./MessageActionMenu"; // "⋮" menyu komponenti
 //   chatType         — 0=DM, 1=Channel, 2=DepartmentUser
 //   selectMode       — çox mesaj seçmə rejimi aktivdirsə true
 //   isSelected       — bu mesaj seçilib? (checkbox checked)
-//   onReply/onForward/onPin/onFavorite/onSelect/onToggleSelect/onScrollToMessage/onDelete/onEdit/onReaction/onLoadReactionDetails
+//   onReply/onForward/onPin/onFavorite/onRemoveFavorite/onSelect/onToggleSelect/onScrollToMessage/onDelete/onEdit/onReaction/onLoadReactionDetails
 //                    — Chat.jsx-dən gəlir, useCallback ilə stabildir
+//   isFavorite       — bu mesaj favori siyahısındadırmı (favoriteIds Set-dən)
 const MessageBubble = memo(function MessageBubble({
   msg,
   isOwn,
@@ -38,6 +39,8 @@ const MessageBubble = memo(function MessageBubble({
   onForward,
   onPin,
   onFavorite,
+  onRemoveFavorite,
+  isFavorite,
   onMarkLater,
   readLaterMessageId,
   onSelect,
@@ -403,6 +406,8 @@ const MessageBubble = memo(function MessageBubble({
                 onForward={onForward}
                 onPin={onPin}
                 onFavorite={onFavorite}
+                onRemoveFavorite={onRemoveFavorite}
+                isFavorite={isFavorite}
                 onMarkLater={onMarkLater}
                 readLaterMessageId={readLaterMessageId}
                 onSelect={onSelect}

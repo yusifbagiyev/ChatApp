@@ -9,7 +9,9 @@ import { getInitials, getAvatarColor, getLastSeenText } from "../utils/chatUtils
 //   onTogglePinExpand — pin list-i genişləndir/yığ (Chat.jsx-dən gəlir)
 //   onOpenAddMember   — "Add Member" düyməsinə klik (yalnız channel üçün)
 //   onToggleSidebar   — sağ sidebar panelini aç/bağla
-function ChatHeader({ selectedChat, onlineUsers, pinnedMessages, onTogglePinExpand, onOpenAddMember, onToggleSidebar, sidebarOpen }) {
+//   onOpenSearch      — search panelini aç
+//   searchOpen        — search paneli açıqdır? (active class üçün)
+function ChatHeader({ selectedChat, onlineUsers, pinnedMessages, onTogglePinExpand, onOpenAddMember, onToggleSidebar, sidebarOpen, onOpenSearch, searchOpen }) {
   return (
     <div className="chat-header">
       {/* Sol tərəf: avatar + ad + status */}
@@ -97,7 +99,7 @@ function ChatHeader({ selectedChat, onlineUsers, pinnedMessages, onTogglePinExpa
         )}
 
         {/* Search düyməsi */}
-        <button className="header-action-btn" title="Search">
+        <button className={`header-action-btn${searchOpen ? " active" : ""}`} title="Search" onClick={onOpenSearch}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
