@@ -37,10 +37,12 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
         }
 
         public async Task<List<ChannelMemberDto>> GetChannelMembersWithUserDataAsync(
-            Guid channelId, 
+            Guid channelId,
+            int skip = 0,
+            int take = 30,
             CancellationToken cancellationToken = default)
         {
-            // Database join with users table
+            // Database join with users table + pagination
             return await _context.ChannelMembers
                 .AsNoTracking()
                 .Where(m=> m.ChannelId == channelId)
@@ -51,6 +53,8 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                     (member, user) => new {member, user})
                 .OrderByDescending(x=> x.member.Role)
                     .ThenBy(x=> x.member.JoinedAtUtc)
+                .Skip(skip)
+                .Take(take)
                 .Select(x=>new ChannelMemberDto(
                     x.member.Id,
                     x.member.ChannelId,

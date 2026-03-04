@@ -34,14 +34,16 @@ namespace ChatApp.Modules.Channels.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetMembers(
             [FromRoute] Guid channelId,
-            CancellationToken cancellationToken)
+            [FromQuery] int skip = 0,
+            [FromQuery] int take = 30,
+            CancellationToken cancellationToken = default)
         {
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty)
                 return Unauthorized();
 
             var result = await _mediator.Send(
-                new GetChannelMembersQuery(channelId, userId),
+                new GetChannelMembersQuery(channelId, userId, skip, take),
                 cancellationToken);
 
             if (result.IsFailure)
@@ -56,7 +58,6 @@ namespace ChatApp.Modules.Channels.Api.Controllers
         /// Adds a member to the channel
         /// </summary>
         [HttpPost]
-        [RequirePermission("Channels.Manage")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -86,7 +87,6 @@ namespace ChatApp.Modules.Channels.Api.Controllers
         /// Removes a member from the channel
         /// </summary>
         [HttpDelete("{userId:guid}")]
-        [RequirePermission("Channels.Manage")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -116,7 +116,6 @@ namespace ChatApp.Modules.Channels.Api.Controllers
         /// Updates a member's role (Owner only)
         /// </summary>
         [HttpPut("{userId:guid}/role")]
-        [RequirePermission("Channels.Manage")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

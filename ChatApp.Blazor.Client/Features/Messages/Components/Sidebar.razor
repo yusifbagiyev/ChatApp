@@ -282,11 +282,14 @@
                             }
                             else
                             {
-                                @if (IsChannelAdminOrOwner && CanManageChannels)
+                                @if (IsChannelAdminOrOwner)
                                 {
                                     <button class="menu-item" @onclick="HandleAddMembers">
                                         <span>Add members</span>
                                     </button>
+                                }
+                                @if (CurrentUserChannelRole == MemberRole.Owner)
+                                {
                                     <button class="menu-item" @onclick="HandleEditChannel">
                                         <span>Edit</span>
                                     </button>

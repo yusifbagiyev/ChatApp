@@ -96,6 +96,12 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
                     return Result.Failure("You don't have permission to remove members");
                 }
 
+                // Admin digər admin-i çıxara bilməz — yalnız Owner edə bilər
+                if (requesterRole == MemberRole.Admin && member.Role == MemberRole.Admin)
+                {
+                    return Result.Failure("Only the channel owner can remove administrators");
+                }
+
                 // Hard-delete: sətri DB-dən sil (mesajlar ayrı cədvəldədir, toxunulmur)
                 await _unitOfWork.ChannelMembers.DeleteAsync(member, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);

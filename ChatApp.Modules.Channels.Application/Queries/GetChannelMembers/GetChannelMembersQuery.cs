@@ -8,7 +8,9 @@ namespace ChatApp.Modules.Channels.Application.Queries.GetChannelMembers
 {
     public record GetChannelMembersQuery(
         Guid ChannelId,
-        Guid RequestedBy
+        Guid RequestedBy,
+        int Skip = 0,
+        int Take = 30
     ) : IRequest<Result<List<ChannelMemberDto>>>;
 
     public class GetChannelMembersQueryHandler(
@@ -41,9 +43,11 @@ namespace ChatApp.Modules.Channels.Application.Queries.GetChannelMembers
                     return Result.Failure<List<ChannelMemberDto>>("You dont have an access to private channel");
                 }
 
-                // Repository handles the database join
+                // Repository handles the database join + pagination
                 var memberDtos = await _unitOfWork.ChannelMembers.GetChannelMembersWithUserDataAsync(
                     request.ChannelId,
+                    request.Skip,
+                    request.Take,
                     cancellationToken);
 
                 return Result.Success(memberDtos);

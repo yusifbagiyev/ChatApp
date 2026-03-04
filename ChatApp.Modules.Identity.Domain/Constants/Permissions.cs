@@ -34,7 +34,6 @@ namespace ChatApp.Modules.Identity.Domain.Constants
         // Channels Module
         public const string ChannelsCreate = "Channels.Create";
         public const string ChannelsRead = "Channels.Read";
-        public const string ChannelsManage = "Channels.Manage";
         public const string ChannelsDelete = "Channels.Delete";
 
         /// <summary>

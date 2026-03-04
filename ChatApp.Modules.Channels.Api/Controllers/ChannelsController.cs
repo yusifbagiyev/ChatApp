@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using ChatApp.Shared.Kernel.Common;
 
 namespace ChatApp.Modules.Channels.Api.Controllers
 {
@@ -101,7 +102,7 @@ namespace ChatApp.Modules.Channels.Api.Controllers
         /// </summary>
         [HttpGet("my-channels")]
         [RequirePermission("Channels.Read")]
-        [ProducesResponseType(typeof(ChatApp.Shared.Kernel.Common.PagedResult<ChannelDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<ChannelDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetMyChannelsPaged(
@@ -205,7 +206,6 @@ namespace ChatApp.Modules.Channels.Api.Controllers
         /// Updates channel information (name, description, type)
         /// </summary>
         [HttpPut("{channelId:guid}")]
-        [RequirePermission("Channels.Manage")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

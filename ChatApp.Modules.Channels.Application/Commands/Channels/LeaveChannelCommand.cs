@@ -75,10 +75,28 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
                     return Result.Failure("You are not a member of this channel");
                 }
 
-                // Owner cannot leave without transferring ownership
+                // Owner kanaldan ayrılır — ownership avtomatik transfer olunur
                 if (member.Role == MemberRole.Owner)
                 {
-                    return Result.Failure("Owner cannot leave channel. Transfer ownership first or delete the channel.");
+                    var allMembers = await _unitOfWork.ChannelMembers.GetChannelMembersAsync(
+                        request.ChannelId, cancellationToken);
+
+                    var candidates = allMembers.Where(m => m.UserId != request.UserId).ToList();
+
+                    if (candidates.Count > 0)
+                    {
+                        // Prioritet: ilk admin, tapılmazsa ilk member
+                        var successor = candidates.FirstOrDefault(m => m.Role == MemberRole.Admin)
+                                        ?? candidates.First();
+
+                        successor.UpdateRole(MemberRole.Owner);
+                        await _unitOfWork.ChannelMembers.UpdateAsync(successor, cancellationToken);
+
+                        _logger?.LogInformation(
+                            "Ownership transferred from {OldOwnerId} to {NewOwnerId} in channel {ChannelId}",
+                            request.UserId, successor.UserId, request.ChannelId);
+                    }
+                    // candidates.Count == 0: owner tək üzv idi, kanal boş qalır
                 }
 
                 // Hard-delete: sətri DB-dən sil (mesajlar ayrı cədvəldədir, toxunulmur)

@@ -150,11 +150,6 @@ public partial class Messages : IAsyncDisposable
     private bool canDownloadFile => UserState.HasPermission(Permissions.FilesDownload);
 
     /// <summary>
-    /// İstifadəçinin kanal idarə etmə icazəsi var?
-    /// </summary>
-    private bool canManageChannels => UserState.HasPermission(Permissions.ChannelsManage);
-
-    /// <summary>
     /// İstifadəçinin kanal silmə icazəsi var?
     /// </summary>
     private bool canDeleteChannels => UserState.HasPermission(Permissions.ChannelsDelete);
