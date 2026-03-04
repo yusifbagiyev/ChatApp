@@ -46,7 +46,7 @@ import ChatInputArea from "../components/ChatInputArea"; // mesaj yazma sahəsi
 import ChatStatusBar from "../components/ChatStatusBar"; // viewed/typing status bar
 import ReadersPanel from "../components/ReadersPanel"; // oxuyanlar panel
 import SelectToolbar from "../components/SelectToolbar"; // çox mesaj seç toolbar
-import CreateChannelPanel from "../components/CreateChannelPanel"; // channel yaratma paneli
+import ChannelPanel from "../components/ChannelPanel"; // channel yaratma/redaktə paneli
 import PinnedBar, { PinnedExpanded } from "../components/PinnedBar"; // pinlənmiş mesajlar
 
 // Util-lər və sabitlər
@@ -81,8 +81,10 @@ function Chat() {
   // null olduqda "Select a chat" boş ekranı görünür
   const [selectedChat, setSelectedChat] = useState(null);
 
-  // Channel yaratma paneli — true olduqda chat-panel-da CreateChannelPanel görsənir
+  // Channel yaratma/redaktə paneli — true olduqda chat-panel-da ChannelPanel görsənir
   const [showCreateChannel, setShowCreateChannel] = useState(false);
+  // Edit channel mode — null = create mode, object = edit mode
+  const [editChannelData, setEditChannelData] = useState(null);
   const [showAddMember, setShowAddMember] = useState(false);
   const [addMemberSearch, setAddMemberSearch] = useState(""); // Add member search mətni
   const [addMemberSearchActive, setAddMemberSearchActive] = useState(false); // Search input açıq/bağlı
@@ -810,6 +812,45 @@ function Chat() {
   // handleCancelCreateChannel — panel bağlanır
   function handleCancelCreateChannel() {
     setShowCreateChannel(false);
+    setEditChannelData(null);
+  }
+
+  // handleEditChannel — sidebar Edit butonundan channel redaktə paneli açılır
+  async function handleEditChannel() {
+    if (!selectedChat || selectedChat.type !== 1) return;
+    setShowSidebarMenu(false);
+
+    try {
+      // Backend-dən channel detaylarını yüklə (name, description, type, members daxil)
+      const details = await apiGet(`/api/channels/${selectedChat.id}`);
+
+      // Members-i ChannelPanel formatına çevir
+      const formattedMembers = (details.members || []).map((m) => ({
+        id: m.userId,
+        name: m.fullName,
+        type: "user",
+        isAdmin: m.role === 3 || m.role === "Owner",
+        role: m.role,
+      }));
+
+      // ChannelType: backend enum (1=Public, 2=Private) → frontend string
+      const typeStr =
+        details.type === 1 || details.type === "Public" ? "public" : "private";
+
+      setEditChannelData({
+        id: selectedChat.id,
+        name: details.name,
+        description: details.description || "",
+        type: typeStr,
+        avatarUrl: selectedChat.avatarUrl || null,
+        members: formattedMembers,
+      });
+
+      setShowSidebar(false);
+      setShowCreateChannel(true);
+    } catch (err) {
+      console.error("Failed to load channel data for editing:", err);
+    }
   }
 
   // handleChannelCreated — channel uğurla yaradıldıqda çağırılır
@@ -849,6 +890,34 @@ function Chat() {
 
     // 4. Yeni yaradılmış channeli seç
     handleSelectChat(newConversation);
+  }
+
+  // handleChannelUpdated — channel uğurla redaktə edildikdə çağırılır
+  function handleChannelUpdated(updatedData) {
+    // 1. Paneli bağla, editChannelData sıfırla
+    setShowCreateChannel(false);
+    setEditChannelData(null);
+
+    // 2. Conversation list-dəki channel-i yenilə
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === updatedData.id
+          ? { ...c, name: updatedData.name, avatarUrl: updatedData.avatarUrl ?? c.avatarUrl }
+          : c
+      )
+    );
+
+    // 3. selectedChat yenilə
+    if (selectedChat && selectedChat.id === updatedData.id) {
+      setSelectedChat((prev) => ({
+        ...prev,
+        name: updatedData.name,
+        avatarUrl: updatedData.avatarUrl ?? prev.avatarUrl,
+      }));
+    }
+
+    // 4. Channel members cache yenilə
+    refreshChannelMembers(updatedData.id);
   }
 
   // handleOpenChatsWithUser — ortaq kanalları yüklə və paneli aç
@@ -904,8 +973,9 @@ function Chat() {
       return;
     }
 
-    // CreateChannel paneli açıqdırsa bağla
+    // CreateChannel/EditChannel paneli açıqdırsa bağla
     setShowCreateChannel(false);
+    setEditChannelData(null);
 
     // Draft saxla — əvvəlki chatın yazısını yadda saxla
     if (selectedChat) {
@@ -2114,10 +2184,13 @@ function Chat() {
         <div className="chat-panel">
           {/* showCreateChannel → panel, selectedChat → chat, əks halda empty */}
           {showCreateChannel ? (
-            <CreateChannelPanel
+            <ChannelPanel
               onCancel={handleCancelCreateChannel}
               onChannelCreated={handleChannelCreated}
+              onChannelUpdated={handleChannelUpdated}
               currentUser={user}
+              editMode={!!editChannelData}
+              channelData={editChannelData}
             />
           ) : selectedChat ? (
             <>
@@ -2386,7 +2459,7 @@ function Chat() {
                           <button className="ds-dropdown-item" onClick={() => { setShowAddMember(true); setShowSidebarMenu(false); }}>Add members</button>
                         )}
                         {(channelMembers[selectedChat.id]?.[user.id]?.role === 3 || channelMembers[selectedChat.id]?.[user.id]?.role === "Owner") && (
-                          <button className="ds-dropdown-item" onClick={() => setShowSidebarMenu(false)}>Edit</button>
+                          <button className="ds-dropdown-item" onClick={handleEditChannel}>Edit</button>
                         )}
                         <button className="ds-dropdown-item" onClick={() => { handleHideConversation(selectedChat); setShowSidebarMenu(false); setShowSidebar(false); }}>Hide</button>
                         <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { handleLeaveChannel(selectedChat); setShowSidebarMenu(false); setShowSidebar(false); }}>Leave</button>

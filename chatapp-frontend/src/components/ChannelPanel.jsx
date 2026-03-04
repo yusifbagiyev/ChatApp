@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
-import { apiGet, apiPost } from "../services/api";
+import { apiGet, apiPost, apiPut, apiDelete } from "../services/api";
 
 // ─── Hierarchy helpers ──────────────────────────────────────────────────────
 
@@ -197,23 +197,37 @@ function HierarchyNode({ node, selectedIds, onToggle, expandedDepts, onToggleExp
   return null;
 }
 
-// ─── CreateChannelPanel — Bitrix24 stilində channel/group yaratma paneli ────
-function CreateChannelPanel({ onCancel, onChannelCreated, currentUser }) {
-  // Local state — yalnız UI üçün
-  const [channelName, setChannelName] = useState("");
-  const [channelType, setChannelType] = useState("private");
-  const [description, setDescription] = useState("");
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [members, setMembers] = useState(
-    currentUser
-      ? [{ id: currentUser.id, name: currentUser.fullName, isAdmin: true }]
-      : [],
+// ─── ChannelPanel — Bitrix24 stilində channel yaratma/redaktə paneli ─────────
+function ChannelPanel({
+  onCancel,
+  onChannelCreated,
+  onChannelUpdated,
+  currentUser,
+  editMode = false,
+  channelData = null,
+}) {
+  // Local state — editMode-da channelData-dan pre-fill olunur
+  const [channelName, setChannelName] = useState(
+    editMode && channelData ? channelData.name : "",
   );
+  const [channelType, setChannelType] = useState(
+    editMode && channelData ? channelData.type : "private",
+  );
+  const [description, setDescription] = useState(
+    editMode && channelData ? channelData.description : "",
+  );
+  const [settingsOpen, setSettingsOpen] = useState(editMode);
+  const [members, setMembers] = useState(() => {
+    if (editMode && channelData?.members) return channelData.members;
+    return currentUser
+      ? [{ id: currentUser.id, name: currentUser.fullName, isAdmin: true }]
+      : [];
+  });
 
   // Channel name validation state
   const [nameError, setNameError] = useState(null); // error mesajı və ya null
   const [nameChecking, setNameChecking] = useState(false); // backend sorğusu gedir
-  const [nameValid, setNameValid] = useState(false); // ad valid və unikaldır
+  const [nameValid, setNameValid] = useState(editMode); // edit mode-da başlanğıcda valid
   const nameCheckTimer = useRef(null);
 
   // Debounced channel name validation — hər dəfə channelName dəyişəndə 500ms gözlə, sonra yoxla
@@ -241,6 +255,14 @@ function CreateChannelPanel({ onCancel, onChannelCreated, currentUser }) {
     if (name.length > 100) {
       setNameError("Channel name cannot exceed 100 characters");
       setNameValid(false);
+      setNameChecking(false);
+      return;
+    }
+
+    // EDIT MODE: ad dəyişməyibsə — backend-ə sorğu göndərmə, valid say
+    if (editMode && channelData && name === channelData.name.trim()) {
+      setNameValid(true);
+      setNameError(null);
       setNameChecking(false);
       return;
     }
@@ -274,10 +296,12 @@ function CreateChannelPanel({ onCancel, onChannelCreated, currentUser }) {
     return () => {
       if (nameCheckTimer.current) clearTimeout(nameCheckTimer.current);
     };
-  }, [channelName]);
+  }, [channelName, editMode, channelData]);
 
   // Channel avatar state — müvəqqəti, yalnız frontendda saxlanılır
-  const [avatarPreview, setAvatarPreview] = useState(null); // data URL string
+  const [avatarPreview, setAvatarPreview] = useState(
+    editMode && channelData?.avatarUrl ? channelData.avatarUrl : null,
+  ); // data URL string və ya edit mode-da mövcud avatar URL
   const [avatarFile, setAvatarFile] = useState(null); // File object — sonra backendə göndəriləcək
   const fileInputRef = useRef(null);
 
@@ -452,6 +476,79 @@ function CreateChannelPanel({ onCancel, onChannelCreated, currentUser }) {
       if (onChannelCreated) onChannelCreated(result);
     } catch (err) {
       setCreateError(err.message || "Failed to create channel");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // ─── handleUpdateChannel — SAVE CHANGES butonu (edit mode) ────────────────
+  const handleUpdateChannel = async () => {
+    if (creating || !nameValid || !editMode || !channelData) return;
+    setCreating(true);
+    setCreateError(null);
+
+    try {
+      // 1. Channel məlumatlarını yenilə
+      const typeEnum = channelType === "public" ? 1 : 2;
+      await apiPut(`/api/channels/${channelData.id}`, {
+        name: channelName.trim(),
+        description: description.trim() || null,
+        type: typeEnum,
+      });
+
+      // 2. Member diff hesabla
+      const originalUserIds = new Set(
+        channelData.members.filter((m) => !m.isAdmin).map((m) => m.id),
+      );
+
+      const currentUserIds = new Set();
+      for (const m of members) {
+        if (m.isAdmin) continue; // Owner həmişə qalır
+        if (m.type === "department") {
+          const deptNode = findNodeById(hierarchy, m.id);
+          if (deptNode) {
+            for (const u of collectDepartmentUsers(deptNode)) {
+              if (u.id !== currentUser?.id) currentUserIds.add(u.id);
+            }
+          }
+        } else {
+          currentUserIds.add(m.id);
+        }
+      }
+
+      // Yeni əlavə olunanlar
+      const toAdd = [...currentUserIds].filter((id) => !originalUserIds.has(id));
+      // Silinənlər
+      const toRemove = [...originalUserIds].filter((id) => !currentUserIds.has(id));
+
+      // 3. Əlavə et
+      for (const userId of toAdd) {
+        try {
+          await apiPost(`/api/channels/${channelData.id}/members`, { userId, showChatHistory: true });
+        } catch {
+          // Artıq member-dirsə ignore et
+        }
+      }
+
+      // 4. Sil
+      for (const userId of toRemove) {
+        try {
+          await apiDelete(`/api/channels/${channelData.id}/members/${userId}`);
+        } catch {
+          // Artıq silinmişdirsə ignore et
+        }
+      }
+
+      // 5. Callback
+      if (onChannelUpdated) {
+        onChannelUpdated({
+          id: channelData.id,
+          name: channelName.trim(),
+          avatarUrl: channelData.avatarUrl,
+        });
+      }
+    } catch (err) {
+      setCreateError(err.message || "Failed to update channel");
     } finally {
       setCreating(false);
     }
@@ -736,9 +833,12 @@ function CreateChannelPanel({ onCancel, onChannelCreated, currentUser }) {
         <button
           className="create-channel-submit-btn"
           disabled={!nameValid || nameChecking || creating}
-          onClick={handleCreateChannel}
+          onClick={editMode ? handleUpdateChannel : handleCreateChannel}
         >
-          {creating ? "CREATING..." : "CREATE CHAT"}
+          {creating
+            ? (editMode ? "SAVING..." : "CREATING...")
+            : (editMode ? "SAVE CHANGES" : "CREATE CHAT")
+          }
         </button>
         <button className="create-channel-cancel-btn" onClick={onCancel}>
           CANCEL
@@ -751,4 +851,4 @@ function CreateChannelPanel({ onCancel, onChannelCreated, currentUser }) {
   );
 }
 
-export default CreateChannelPanel;
+export default ChannelPanel;
