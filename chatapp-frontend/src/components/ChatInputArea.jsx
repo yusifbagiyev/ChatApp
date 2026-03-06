@@ -1,5 +1,5 @@
 // Sabitlər import et
-import { useRef, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
 import { MESSAGE_MAX_LENGTH } from "../utils/chatUtils";         // Maksimum mesaj uzunluğu
 import { renderTextWithEmojis } from "../utils/emojiConstants";  // Emoji → Apple img çevirici
 import MentionPanel from "./MentionPanel";                       // @ mention dropdown paneli
@@ -33,8 +33,39 @@ function ChatInputArea({
   // Mention props
   onTextChange, mentionOpen, mentionItems,
   mentionSelectedIndex, mentionLoading, mentionPanelRef, onMentionSelect,
+  // Resize callback — textarea böyüdükdə mesajları aşağı scroll etmək üçün
+  onInputResize,
 }) {
   const mirrorRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+
+  // handleResizeDrag — Bitrix-style drag handle: textarea hündürlüyünü manual dəyişmək
+  // mousedown → mousemove ilə hündürlük artır/azalır → mouseup ilə bitir
+  const handleResizeDrag = useCallback((e) => {
+    e.preventDefault();
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    const startY = e.clientY;
+    const startH = textarea.offsetHeight;
+    setDragging(true);
+
+    const onMove = (ev) => {
+      // Yuxarı dartma = hündürlük artır (startY - ev.clientY > 0)
+      const newH = Math.max(34, Math.min(300, startH + (startY - ev.clientY)));
+      textarea.style.height = newH + "px";
+      if (mirrorRef.current) mirrorRef.current.style.height = newH + "px";
+      onInputResize?.();
+    };
+
+    const onUp = () => {
+      setDragging(false);
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [inputRef, onInputResize]);
 
   // renderMirrorContent — text hissəsini normal göstərir, emoji hissəsini isə:
   // 1. Orijinal emoji simvolunu gizli saxlayır (visibility:hidden) — textarea ilə eyni eni tutur
@@ -66,6 +97,13 @@ function ChatInputArea({
     // .NET: RenderFragment ilə oxşardır
     <>
       <div className="message-input-area">
+        {/* Bitrix-style resize handle — hover-da görünür, drag ilə textarea böyüdülür */}
+        <div
+          className={`input-resize-handle${dragging ? " dragging" : ""}`}
+          onMouseDown={handleResizeDrag}
+        >
+          <span />
+        </div>
 
         {/* Reply Preview — replyTo varsa göstər */}
         {/* {replyTo && (...)} — şərti render */}
@@ -155,10 +193,10 @@ function ChatInputArea({
           </div>
         )}
 
-        {/* Input sahəsi: clip + textarea + emoji + send */}
+        {/* Input sahəsi — Bitrix layout: attach sol yuxarı, butonlar sağ aşağı */}
         <div className="message-input-wrapper">
-          {/* Fayl əlavə et düyməsi — TODO: file upload */}
-          <button className="input-icon-btn" title="Attach">
+          {/* Attach butonu — sol yuxarı (absolute) */}
+          <button className="input-icon-btn attach-btn" title="Attach">
             <svg
               width="22"
               height="22"
@@ -171,7 +209,7 @@ function ChatInputArea({
             </svg>
           </button>
 
-          {/* textarea + mirror konteyner */}
+          {/* textarea + mirror konteyner — tam eni tutur */}
           <div className="message-input-container">
             {/* Mirror — textarea ilə eyni text axını, lakin Apple emoji overlay */}
             <div className="message-input-mirror" ref={mirrorRef}>
@@ -193,9 +231,11 @@ function ChatInputArea({
                 else setMessageText(val);
                 // Auto-resize
                 e.target.style.height = "auto";
-                const h = Math.min(e.target.scrollHeight, 120);
+                const h = Math.min(e.target.scrollHeight, 300);
                 e.target.style.height = h + "px";
                 if (mirrorRef.current) mirrorRef.current.style.height = h + "px";
+                // Resize olduqda mesajları aşağı scroll et
+                onInputResize?.();
               }}
               onScroll={(e) => {
                 if (mirrorRef.current) mirrorRef.current.scrollTop = e.target.scrollTop;
@@ -204,47 +244,48 @@ function ChatInputArea({
             />
           </div>
 
-          {/* Emoji düyməsi — paneli aç/bağla */}
-          {/* active class — açıq olduqda vurğulanır */}
-          <button
-            className={`input-icon-btn emoji-btn ${emojiOpen ? "active" : ""}`}
-            title="Emoji"
-            onClick={() => setEmojiOpen(!emojiOpen)} // Toggle: true↔false
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {/* Sağ aşağı butonlar qrupu (absolute) */}
+          <div className="input-actions-group">
+            {/* Emoji düyməsi */}
+            <button
+              className={`input-icon-btn emoji-btn ${emojiOpen ? "active" : ""}`}
+              title="Emoji"
+              onClick={() => setEmojiOpen(!emojiOpen)}
             >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M8 14c.5 1.5 2 3 4 3s3.5-1.5 4-3" />
-              <circle cx="9" cy="9.5" r="1.2" fill="currentColor" stroke="none" />
-              <circle cx="15" cy="9.5" r="1.2" fill="currentColor" stroke="none" />
-            </svg>
-          </button>
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M8 14c.5 1.5 2 3 4 3s3.5-1.5 4-3" />
+                <circle cx="9" cy="9.5" r="1.2" fill="currentColor" stroke="none" />
+                <circle cx="15" cy="9.5" r="1.2" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
 
-          {/* Göndər düyməsi — messageText boşdursa deaktiv */}
-          {/* disabled={!messageText.trim()} — boş string falsy-dir */}
-          <button
-            className={`send-btn ${messageText.trim() ? "" : "disabled"}`}
-            title="Send"
-            onClick={onSend}
-            disabled={!messageText.trim()}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="currentColor"
+            {/* Göndər düyməsi */}
+            <button
+              className={`send-btn ${messageText.trim() ? "" : "disabled"}`}
+              title="Send"
+              onClick={onSend}
+              disabled={!messageText.trim()}
             >
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          </button>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 

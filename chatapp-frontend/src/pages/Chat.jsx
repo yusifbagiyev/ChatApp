@@ -833,6 +833,15 @@ function Chat() {
     }
   }
 
+  // handleInputResize — textarea böyüdükdə/kiçildikdə mesajları aşağı scroll et
+  // scrollTop istifadə edir (scrollIntoView bütün səhifəni scroll edə bilər)
+  function handleInputResize() {
+    requestAnimationFrame(() => {
+      const area = messagesAreaRef.current;
+      if (area) area.scrollTop = area.scrollHeight;
+    });
+  }
+
   // handleMentionSelect — mention elementi seçildikdə
   function handleMentionSelect(item) {
     const textarea = inputRef.current;
@@ -1886,9 +1895,12 @@ function Chat() {
       );
     }
 
-    // Textarea hündürlüyünü yenidən başlanğıc ölçüyə gətir
-    const textarea = document.querySelector(".message-input");
-    if (textarea) textarea.style.height = "auto";
+    // Textarea + mirror hündürlüyünü sıfırla
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
+    const mirror = document.querySelector(".message-input-mirror");
+    if (mirror) mirror.style.height = "auto";
 
     // --- EDIT MODE ---
     if (editMessage) {
@@ -2884,6 +2896,7 @@ function Chat() {
                   mentionLoading={mentionLoading}
                   mentionPanelRef={mentionPanelRef}
                   onMentionSelect={handleMentionSelect}
+                  onInputResize={handleInputResize}
                 />
               )}
 
