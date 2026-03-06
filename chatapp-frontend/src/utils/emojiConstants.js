@@ -7,9 +7,10 @@ const CUSTOM_EMOJI_URLS = {
 };
 
 // emojiToUrl — unicode emoji-ni Apple CDN şəkil URL-ə çevirir
-// Əvvəlcə CUSTOM_EMOJI_URLS yoxlanılır, yoxdursa Apple emoji CDN istifadə olunur
-export function emojiToUrl(emoji) {
-  if (CUSTOM_EMOJI_URLS[emoji]) return CUSTOM_EMOJI_URLS[emoji];
+// useCustom=true (default) → CUSTOM_EMOJI_URLS yoxlanılır (reaction badge üçün)
+// useCustom=false → həmişə Apple CDN (reaction picker üçün — bütün emojilər eyni stildə)
+export function emojiToUrl(emoji, useCustom = true) {
+  if (useCustom && CUSTOM_EMOJI_URLS[emoji]) return CUSTOM_EMOJI_URLS[emoji];
   const codePoints = [...emoji]
     .map((cp) => cp.codePointAt(0).toString(16))
     .join("-");

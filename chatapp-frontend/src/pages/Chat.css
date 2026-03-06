@@ -1722,6 +1722,8 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
   /* top/left JS tərəfindən set olunur (useLayoutEffect) */
 }
 
