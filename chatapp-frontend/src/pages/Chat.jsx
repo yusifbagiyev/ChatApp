@@ -151,6 +151,10 @@ function Chat() {
   // scrollIntoView() ilə ən yeni mesaja scroll etmək üçün
   const messagesEndRef = useRef(null);
 
+  // skipAutoScrollRef — incoming mesaj gəldikdə "near bottom" auto-scroll-u blokla
+  // Bitrix davranışı: başqasının mesajı gəldikdə scroll pozisiyası dəyişməməlidir
+  const skipAutoScrollRef = useRef(false);
+
   // messagesAreaRef — scroll container-i (messages-area div-i)
   // handleScroll, IntersectionObserver üçün lazımdır
   const messagesAreaRef = useRef(null);
@@ -324,6 +328,7 @@ function Chat() {
     setPinnedMessages,
     setCurrentPinIndex,
     setLastReadTimestamp,
+    skipAutoScrollRef,
   );
 
   // shouldScrollBottom true olduqda ən alt mesaja scroll et
@@ -335,10 +340,17 @@ function Chat() {
     if (shouldScrollBottom) {
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
       setShouldScrollBottom(false);
+      skipAutoScrollRef.current = false;
+      return;
+    }
+    // Incoming mesaj gəldikdə "near bottom" auto-scroll-u blokla
+    // Bitrix davranışı: başqasının mesajı gəldikdə scroll pozisiyası dəyişməməlidir
+    if (skipAutoScrollRef.current) {
+      skipAutoScrollRef.current = false;
       return;
     }
     // Auto-scroll: istifadəçi artıq aşağıdadırsa və content dəyişibsə
-    // (məs. viewed bar görsəndikdə) avtomatik aşağı düş
+    // (məs. viewed bar görsəndikdə, typing başladıqda) avtomatik aşağı düş
     const area = messagesAreaRef.current;
     if (area) {
       const distanceFromBottom =
@@ -419,20 +431,20 @@ function Chat() {
     }
   }, [messages]);
 
-  // IntersectionObserver — görünüş sahəsinə girən oxunmamış mesajları "read" et
-  // observerRef — observer instance-ını saxla (yalnız selectedChat dəyişdikdə yenidən yarat)
-  // processedMsgIdsRef — artıq "read" edilmiş mesajları izlə (dublikat API call qarşısını al)
+  // ─── Read marking — IntersectionObserver + input click gate ───
+  // Bitrix davranışı: mesajlar viewport-da görünsə belə, istifadəçi input-a basmadıqca
+  // oxundu işarələnmir. Input-a klik → gate açılır → viewport-dakı mesajlar oxundu olur
+  // → scroll etdikcə yeni görünən mesajlar da oxundu olur
   const observerRef = useRef(null);
   const processedMsgIdsRef = useRef(new Set());
+  const inputActivatedRef = useRef(false); // Gate — input-a klik olunubsa true
 
   // ─── Batch mark-as-read — mesajları buferdə yığ, debounce ilə göndər ───
-  // 25 individual request əvəzinə 2-3 batch (hər biri ~8-10 paralel request)
   const readBatchRef = useRef(new Set());       // gözləyən mesaj id-ləri
   const readBatchTimerRef = useRef(null);        // debounce timer (300ms)
   const readBatchChatRef = useRef(null);         // { chatId, chatType }
 
   // flushReadBatch — buferdəki mesajları paralel göndər və sıfırla
-  // Çağırılır: (1) debounce bitəndə, (2) conversation dəyişdikdə, (3) unmount-da
   function flushReadBatch() {
     const ids = readBatchRef.current;
     const chatInfo = readBatchChatRef.current;
@@ -445,7 +457,6 @@ function Chat() {
       readBatchTimerRef.current = null;
     }
 
-    // Bütün mesajları paralel göndər (Promise.all)
     const { chatId, chatType } = chatInfo;
     Promise.all(
       batch.map((msgId) =>
@@ -461,18 +472,20 @@ function Chat() {
     const area = messagesAreaRef.current;
     if (!area || !selectedChat) return;
 
-    // Yeni chat — köhnə processed set-i sıfırla
     processedMsgIdsRef.current = new Set();
+    inputActivatedRef.current = false; // Yeni chat — gate bağla
 
     const observer = new IntersectionObserver(
       (entries) => {
+        // Gate check — input-a klik olunmayıbsa heç nə etmə
+        if (!inputActivatedRef.current) return;
+
         for (const entry of entries) {
           if (entry.isIntersecting) {
             const msgId = entry.target.dataset.msgId;
             const convId = entry.target.dataset.convId;
             const convType = entry.target.dataset.convType;
 
-            // Dublikat yoxla — eyni mesaj üçün bir dəfə kifayətdir
             if (processedMsgIdsRef.current.has(msgId)) {
               observer.unobserve(entry.target);
               return;
@@ -510,7 +523,6 @@ function Chat() {
   }, [selectedChat]);
 
   // Effect 2: Yeni unread elementləri observe et — messages dəyişdikdə
-  // Observer yenidən YARADILMIR, yalnız yeni elementlər əlavə olunur
   useEffect(() => {
     const observer = observerRef.current;
     const area = messagesAreaRef.current;
@@ -518,12 +530,31 @@ function Chat() {
 
     const unreadElements = area.querySelectorAll("[data-unread='true']");
     unreadElements.forEach((el) => {
-      // Artıq processed olan mesajları izləmə
       if (!processedMsgIdsRef.current.has(el.dataset.msgId)) {
         observer.observe(el);
       }
     });
   }, [messages]);
+
+  // handleInputAreaClick — input-a klik → gate aç → viewport-dakı mesajları re-observe et
+  // Re-observe: unobserve + observe → observer dərhal visible elementlər üçün callback çağırır
+  function handleInputAreaClick() {
+    if (!selectedChat) return;
+    inputActivatedRef.current = true;
+
+    // Re-observe — artıq viewport-da olan unread mesajlar üçün callback-i trigger et
+    const observer = observerRef.current;
+    const area = messagesAreaRef.current;
+    if (observer && area) {
+      const unreadElements = area.querySelectorAll("[data-unread='true']");
+      unreadElements.forEach((el) => {
+        if (!processedMsgIdsRef.current.has(el.dataset.msgId)) {
+          observer.unobserve(el);
+          observer.observe(el);
+        }
+      });
+    }
+  }
 
   // --- API FUNKSIYALARI ---
 
@@ -1942,29 +1973,10 @@ function Chat() {
 
     setReplyTo(null); // Reply-ı sıfırla
 
-    // ── Oxunmamış mesajları "oxundu" olaraq işarələ ──
-    // İstifadəçi mesaj göndərirsə, chatı gördüyü deməkdir — bütün unread mesajlar read olmalıdır
-    const unreadMsgIds = messages
-      .filter((m) => m.senderId !== user.id && !m.isRead && m.id)
-      .map((m) => m.id);
-    if (unreadMsgIds.length > 0) {
-      for (const id of unreadMsgIds) {
-        if (!processedMsgIdsRef.current.has(id)) {
-          readBatchRef.current.add(id);
-          processedMsgIdsRef.current.add(id);
-        }
-      }
-      readBatchChatRef.current = {
-        chatId: selectedChat.id,
-        chatType: String(selectedChat.type),
-      };
-      flushReadBatch();
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === selectedChat.id ? { ...c, unreadCount: 0 } : c,
-        ),
-      );
-    }
+    // ── Gate aç — mesaj göndərirsə, input ilə qarşılıqlı əlaqədədir ──
+    // Observer viewport-dakı mesajları "oxundu" olaraq işarələyəcək
+    // (send-dən sonra auto-scroll olur → ən aşağıdakı mesajlar görünəcək → observer işləyəcək)
+    inputActivatedRef.current = true;
 
     try {
       let chatId = selectedChat.id;
@@ -2921,6 +2933,7 @@ function Chat() {
                   mentionPanelRef={mentionPanelRef}
                   onMentionSelect={handleMentionSelect}
                   onInputResize={handleInputResize}
+                  onInputAreaClick={handleInputAreaClick}
                 />
               )}
 

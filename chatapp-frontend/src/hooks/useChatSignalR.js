@@ -23,6 +23,7 @@ export default function useChatSignalR(
   setPinnedMessages,  // Pinlənmiş mesajlar array-ı
   setCurrentPinIndex, // Pin bar-dakı aktiv index
   setLastReadTimestamp, // DM mesajın oxunma vaxtı — { [chatId]: Date }
+  skipAutoScrollRef,   // Incoming mesajda "near bottom" auto-scroll-u blokla
 ) {
   // useEffect — komponentin mount olduğunda 1 dəfə işləyir
   // [userId] — dependency array: yalnız userId dəyişəndə yenidən işləyir
@@ -48,7 +49,12 @@ export default function useChatSignalR(
           isOpenChat = true;
           setMessages((prev) => {
             if (prev.some((m) => m.id === message.id)) return prev;
-            setShouldScrollBottom(true);
+            if (message.senderId === userId) {
+              setShouldScrollBottom(true);
+            } else {
+              // Başqasının mesajı — "near bottom" auto-scroll-u blokla
+              skipAutoScrollRef.current = true;
+            }
             return [message, ...prev];
           });
         }
@@ -77,7 +83,7 @@ export default function useChatSignalR(
             lastMessageSenderFullName: message.senderFullName,
             lastMessageSenderAvatarUrl: message.senderAvatarUrl,
             lastMessageStatus: null,
-            unreadCount: isOpenChat ? 0 : 1,
+            unreadCount: message.senderId !== userId ? 1 : 0,
             _lastProcessedMsgId: message.id,
           };
           return [newConv, ...prev];
@@ -97,9 +103,10 @@ export default function useChatSignalR(
               lastMessageSenderFullName: message.senderFullName,
               lastMessageSenderAvatarUrl: message.senderAvatarUrl,
               lastMessageStatus: message.senderId === userId ? "Sent" : c.lastMessageStatus,
-              // Başqasının mesajı + chat açıq deyilsə + duplicate deyilsə → unread artır
+              // Başqasının mesajı + duplicate deyilsə → unread artır (chat açıq olsa belə)
+              // Bitrix davranışı: mesaj input-a klik olunmayınca oxundu sayılmır
               unreadCount:
-                message.senderId !== userId && !isOpenChat && !isDuplicate
+                message.senderId !== userId && !isDuplicate
                   ? c.unreadCount + 1
                   : c.unreadCount,
             };
@@ -126,7 +133,12 @@ export default function useChatSignalR(
           isOpenChat = true;
           setMessages((prev) => {
             if (prev.some((m) => m.id === message.id)) return prev;
-            setShouldScrollBottom(true);
+            if (message.senderId === userId) {
+              setShouldScrollBottom(true);
+            } else {
+              // Başqasının mesajı — "near bottom" auto-scroll-u blokla
+              skipAutoScrollRef.current = true;
+            }
             return [message, ...prev];
           });
         }
@@ -147,8 +159,10 @@ export default function useChatSignalR(
               lastMessageSenderFullName: message.senderFullName,
               lastMessageSenderAvatarUrl: message.senderAvatarUrl,
               lastMessageStatus: message.senderId === userId ? "Sent" : c.lastMessageStatus,
+              // Başqasının mesajı + duplicate deyilsə → unread artır (chat açıq olsa belə)
+              // Bitrix davranışı: mesaj input-a klik olunmayınca oxundu sayılmır
               unreadCount:
-                message.senderId !== userId && !isOpenChat && !isDuplicate
+                message.senderId !== userId && !isDuplicate
                   ? c.unreadCount + 1
                   : c.unreadCount,
             };
