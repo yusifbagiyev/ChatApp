@@ -337,8 +337,27 @@ function Chat() {
       setShouldScrollBottom(false);
       return;
     }
+    // Yeni unread mesajlar varsa — viewport-a sığana qədər scroll, sığmayanda dayan
+    if (hasNewUnreadRef.current) {
+      const area = messagesAreaRef.current;
+      if (area && firstUnreadMsgIdRef.current) {
+        const firstEl = area.querySelector(
+          `[data-bubble-id="${firstUnreadMsgIdRef.current}"]`,
+        );
+        if (firstEl) {
+          // İlk unread-dən scroll area-nın sonuna qədər məsafə
+          const distFromUnreadToBottom = area.scrollHeight - firstEl.offsetTop;
+          // Viewport-a sığırsa → scroll et (ilk unread hələ görünəcək)
+          if (distFromUnreadToBottom <= area.clientHeight) {
+            messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+          }
+          // Sığmırsa → scroll etmə (ilk unread viewport-dan çıxar)
+        }
+      }
+      return;
+    }
+
     // Auto-scroll: istifadəçi artıq aşağıdadırsa (< 80px) və content dəyişibsə
-    // Yeni mesaj gəldikdə viewport-a sığana qədər aşağı scroll olur
     const area = messagesAreaRef.current;
     if (area) {
       const distanceFromBottom =
@@ -427,6 +446,7 @@ function Chat() {
   //   Yazmağa başlayanda/göndərəndə mark-all-read çağırılır
   const initialMsgIdsRef = useRef(new Set());
   const hasNewUnreadRef = useRef(false);
+  const firstUnreadMsgIdRef = useRef(null); // İlk oxunmamış mesajın ID-si (scroll məhdudiyyəti üçün)
   const visibleUnreadRef = useRef(new Set());
   const observerRef = useRef(null);
   const readBatchChatRef = useRef(null);
@@ -434,9 +454,17 @@ function Chat() {
   const processedMsgIdsRef = useRef(new Set());
 
   // hasNewUnreadRef-i yeni SignalR mesajı gəldikdə true et
+  // firstUnreadMsgIdRef — ilk unread mesajı yadda saxla (scroll limit üçün)
   useEffect(() => {
-    if (messages.some((m) => !m.isRead && m.senderId !== user?.id && !initialMsgIdsRef.current.has(m.id))) {
+    const newUnreads = messages.filter(
+      (m) => !m.isRead && m.senderId !== user?.id && !initialMsgIdsRef.current.has(m.id),
+    );
+    if (newUnreads.length > 0) {
       hasNewUnreadRef.current = true;
+      // İlk unread-i yadda saxla (messages newest-first → sonuncu = ən köhnə)
+      if (!firstUnreadMsgIdRef.current) {
+        firstUnreadMsgIdRef.current = newUnreads[newUnreads.length - 1].id;
+      }
     }
   }, [messages]);
 
@@ -487,6 +515,7 @@ function Chat() {
   function markAllAsReadForCurrentChat() {
     if (!hasNewUnreadRef.current) return;
     hasNewUnreadRef.current = false;
+    firstUnreadMsgIdRef.current = null;
 
     const chatInfo = readBatchChatRef.current;
     if (!chatInfo) return;
