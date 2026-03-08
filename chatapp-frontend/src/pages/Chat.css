@@ -3759,8 +3759,8 @@
    =================================== */
 
 .detail-sidebar {
-  width: 380px;
-  min-width: 380px;
+  width: 320px;
+  min-width: 320px;
   background: #eef2f4;
   border-left: 1px solid var(--gray-200);
   display: flex;
@@ -5006,7 +5006,7 @@
   top: 36%;
   right: 200px;
   transform: translateY(-50%);
-  width: 360px;
+  width: 320px;
   min-height: 500px;
   max-height: 80vh;
   background: var(--white);
