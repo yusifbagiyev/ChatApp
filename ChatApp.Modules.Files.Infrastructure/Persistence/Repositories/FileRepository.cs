@@ -112,7 +112,6 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
                 INNER JOIN channel_members cmem ON cm.channel_id=cmem.channel_id
                 WHERE cm.file_id=@fileId
                   AND cmem.user_id=@userId
-                  AND cmem.left_at_utc IS NULL
                   AND cm.is_deleted=false";
 
             var connection = _context.Database.GetDbConnection();

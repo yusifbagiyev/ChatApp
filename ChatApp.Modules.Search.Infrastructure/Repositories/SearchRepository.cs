@@ -40,7 +40,6 @@ namespace ChatApp.Modules.Search.Infrastructure.Repositories
                             on new { message.ChannelId, UserId = userId }
                             equals new { member.ChannelId, member.UserId }
                         where !message.IsDeleted
-                              && member.LeftAtUtc == null // User is still a member
                               && EF.Functions.ILike(message.Content, $"%{searchTerm}%") // Case-insensitive search
                         select new
                         {

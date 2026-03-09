@@ -57,7 +57,6 @@ namespace ChatApp.Modules.Search.Infrastructure.Persistence
                 entity.Property(e => e.Id).HasColumnName("id");
                 entity.Property(e => e.ChannelId).HasColumnName("channel_id");
                 entity.Property(e => e.UserId).HasColumnName("user_id");
-                entity.Property(e => e.LeftAtUtc).HasColumnName("left_at_utc");
                 entity.ToTable(tb => tb.ExcludeFromMigrations());
             });
 
