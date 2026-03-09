@@ -1,8 +1,9 @@
 // Sabitlər import et
-import { useRef, useState, useCallback } from "react";
-import { MESSAGE_MAX_LENGTH } from "../utils/chatUtils";         // Maksimum mesaj uzunluğu
+import { useRef, useState, useEffect, useCallback } from "react";
+import { MESSAGE_MAX_LENGTH, MAX_FILE_SIZE, formatFileSize } from "../utils/chatUtils";
 import { renderTextWithEmojis } from "../utils/emojiConstants";  // Emoji → Apple img çevirici
 import MentionPanel from "./MentionPanel";                       // @ mention dropdown paneli
+import FilePreviewPanel from "./FilePreviewPanel";               // Fayl preview modal
 import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react"; // Modern emoji picker
 
 // ChatInputArea komponenti — mesaj yazma sahəsi + emoji panel
@@ -35,9 +36,16 @@ function ChatInputArea({
   mentionSelectedIndex, mentionLoading, mentionPanelRef, onMentionSelect,
   // Resize callback — textarea böyüdükdə mesajları aşağı scroll etmək üçün
   onInputResize,
+  // File upload props
+  selectedFiles, onFilesSelected, onRemoveFile, onReorderFiles, onClearFiles, onSendFiles,
+  uploadProgress, isUploading,
 }) {
   const mirrorRef = useRef(null);
+  const fileInputRef = useRef(null);       // Gizli <input type="file"> referansı
+  const attachMenuRef = useRef(null);      // Attach dropdown menu referansı (click-outside üçün)
+  const attachBtnRef = useRef(null);       // Attach button referansı (click-outside ignore üçün)
   const [dragging, setDragging] = useState(false);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
 
   // handleResizeDrag — Bitrix-style drag handle: textarea hündürlüyünü manual dəyişmək
   // mousedown → mousemove ilə hündürlük artır/azalır → mouseup ilə bitir
@@ -91,6 +99,40 @@ function ChatInputArea({
       )
     );
   }, []);
+
+  // Click-outside — attach menu bağlama
+  useEffect(() => {
+    if (!attachMenuOpen) return;
+    function handleClickOutside(e) {
+      if (
+        attachMenuRef.current && !attachMenuRef.current.contains(e.target) &&
+        attachBtnRef.current && !attachBtnRef.current.contains(e.target)
+      ) {
+        setAttachMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [attachMenuOpen]);
+
+  // Fayl seçmə handler — gizli input-un onChange-i
+  const handleFileChange = useCallback((e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    // Ölçü yoxlaması — MAX_FILE_SIZE-dan böyük faylları filtrələ
+    const valid = files.filter((f) => {
+      if (f.size > MAX_FILE_SIZE) {
+        alert(`"${f.name}" is too large (${formatFileSize(f.size)}). Max: ${formatFileSize(MAX_FILE_SIZE)}`);
+        return false;
+      }
+      return true;
+    });
+    if (valid.length > 0) onFilesSelected(valid);
+
+    // Input-u sıfırla — eyni faylı yenidən seçə bilsin
+    e.target.value = "";
+  }, [onFilesSelected]);
 
   return (
     // Fragment <> </> — birden çox root element qaytarmaq üçün
@@ -196,7 +238,12 @@ function ChatInputArea({
         {/* Input sahəsi — Bitrix layout: attach sol yuxarı, butonlar sağ aşağı */}
         <div className="message-input-wrapper">
           {/* Attach butonu — sol yuxarı (absolute) */}
-          <button className="input-icon-btn attach-btn" title="Attach">
+          <button
+            ref={attachBtnRef}
+            className={`input-icon-btn attach-btn${attachMenuOpen ? " active" : ""}`}
+            title="Attach"
+            onClick={() => setAttachMenuOpen((v) => !v)}
+          >
             <svg
               width="22"
               height="22"
@@ -208,6 +255,39 @@ function ChatInputArea({
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
             </svg>
           </button>
+
+          {/* Attach dropdown menu — ds-dropdown pattern */}
+          {attachMenuOpen && (
+            <div className="ds-dropdown attach-menu" ref={attachMenuRef}>
+              <button
+                className="ds-dropdown-item"
+                onClick={() => {
+                  fileInputRef.current?.click();
+                  setAttachMenuOpen(false);
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ marginRight: 8, flexShrink: 0 }}>
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+                File on this computer
+              </button>
+              <button className="ds-dropdown-item" disabled style={{ opacity: 0.4, cursor: "default" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ marginRight: 8, flexShrink: 0 }}>
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
+                File on Bitrix24
+              </button>
+            </div>
+          )}
+
+          {/* Gizli file input — attach menu-dan trigger olunur */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
 
           {/* textarea + mirror konteyner — tam eni tutur */}
           <div className="message-input-container">
@@ -271,10 +351,10 @@ function ChatInputArea({
 
             {/* Göndər düyməsi */}
             <button
-              className={`send-btn ${messageText.trim() ? "" : "disabled"}`}
+              className={`send-btn ${messageText.trim() || (selectedFiles && selectedFiles.length > 0) ? "" : "disabled"}`}
               title="Send"
               onClick={onSend}
-              disabled={!messageText.trim()}
+              disabled={!messageText.trim() && !(selectedFiles && selectedFiles.length > 0)}
             >
               <svg
                 width="20"
@@ -318,6 +398,19 @@ function ChatInputArea({
             }}
           />
         </div>
+      )}
+
+      {/* Fayl preview panel — fayllar seçildikdə modal overlay */}
+      {selectedFiles && selectedFiles.length > 0 && (
+        <FilePreviewPanel
+          selectedFiles={selectedFiles}
+          onRemoveFile={onRemoveFile}
+          onReorderFiles={onReorderFiles}
+          onClearFiles={onClearFiles}
+          onSendFiles={onSendFiles}
+          uploadProgress={uploadProgress}
+          isUploading={isUploading}
+        />
       )}
     </>
   );

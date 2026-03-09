@@ -82,7 +82,7 @@ chatapp-frontend/
 
 ## Phase 3: Full Features
 - [ ] Step 14: Channels (CRUD, members, messages)
-- [ ] Step 15: File uploads & downloads
+- [x] Step 15: File uploads & downloads ✅
 - [ ] Step 16: Notifications
 - [ ] Step 17: Search
 - [ ] Step 18: Settings (theme, privacy, notifications)

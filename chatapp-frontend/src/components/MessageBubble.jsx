@@ -9,8 +9,10 @@ import {
   getInitials,
   getAvatarColor,
   formatMessageTime,    // "HH:mm" formatı
+  formatFileSize,        // Byte → "2.4 MB"
   parseMentions,         // Mesaj mətnini mention segmentlərinə ayır
 } from "../utils/chatUtils";
+import { getFileUrl } from "../services/api"; // Backend file URL → tam URL
 
 import { QUICK_REACTION_EMOJIS, EXPANDED_EXTRA_EMOJIS, emojiToUrl, renderTextWithEmojis } from "../utils/emojiConstants";
 import MessageActionMenu from "./MessageActionMenu"; // "⋮" menyu komponenti
@@ -159,7 +161,6 @@ const MessageBubble = memo(function MessageBubble({
         setMenuOpen(false);
         setReactionOpen(false);
         setReactionExpanded(false);
-        setShowActions(false);
       } else if (!clickedInsideMenu) {
         setMenuOpen(false);
       } else if (!clickedInsideReaction) {
@@ -301,7 +302,7 @@ const MessageBubble = memo(function MessageBubble({
       {/* CSS :hover ilə butonlar göstərilir — JS hover state lazım deyil */}
       {/* actions-locked class: menyu/reaction açıq olduqda butonlar görünməyə davam etsin */}
       <div
-        className={`message-bubble ${isOwn ? "own" : ""}${menuOpen ? " menu-open" : ""}${reactionOpen ? " reaction-open" : ""}${pickerHovered ? " picker-hovered" : ""}${selectMode ? " select-mode" : ""}`}
+        className={`message-bubble ${isOwn ? "own" : ""}${menuOpen ? " menu-open" : ""}${reactionOpen ? " reaction-open" : ""}${pickerHovered ? " picker-hovered" : ""}${selectMode ? " select-mode" : ""}${msg.fileUrl && msg.fileContentType?.startsWith("image/") && !msg.content ? " image-only" : ""}`}
         onContextMenu={selectMode ? undefined : (e) => {
           e.preventDefault();
           // Sağ klik pozisyasını saxla — menu orada açılacaq
@@ -351,26 +352,78 @@ const MessageBubble = memo(function MessageBubble({
               </svg>
               This message was deleted.
             </span>
-          ) : msg.mentions && msg.mentions.length > 0 ? (
-            // Mention-ları parse et — klikləmə ilə açılan mavi rəngli segmentlər
-            parseMentions(msg.content, msg.mentions).map((seg, i) =>
-              seg.type === "mention" ? (
-                <span
-                  key={i}
-                  className="mention-highlight"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onMentionClick) onMentionClick(seg);
-                  }}
-                >
-                  {seg.text}
-                </span>
-              ) : (
-                <span key={i}>{renderEmojiContent(seg.text)}</span>
-              )
-            )
           ) : (
-            renderEmojiContent(msg.content)
+            <>
+              {/* Fayl/şəkil — mətn-dən ƏVVƏL render olunur */}
+              {msg.fileUrl && (
+                msg.fileContentType?.startsWith("image/") ? (
+                  // Şəkil — full-width preview, klikləmə ilə yeni tabda aç
+                  <div className={`bubble-file-image${!msg.content ? " image-only" : ""}`}>
+                    <img
+                      src={getFileUrl(msg.fileUrl)}
+                      alt={msg.fileName || "Image"}
+                      loading="lazy"
+                      onClick={() => window.open(getFileUrl(msg.fileUrl), "_blank")}
+                    />
+                  </div>
+                ) : (
+                  // Non-image fayl — Bitrix24 style kart
+                  <a
+                    className="bubble-file-card"
+                    href={getFileUrl(msg.fileUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="bubble-file-icon">
+                      {/* Fayl iconu — üzərində tip badge */}
+                      <svg width="32" height="38" viewBox="0 0 32 38" fill="none">
+                        <path d="M2 4a4 4 0 0 1 4-4h13l11 11v23a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V4z" fill="#E8EBF0" />
+                        <path d="M19 0l11 11h-7a4 4 0 0 1-4-4V0z" fill="#D1D5DB" />
+                      </svg>
+                      <span className={`bubble-file-badge ${(msg.fileName?.split('.').pop() || '').toLowerCase()}`}>
+                        {(msg.fileName?.split('.').pop() || '').toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="bubble-file-info">
+                      <span className="bubble-file-name">{msg.fileName}</span>
+                      <span className="bubble-file-size">{formatFileSize(msg.fileSizeInBytes)}</span>
+                    </div>
+                    <div className="bubble-file-download">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" strokeWidth="1.5" />
+                        <polyline points="8 12 12 16 16 12" />
+                        <line x1="12" y1="8" x2="12" y2="16" />
+                      </svg>
+                    </div>
+                  </a>
+                )
+              )}
+
+              {/* Mətn — yalnız content varsa render et (fayl-only mesaj üçün boş ola bilər) */}
+              {msg.content && (
+                msg.mentions && msg.mentions.length > 0 ? (
+                  parseMentions(msg.content, msg.mentions).map((seg, i) =>
+                    seg.type === "mention" ? (
+                      <span
+                        key={i}
+                        className="mention-highlight"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onMentionClick) onMentionClick(seg);
+                        }}
+                      >
+                        {seg.text}
+                      </span>
+                    ) : (
+                      <span key={i}>{renderEmojiContent(seg.text)}</span>
+                    )
+                  )
+                ) : (
+                  renderEmojiContent(msg.content)
+                )
+              )}
+            </>
           )}
         </div>
 

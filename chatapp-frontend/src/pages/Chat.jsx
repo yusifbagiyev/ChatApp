@@ -34,7 +34,7 @@ import useChatScroll from "../hooks/useChatScroll"; // infinite scroll + paginat
 import { AuthContext } from "../context/AuthContext";
 
 // API servis — HTTP metodları (GET, POST, PUT, DELETE)
-import { apiGet, apiPost, apiPut, apiDelete } from "../services/api";
+import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from "../services/api";
 
 // UI komponentlər — hər biri ayrı bir visual blok
 import Sidebar from "../components/Sidebar"; // sol nav bar
@@ -60,6 +60,7 @@ import {
   HIGHLIGHT_DURATION_MS, // mesaj vurğulama müddəti (millisaniyə)
   TYPING_DEBOUNCE_MS, // typing siqnalı debounce müddəti
   BATCH_DELETE_THRESHOLD, // batch delete üçün minimum mesaj sayı
+  MAX_BATCH_FILES, // backend batch limit (max 20 mesaj bir request-də)
   detectMentionTrigger, // @ mention trigger aşkarlama
 } from "../utils/chatUtils";
 
@@ -263,6 +264,11 @@ function Chat() {
 
   // inputRef — textarea element-i (focus vermək üçün)
   const inputRef = useRef(null);
+
+  // --- FILE UPLOAD STATE-LƏRİ ---
+  const [selectedFiles, setSelectedFiles] = useState([]);       // Seçilmiş fayllar (File[])
+  const [uploadProgress, setUploadProgress] = useState(null);   // Upload progress (0-100)
+  const [isUploading, setIsUploading] = useState(false);        // Upload prosesi davam edir
 
   // lastReadTimestamp — DM: mesajın oxunma vaxtı (SignalR event-dən capture edilir)
   const [lastReadTimestamp, setLastReadTimestamp] = useState({});
@@ -2003,8 +2009,167 @@ function Chat() {
     );
   }
 
+  // --- FILE UPLOAD HANDLERS ---
+
+  // handleFilesSelected — attach menu-dan fayl seçildikdə
+  function handleFilesSelected(files) {
+    setSelectedFiles((prev) => [...prev, ...files]);
+  }
+
+  // handleRemoveFile — preview paneldən faylı sil
+  function handleRemoveFile(index) {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // handleReorderFiles — drag-drop ilə faylın sırasını dəyiş
+  function handleReorderFiles(fromIndex, toIndex) {
+    setSelectedFiles((prev) => {
+      const arr = [...prev];
+      const [moved] = arr.splice(fromIndex, 1);
+      arr.splice(toIndex, 0, moved);
+      return arr;
+    });
+  }
+
+  // handleClearFiles — bütün faylları sil (preview paneli bağla)
+  function handleClearFiles() {
+    setSelectedFiles([]);
+    setUploadProgress(null);
+    setIsUploading(false);
+  }
+
+  // handleSendFiles — faylları yüklə + mesaj göndər
+  // text: FilePreviewPanel textarea-dan gələn əlavə mətn (boş ola bilər)
+  async function handleSendFiles(text) {
+    if (!selectedChat || selectedFiles.length === 0 || isUploading) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      let chatId = selectedChat.id;
+      let chatType = selectedChat.type;
+
+      // DepartmentUser (type=2) → əvvəlcə conversation yarat
+      if (chatType === 2) {
+        const result = await apiPost("/api/conversations", {
+          otherUserId: selectedChat.id,
+        });
+        chatId = result.conversationId;
+        chatType = 0;
+        const updatedChat = { ...selectedChat, id: chatId, type: 0, otherUserId: selectedChat.id };
+        setSelectedChat(updatedChat);
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedChat.id && c.type === 2
+              ? { ...c, id: chatId, type: 0, otherUserId: selectedChat.id }
+              : c,
+          ),
+        );
+        joinConversation(chatId);
+      }
+
+      const endpoint = getChatEndpoint(chatId, chatType, "/messages");
+      if (!endpoint) return;
+
+      const totalFiles = selectedFiles.length;
+      const uploadedFileIds = [];
+
+      // 1. Hər faylı yüklə (progress tracking ilə)
+      for (let i = 0; i < totalFiles; i++) {
+        const formData = new FormData();
+        formData.append("file", selectedFiles[i]);
+
+        const result = await apiUpload("/api/files/upload", formData, (pct) => {
+          // Overall progress: (tamamlanmış fayllar * 100 + cari faylın %-i) / ümumi fayl sayı
+          const overall = Math.round(((i * 100) + pct) / totalFiles);
+          setUploadProgress(overall);
+        });
+
+        uploadedFileIds.push(result.fileId);
+      }
+      setUploadProgress(100);
+
+      // 2. Mesajları göndər
+      // Mention-ları hazırla
+      const mentionsToSend = activeMentionsRef.current
+        .filter((m) => {
+          if (m.isAllMention) return text.includes("All members");
+          if (m.isChannel) return false;
+          return text.includes(m.userFullName);
+        })
+        .map((m) => ({
+          userId: m.userId,
+          userFullName: m.userFullName,
+          ...(chatType === 1 ? { isAllMention: !!m.isAllMention } : {}),
+        }));
+      activeMentionsRef.current = [];
+
+      // Mesaj body-ləri hazırla — hər fayl = 1 mesaj, ilk mesaj text daşıyır
+      const messageBodies = uploadedFileIds.map((fileId, i) => ({
+        content: i === 0 ? (text || "") : "",
+        fileId,
+        replyToMessageId: i === 0 && replyTo ? replyTo.id : null,
+        ...(i === 0 && mentionsToSend.length > 0 ? { mentions: mentionsToSend } : {}),
+      }));
+
+      // DM + çoxlu fayl → batch endpoint (max 20)
+      if (chatType === 0 && messageBodies.length > 1 && messageBodies.length <= MAX_BATCH_FILES) {
+        await apiPost(`${endpoint}/batch`, { messages: messageBodies });
+      } else {
+        // Channel və ya tək fayl → ardıcıl göndər
+        for (const body of messageBodies) {
+          await apiPost(endpoint, body);
+        }
+      }
+
+      // 3. Cleanup
+      setSelectedFiles([]);
+      setUploadProgress(null);
+      setIsUploading(false);
+      setReplyTo(null);
+      setMessageText("");
+
+      // Textarea + mirror sıfırla
+      if (inputRef.current) inputRef.current.style.height = "auto";
+      const mirror = document.querySelector(".message-input-mirror");
+      if (mirror) mirror.style.height = "auto";
+
+      // Mesajları yenidən yüklə
+      const data = await apiGet(`${endpoint}?pageSize=${MESSAGE_PAGE_SIZE}`);
+      hasMoreDownRef.current = false;
+      setShouldScrollBottom(true);
+      setMessages((prev) => {
+        const prevMap = new Map();
+        for (const m of prev) prevMap.set(m.id, m);
+        return data.map((m) => {
+          const p = prevMap.get(m.id);
+          if (!p) return m;
+          let merged = m;
+          if (p.status !== undefined && p.status > m.status) {
+            merged = { ...merged, status: p.status, isRead: p.status >= 3 };
+          }
+          if (p.readByCount !== undefined && p.readByCount > (m.readByCount || 0)) {
+            merged = { ...merged, readByCount: p.readByCount, readBy: p.readBy };
+          }
+          return merged;
+        });
+      });
+    } catch (err) {
+      console.error("Failed to send files:", err);
+      setIsUploading(false);
+      setUploadProgress(null);
+    }
+  }
+
   // handleSendMessage — mesaj göndər (Enter / Send button)
   async function handleSendMessage() {
+    // Fayllar seçilibsə → FilePreviewPanel açılır, oradan göndərilir
+    if (selectedFiles.length > 0) {
+      handleSendFiles(messageText.trim());
+      return;
+    }
+
     // Boş mesaj göndərmə
     if (!messageText.trim() || !selectedChat) return;
 
@@ -3123,6 +3288,14 @@ function Chat() {
                   mentionPanelRef={mentionPanelRef}
                   onMentionSelect={handleMentionSelect}
                   onInputResize={handleInputResize}
+                  selectedFiles={selectedFiles}
+                  onFilesSelected={handleFilesSelected}
+                  onRemoveFile={handleRemoveFile}
+                  onReorderFiles={handleReorderFiles}
+                  onClearFiles={handleClearFiles}
+                  onSendFiles={handleSendFiles}
+                  uploadProgress={uploadProgress}
+                  isUploading={isUploading}
                 />
               )}
 

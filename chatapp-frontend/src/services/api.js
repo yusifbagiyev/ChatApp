@@ -191,5 +191,70 @@ function apiDelete(endpoint) {
   return apiFetch(endpoint, { method: "DELETE" });
 }
 
+// ─── apiUpload — Multipart File Upload with Progress ─────────────────────────
+// XHR istifadə olunur çünki fetch upload progress dəstəkləmir.
+// FormData göndərir (Content-Type brauzer tərəfindən auto set olunur — boundary ilə).
+// onProgress(percent) — 0-100 arası upload progress callback.
+// 401 gəldikdə: refreshToken() + retry (apiFetch ilə eyni pattern).
+function apiUpload(endpoint, formData, onProgress) {
+  if (sessionExpired) return Promise.reject(new Error("Session expired"));
+
+  function send() {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", BASE_URL + endpoint);
+      xhr.withCredentials = true; // Cookie auth (BFF pattern)
+
+      // Upload progress — yalnız göndərmə fazası (server cavab verməsi daxil deyil)
+      if (onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            onProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            resolve(null);
+          }
+        } else if (xhr.status === 401) {
+          reject({ status: 401 }); // Retry ilə idarə olunacaq
+        } else {
+          try {
+            const err = JSON.parse(xhr.responseText);
+            reject(new Error(err.error || "Upload failed"));
+          } catch {
+            reject(new Error("Upload failed"));
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network error"));
+      xhr.send(formData);
+    });
+  }
+
+  // İlk cəhd — 401 gəlsə refresh + retry
+  return send().catch(async (err) => {
+    if (err && err.status === 401) {
+      await refreshToken();
+      return send();
+    }
+    throw err;
+  });
+}
+
+// getFileUrl — backend-in static fayl URL-ını tam URL-a çevirir
+// Backend "/uploads/..." qaytarır, frontend fərqli port-dadır → BASE_URL prefix lazımdır
+function getFileUrl(path) {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return BASE_URL + path;
+}
+
 // Named exports — başqa fayllar bunları import edə bilsin
-export { apiGet, apiPost, apiPut, apiDelete, scheduleRefresh, stopRefreshTimer, resetSessionExpired };
+export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, scheduleRefresh, stopRefreshTimer, resetSessionExpired };

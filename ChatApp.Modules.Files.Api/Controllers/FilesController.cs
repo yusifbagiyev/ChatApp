@@ -50,7 +50,7 @@ namespace ChatApp.Modules.Files.Api.Controllers
         /// </summary>
         [HttpPost("upload")]
         [RequirePermission("Files.Upload")]
-        [RequestSizeLimit(100 * 1024 * 1024)] // 100 MB
+        [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB
         [ProducesResponseType(typeof(FileUploadResult), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
