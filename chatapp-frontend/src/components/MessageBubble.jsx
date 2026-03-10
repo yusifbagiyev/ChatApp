@@ -267,7 +267,7 @@ const MessageBubble = memo(function MessageBubble({
   }, [reactionOpen, reactionExpanded, isOwn]);
 
   // Image-only: şəkil + mətn yoxdur — xüsusi layout (overlay timestamp, kənar reaction)
-  const isImageOnly = msg.fileUrl && msg.fileContentType?.startsWith("image/") && !msg.content;
+  const isImageOnly = !msg.isDeleted && msg.fileUrl && msg.fileContentType?.startsWith("image/") && !msg.content;
 
   // --- JSX RENDER ---
   return (
@@ -340,7 +340,11 @@ const MessageBubble = memo(function MessageBubble({
                 {msg.replyToSenderName}
               </span>
               <span className="reply-reference-text">
-                {msg.replyToContent}
+                {msg.replyToFileId
+                  ? msg.replyToFileContentType?.startsWith("image/")
+                    ? msg.replyToContent ? `[Image] ${msg.replyToContent}` : "[Image]"
+                    : msg.replyToContent ? `File: ${msg.replyToFileName || "File"} — ${msg.replyToContent}` : `File: ${msg.replyToFileName || "File"}`
+                  : msg.replyToContent}
               </span>
             </div>
           </div>

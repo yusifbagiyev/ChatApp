@@ -24,6 +24,19 @@ export default function useChatSignalR(
   setCurrentPinIndex, // Pin bar-dakı aktiv index
   setLastReadTimestamp, // DM mesajın oxunma vaxtı — { [chatId]: Date }
 ) {
+  // getMessagePreview — conversation list preview mətni
+  // Fayl/şəkil mesajları üçün backend ilə eyni format: [Image], [File]
+  function getMessagePreview(msg) {
+    if (msg.content) {
+      if (!msg.fileId) return msg.content;
+      const ct = msg.fileContentType || "";
+      return ct.startsWith("image/") ? "[Image] " + msg.content : "[File] " + msg.content;
+    }
+    if (!msg.fileId) return "";
+    const ct = msg.fileContentType || "";
+    return ct.startsWith("image/") ? "[Image]" : "[File]";
+  }
+
   // useEffect — komponentin mount olduğunda 1 dəfə işləyir
   // [userId] — dependency array: yalnız userId dəyişəndə yenidən işləyir
   useEffect(() => {
@@ -75,7 +88,7 @@ export default function useChatSignalR(
             type: 0, // DM
             avatarUrl: message.senderAvatarUrl,
             otherUserId: message.senderId,
-            lastMessage: message.content,
+            lastMessage: getMessagePreview(message),
             lastMessageAtUtc: message.createdAtUtc,
             lastMessageSenderId: message.senderId,
             lastMessageSenderFullName: message.senderFullName,
@@ -95,7 +108,7 @@ export default function useChatSignalR(
             return {
               ...c,
               _lastProcessedMsgId: message.id,
-              lastMessage: message.content,
+              lastMessage: getMessagePreview(message),
               lastMessageAtUtc: message.createdAtUtc,
               lastMessageSenderId: message.senderId,
               lastMessageSenderFullName: message.senderFullName,
@@ -147,7 +160,7 @@ export default function useChatSignalR(
             return {
               ...c,
               _lastProcessedMsgId: message.id,
-              lastMessage: message.content,
+              lastMessage: getMessagePreview(message),
               lastMessageAtUtc: message.createdAtUtc,
               lastMessageSenderId: message.senderId,
               lastMessageSenderFullName: message.senderFullName,
@@ -301,13 +314,50 @@ export default function useChatSignalR(
     // hardDeleted=false → kimsə oxuyub, "This message was deleted." göstərilir
     function handleMessageDeleted(deletedMsg) {
       if (deletedMsg.hardDeleted) {
-        // Hard delete — array-dən tamamilə çıxar
+        // Hard delete — mesajı array-dən tamamilə çıxar
         setMessages((prev) => prev.filter((m) => m.id !== deletedMsg.id));
+
+        // Conversation list-i yenilə — unreadCount azalt + əvvəlki mesajı göstər
+        const chatId = deletedMsg.conversationId || deletedMsg.channelId;
+        if (chatId) {
+          setConversations((prev) =>
+            prev.map((c) => {
+              if (c.id !== chatId) return c;
+              const isIncoming = deletedMsg.senderId !== userId;
+              const updates = {
+                unreadCount: isIncoming ? Math.max(0, c.unreadCount - 1) : c.unreadCount,
+              };
+              // Silinən mesaj son mesaj idisə → əvvəlki mesajın məlumatını göstər
+              if (c._lastProcessedMsgId === deletedMsg.id) {
+                updates.lastMessage = deletedMsg.previousLastMessage || "";
+                updates.lastMessageAtUtc = deletedMsg.previousLastMessageAtUtc || null;
+                updates.lastMessageSenderId = deletedMsg.previousLastMessageSenderId || null;
+                updates._lastProcessedMsgId = null;
+              }
+              return { ...c, ...updates };
+            }),
+          );
+        }
       } else {
         // Soft delete — isDeleted: true et
         setMessages((prev) =>
           prev.map((m) => (m.id === deletedMsg.id ? { ...m, isDeleted: true } : m)),
         );
+
+        // Conversation list — silinən mesaj son mesaj idisə preview-u yenilə
+        const chatId = deletedMsg.conversationId || deletedMsg.channelId;
+        if (chatId) {
+          setConversations((prev) =>
+            prev.map((c) => {
+              if (c.id !== chatId) return c;
+              // Son işlənmiş mesaj bu mesajdırsa → preview "This message was deleted."
+              if (c._lastProcessedMsgId === deletedMsg.id) {
+                return { ...c, lastMessage: "This message was deleted." };
+              }
+              return c;
+            }),
+          );
+        }
       }
     }
 

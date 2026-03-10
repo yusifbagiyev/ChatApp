@@ -175,7 +175,11 @@ function ChatInputArea({
                 {replyTo.senderFullName}
               </span>
               <span className="reply-preview-text">
-                {replyTo.content}
+                {replyTo.fileId
+                  ? replyTo.fileContentType?.startsWith("image/")
+                    ? replyTo.content ? `[Image] ${replyTo.content}` : "[Image]"
+                    : replyTo.content ? `File: ${replyTo.fileName || "File"} — ${replyTo.content}` : `File: ${replyTo.fileName || "File"}`
+                  : replyTo.content}
               </span>
             </div>
             {/* Bağla düyməsi — setReplyTo(null) → reply paneli gizlən */}
@@ -315,13 +319,14 @@ function ChatInputArea({
                 const caret = e.target.selectionStart;
                 if (onTextChange) onTextChange(val, caret);
                 else setMessageText(val);
-                // Auto-resize
+                // Auto-resize — yalnız hündürlük dəyişdikdə scroll et
+                const prevH = e.target.offsetHeight;
                 e.target.style.height = "auto";
                 const h = Math.min(e.target.scrollHeight, 300);
                 e.target.style.height = h + "px";
                 if (mirrorRef.current) mirrorRef.current.style.height = h + "px";
-                // Resize olduqda mesajları aşağı scroll et
-                onInputResize?.();
+                // Yalnız textarea hündürlüyü dəyişdikdə mesajları aşağı scroll et
+                if (h !== prevH) onInputResize?.();
               }}
               onScroll={(e) => {
                 if (mirrorRef.current) mirrorRef.current.scrollTop = e.target.scrollTop;

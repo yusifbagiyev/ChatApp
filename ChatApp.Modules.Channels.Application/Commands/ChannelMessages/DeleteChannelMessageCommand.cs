@@ -154,11 +154,34 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
                     await _unitOfWork.ChannelMessages.DeleteAsync(message, cancellationToken);
                     await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-                    // SignalR — hardDeleted flag ilə sadəcə messageId göndər
+                    // Əvvəlki son mesajı tap (conversation list preview üçün)
+                    var prevMessages = await _unitOfWork.ChannelMessages.GetChannelMessagesAsync(
+                        channelId, pageSize: 1, cancellationToken: cancellationToken);
+                    var prevMsg = prevMessages.FirstOrDefault();
+
+                    // Preview mətni — fayl mesajları üçün [Image]/[File] formatı
+                    string? prevLastMessage = prevMsg == null ? null :
+                        prevMsg.IsDeleted ? "This message was deleted" :
+                        prevMsg.FileId != null ?
+                            (prevMsg.FileContentType != null && prevMsg.FileContentType.StartsWith("image/") ?
+                                (string.IsNullOrWhiteSpace(prevMsg.Content) ? "[Image]" : "[Image] " + prevMsg.Content) :
+                                (string.IsNullOrWhiteSpace(prevMsg.Content) ? "[File]" : "[File] " + prevMsg.Content)) :
+                            prevMsg.Content;
+
+                    // SignalR — hardDeleted + əvvəlki mesaj məlumatı (conversation list update üçün)
                     await _signalRNotificationService.NotifyChannelMessageDeletedToMembersAsync(
                         channelId,
                         memberUserIds,
-                        new { Id = messageId, HardDeleted = true });
+                        new
+                        {
+                            Id = messageId,
+                            HardDeleted = true,
+                            ChannelId = channelId,
+                            SenderId = senderId,
+                            PreviousLastMessage = prevLastMessage,
+                            PreviousLastMessageAtUtc = prevMsg?.CreatedAtUtc,
+                            PreviousLastMessageSenderId = prevMsg?.SenderId,
+                        });
 
                     _logger?.LogInformation("Message {MessageId} hard deleted (unread)", messageId);
                     return Result.Success(true); // hard delete

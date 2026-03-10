@@ -1594,6 +1594,7 @@
   text-overflow: ellipsis;
 }
 
+
 /* ===================================
    MESSAGE HIGHLIGHT (scroll-to)
    =================================== */
@@ -2329,6 +2330,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 
 .reply-preview-close {
   flex-shrink: 0;

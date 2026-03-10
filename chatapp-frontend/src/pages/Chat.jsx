@@ -1969,12 +1969,41 @@ function Chat() {
         const res = await apiDelete(endpoint);
 
         if (res?.hardDeleted) {
-          // Hard delete — heç kim oxumayıb, mesajı array-dən tamamilə sil
-          setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+          // Hard delete — mesajı sil + conversation list-i qalan mesajlara görə yenilə
+          setMessages((prev) => {
+            const remaining = prev.filter((m) => m.id !== msg.id);
+            const lastRemaining = remaining[remaining.length - 1];
+            // Conversation list — son mesaj bu idisə qalan mesaja görə yenilə
+            setConversations((prevConvs) =>
+              prevConvs.map((c) => {
+                if (c.id !== selectedChat.id || c._lastProcessedMsgId !== msg.id) return c;
+                if (lastRemaining) {
+                  return {
+                    ...c,
+                    lastMessage: lastRemaining.content || "",
+                    lastMessageAtUtc: lastRemaining.createdAtUtc,
+                    _lastProcessedMsgId: lastRemaining.id,
+                  };
+                }
+                return { ...c, lastMessage: "", lastMessageAtUtc: null, _lastProcessedMsgId: null };
+              }),
+            );
+            return remaining;
+          });
         } else {
           // Soft delete — kimsə oxuyub, isDeleted: true et
           setMessages((prev) =>
             prev.map((m) => (m.id === msg.id ? { ...m, isDeleted: true } : m)),
+          );
+          // Conversation list — son mesaj idisə preview yenilə
+          setConversations((prev) =>
+            prev.map((c) => {
+              if (c.id !== selectedChat.id) return c;
+              if (c._lastProcessedMsgId === msg.id) {
+                return { ...c, lastMessage: "This message was deleted." };
+              }
+              return c;
+            }),
           );
         }
       } catch (err) {
