@@ -373,12 +373,35 @@ const MessageBubble = memo(function MessageBubble({
                   </div>
                 ) : (
                   // Non-image fayl — Bitrix24 style kart
-                  <a
+                  // Download endpoint istifadə edir (əsl ad ilə yükləmə üçün)
+                  <div
                     className="bubble-file-card"
-                    href={getFileUrl(msg.fileUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!msg.fileId) {
+                        // Fallback — fileId yoxdursa birbaşa statik linkdən aç
+                        window.open(getFileUrl(msg.fileUrl), "_blank");
+                        return;
+                      }
+                      // Download endpoint — əsl fayl adı ilə yükləyir
+                      fetch(getFileUrl(`/api/files/${msg.fileId}/download`), {
+                        credentials: "include",
+                      })
+                        .then((res) => res.blob())
+                        .then((blob) => {
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = msg.fileName || "file";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        })
+                        .catch(() => {
+                          window.open(getFileUrl(msg.fileUrl), "_blank");
+                        });
+                    }}
+                    role="button"
+                    tabIndex={0}
                   >
                     <div className="bubble-file-icon">
                       {/* Fayl tipinə görə rəngli icon + extension badge */}
@@ -398,7 +421,7 @@ const MessageBubble = memo(function MessageBubble({
                         <line x1="12" y1="8" x2="12" y2="16" />
                       </svg>
                     </div>
-                  </a>
+                  </div>
                 )
               )}
 

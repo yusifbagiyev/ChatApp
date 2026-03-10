@@ -65,20 +65,23 @@ namespace ChatApp.Modules.DirectMessages.Domain.Entities
             if (IsDeleted)
                 throw new InvalidOperationException("Cannot edit deleted message");
 
-            if (string.IsNullOrWhiteSpace(newContent))
+            // Fayl yoxdursa boş content qəbul edilmir
+            if (string.IsNullOrWhiteSpace(newContent) && string.IsNullOrWhiteSpace(FileId))
                 throw new ArgumentException("Message content cannot be empty");
 
-            if (newContent.Length > 10000)
+            if (newContent != null && newContent.Length > 10000)
                 throw new ArgumentException("Message content cannot exceed 10000 characters");
 
+            var sanitized = newContent?.Trim() ?? string.Empty;
+
             // Only mark as edited if content actually changed
-            if (Content == newContent)
+            if (Content == sanitized)
                 return;
 
-            Content=newContent;
-            IsEdited= true;
-            EditedAtUtc=DateTime.UtcNow;
-            UpdatedAtUtc= DateTime.UtcNow;
+            Content = sanitized;
+            IsEdited = true;
+            EditedAtUtc = DateTime.UtcNow;
+            UpdatedAtUtc = DateTime.UtcNow;
         }
 
 

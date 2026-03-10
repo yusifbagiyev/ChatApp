@@ -1,4 +1,4 @@
-﻿using ChatApp.Modules.DirectMessages.Application.DTOs.Response;
+using ChatApp.Modules.DirectMessages.Application.DTOs.Response;
 using ChatApp.Modules.DirectMessages.Application.Interfaces;
 using ChatApp.Shared.Infrastructure.SignalR.Services;
 using ChatApp.Shared.Kernel.Common;
@@ -9,10 +9,11 @@ using Microsoft.Extensions.Logging;
 
 namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
 {
+    // Result<bool> — Value: true = hard delete, false = soft delete
     public record DeleteDirectMessageCommand(
         Guid MessageId,
         Guid RequestedBy
-    ):IRequest<Result>;
+    ):IRequest<Result<bool>>;
 
 
     public class DeleteDirectMessageCommandValidator : AbstractValidator<DeleteDirectMessageCommand>
@@ -27,7 +28,7 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
     }
 
 
-    public class DeleteDirectMessageCommandHandler : IRequestHandler<DeleteDirectMessageCommand, Result>
+    public class DeleteDirectMessageCommandHandler : IRequestHandler<DeleteDirectMessageCommand, Result<bool>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ISignalRNotificationService _signalRNotificationService;
@@ -43,7 +44,8 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
             _logger = logger;
         }
 
-        public async Task<Result> Handle(
+
+        public async Task<Result<bool>> Handle(
             DeleteDirectMessageCommand request,
             CancellationToken cancellationToken = default)
         {
@@ -61,69 +63,85 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
                 // Only sender can delete their own message
                 if(message.SenderId != request.RequestedBy)
                 {
-                    return Result.Failure("You can delete your own messages");
+                    return Result.Failure<bool>("You can delete your own messages");
                 }
 
                 var conversationId = message.ConversationId;
                 var receiverId = message.ReceiverId;
                 var senderId = message.SenderId;
+                var messageId = message.Id;
 
-                // Delete the message (soft delete)
-                message.Delete();
+                if (message.IsRead)
+                {
+                    // ─── SOFT DELETE — qarşı tərəf oxuyub, "This message was deleted." göstəriləcək ───
+                    message.Delete();
 
-                // EF Core change tracker will automatically detect the property changes
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-                // Create deleted message DTO manually (showing deleted state)
-                var messageDto = new DirectMessageDto(
-                    Id: message.Id,
-                    ConversationId: message.ConversationId,
-                    SenderId: senderId,
-                    SenderEmail: string.Empty, // Will be populated by frontend from user cache
-                    SenderFullName: string.Empty, // Will be populated by frontend from user cache
-                    SenderAvatarUrl: null, // Will be populated by frontend from user cache
-                    ReceiverId: receiverId,
-                    Content: message.Content, // Content preserved in backend but shown as "deleted" in frontend
-                    FileId: message.FileId,
-                    FileName: null, // File metadata not needed for deleted messages
-                    FileContentType: null, // File metadata not needed for deleted messages
-                    FileSizeInBytes: null, // File metadata not needed for deleted messages
-                    FileUrl: null,
-                    ThumbnailUrl: null,
-                    IsEdited: message.IsEdited,
-                    IsDeleted: true, // Mark as deleted
-                    IsRead: message.IsRead,
-                    ReadAtUtc: message.ReadAtUtc,
-                    IsPinned: message.IsPinned,
-                    ReactionCount: 0,
-                    CreatedAtUtc: message.CreatedAtUtc,
-                    EditedAtUtc: message.EditedAtUtc,
-                    PinnedAtUtc: message.PinnedAtUtc,
-                    ReplyToMessageId: message.ReplyToMessageId,
-                    ReplyToContent: null,
-                    ReplyToSenderName: null,
-                    ReplyToFileId: null,
-                    ReplyToFileName: null,
-                    ReplyToFileContentType: null,
-                    ReplyToFileUrl: null,
-                    ReplyToThumbnailUrl: null,
-                    IsForwarded: message.IsForwarded,
-                    Reactions: new List<DirectMessageReactionDto>()
-                );
+                    var messageDto = new DirectMessageDto(
+                        Id: messageId,
+                        ConversationId: conversationId,
+                        SenderId: senderId,
+                        SenderEmail: string.Empty,
+                        SenderFullName: string.Empty,
+                        SenderAvatarUrl: null,
+                        ReceiverId: receiverId,
+                        Content: message.Content,
+                        FileId: message.FileId,
+                        FileName: null,
+                        FileContentType: null,
+                        FileSizeInBytes: null,
+                        FileUrl: null,
+                        ThumbnailUrl: null,
+                        IsEdited: message.IsEdited,
+                        IsDeleted: true,
+                        IsRead: message.IsRead,
+                        ReadAtUtc: message.ReadAtUtc,
+                        IsPinned: message.IsPinned,
+                        ReactionCount: 0,
+                        CreatedAtUtc: message.CreatedAtUtc,
+                        EditedAtUtc: message.EditedAtUtc,
+                        PinnedAtUtc: message.PinnedAtUtc,
+                        ReplyToMessageId: message.ReplyToMessageId,
+                        ReplyToContent: null,
+                        ReplyToSenderName: null,
+                        ReplyToFileId: null,
+                        ReplyToFileName: null,
+                        ReplyToFileContentType: null,
+                        ReplyToFileUrl: null,
+                        ReplyToThumbnailUrl: null,
+                        IsForwarded: message.IsForwarded,
+                        Reactions: new List<DirectMessageReactionDto>()
+                    );
 
-                // Send real-time notification to receiver with deleted message DTO
-                await _signalRNotificationService.NotifyDirectMessageDeletedAsync(
-                    conversationId,
-                    receiverId,
-                    messageDto);
+                    await _signalRNotificationService.NotifyDirectMessageDeletedAsync(
+                        conversationId,
+                        receiverId,
+                        messageDto);
 
-                _logger.LogInformation("Message {MessageId} deleted successfully", request.MessageId);
-                return Result.Success();
+                    _logger.LogInformation("Message {MessageId} soft deleted (was read)", messageId);
+                    return Result.Success(false); // soft delete
+                }
+                else
+                {
+                    // ─── HARD DELETE — qarşı tərəf oxumayıb, bazadan tamamilə sil ───
+                    await _unitOfWork.Messages.DeleteAsync(message, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                    // SignalR — hardDeleted flag ilə sadəcə messageId göndər
+                    await _signalRNotificationService.NotifyDirectMessageDeletedAsync(
+                        conversationId,
+                        receiverId,
+                        new { Id = messageId, HardDeleted = true });
+
+                    _logger.LogInformation("Message {MessageId} hard deleted (unread)", messageId);
+                    return Result.Success(true); // hard delete
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting message {MessageId}", request.MessageId);
-                return Result.Failure(ex.Message);
+                return Result.Failure<bool>(ex.Message);
             }
         }
     }

@@ -1,4 +1,4 @@
-﻿using ChatApp.Modules.Channels.Application.Interfaces;
+using ChatApp.Modules.Channels.Application.Interfaces;
 using ChatApp.Modules.Channels.Domain.Enums;
 using ChatApp.Shared.Infrastructure.SignalR.Services;
 using ChatApp.Shared.Kernel.Common;
@@ -9,10 +9,11 @@ using Microsoft.Extensions.Logging;
 
 namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
 {
+    // Result<bool> — Value: true = hard delete, false = soft delete
     public record DeleteChannelMessageCommand(
         Guid MessageId,
         Guid RequestedBy
-    ) : IRequest<Result>;
+    ) : IRequest<Result<bool>>;
 
 
 
@@ -30,7 +31,7 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
 
 
 
-    public class DeleteChannelMessageCommandHandler : IRequestHandler<DeleteChannelMessageCommand, Result>
+    public class DeleteChannelMessageCommandHandler : IRequestHandler<DeleteChannelMessageCommand, Result<bool>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ISignalRNotificationService _signalRNotificationService;
@@ -46,7 +47,7 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
             _logger = logger;
         }
 
-        public async Task<Result> Handle(
+        public async Task<Result<bool>> Handle(
             DeleteChannelMessageCommand request,
             CancellationToken cancellationToken)
         {
@@ -76,52 +77,20 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
 
                 if (!canDelete)
                 {
-                    return Result.Failure("You don't have permission to delete this message");
+                    return Result.Failure<bool>("You don't have permission to delete this message");
                 }
 
                 var channelId = message.ChannelId;
                 var senderId = message.SenderId;
+                var messageId = message.Id;
 
-                // Delete the message (soft delete)
-                message.Delete();
+                // Mesajı oxuyan varmı yoxla (heç kim oxumayıbsa hard delete)
+                var readCount = await _unitOfWork.ChannelMessageReads.GetReadByCountAsync(
+                    messageId, cancellationToken);
 
-                await _unitOfWork.ChannelMessages.UpdateAsync(message, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                bool isReadByAnyone = readCount > 0;
 
-                // Create deleted message DTO manually (showing deleted state)
-                var messageDto = new ChatApp.Modules.Channels.Application.DTOs.Responses.ChannelMessageDto(
-                    Id: message.Id,
-                    ChannelId: message.ChannelId,
-                    SenderId: senderId,
-                    SenderEmail: string.Empty, // Will be populated by frontend from user cache
-                    SenderFullName: string.Empty, // Will be populated by frontend from user cache
-                    SenderAvatarUrl: null, // Will be populated by frontend from user cache
-                    Content: message.Content, // Content preserved in backend but shown as "deleted" in frontend
-                    FileId: message.FileId,
-                    FileName: null,
-                    FileContentType: null,
-                    FileSizeInBytes: null,
-                    FileUrl: null,
-                    ThumbnailUrl: null,
-                    IsEdited: message.IsEdited,
-                    IsDeleted: true, // Mark as deleted
-                    IsPinned: message.IsPinned,
-                    ReactionCount: 0,
-                    CreatedAtUtc: message.CreatedAtUtc,
-                    EditedAtUtc: message.EditedAtUtc,
-                    PinnedAtUtc: message.PinnedAtUtc,
-                    ReplyToMessageId: message.ReplyToMessageId,
-                    ReplyToContent: null,
-                    ReplyToSenderName: null,
-                    ReplyToFileId: null,
-                    ReplyToFileName: null,
-                    ReplyToFileContentType: null,
-                    ReplyToFileUrl: null,
-                    ReplyToThumbnailUrl: null,
-                    IsForwarded: message.IsForwarded
-                );
-
-                // Get all active channel members for notification
+                // Channel üzvlərini al (notification üçün)
                 var members = await _unitOfWork.ChannelMembers.GetChannelMembersAsync(
                     channelId,
                     cancellationToken);
@@ -131,20 +100,74 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
                     .Select(m => m.UserId)
                     .ToList();
 
-                // Send real-time notification with deleted message DTO (hybrid: group + direct connections)
-                await _signalRNotificationService.NotifyChannelMessageDeletedToMembersAsync(
-                    channelId,
-                    memberUserIds,
-                    messageDto);
+                if (isReadByAnyone)
+                {
+                    // ─── SOFT DELETE — kimsə oxuyub, "This message was deleted." göstəriləcək ───
+                    message.Delete();
 
-                _logger?.LogInformation("Message {MessageId} deleted successfully", request.MessageId);
+                    await _unitOfWork.ChannelMessages.UpdateAsync(message, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-                return Result.Success();
+                    var messageDto = new DTOs.Responses.ChannelMessageDto(
+                        Id: messageId,
+                        ChannelId: channelId,
+                        SenderId: senderId,
+                        SenderEmail: string.Empty,
+                        SenderFullName: string.Empty,
+                        SenderAvatarUrl: null,
+                        Content: message.Content,
+                        FileId: message.FileId,
+                        FileName: null,
+                        FileContentType: null,
+                        FileSizeInBytes: null,
+                        FileUrl: null,
+                        ThumbnailUrl: null,
+                        IsEdited: message.IsEdited,
+                        IsDeleted: true,
+                        IsPinned: message.IsPinned,
+                        ReactionCount: 0,
+                        CreatedAtUtc: message.CreatedAtUtc,
+                        EditedAtUtc: message.EditedAtUtc,
+                        PinnedAtUtc: message.PinnedAtUtc,
+                        ReplyToMessageId: message.ReplyToMessageId,
+                        ReplyToContent: null,
+                        ReplyToSenderName: null,
+                        ReplyToFileId: null,
+                        ReplyToFileName: null,
+                        ReplyToFileContentType: null,
+                        ReplyToFileUrl: null,
+                        ReplyToThumbnailUrl: null,
+                        IsForwarded: message.IsForwarded
+                    );
+
+                    await _signalRNotificationService.NotifyChannelMessageDeletedToMembersAsync(
+                        channelId,
+                        memberUserIds,
+                        messageDto);
+
+                    _logger?.LogInformation("Message {MessageId} soft deleted (read by {ReadCount} users)", messageId, readCount);
+                    return Result.Success(false); // soft delete
+                }
+                else
+                {
+                    // ─── HARD DELETE — heç kim oxumayıb, bazadan tamamilə sil ───
+                    await _unitOfWork.ChannelMessages.DeleteAsync(message, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                    // SignalR — hardDeleted flag ilə sadəcə messageId göndər
+                    await _signalRNotificationService.NotifyChannelMessageDeletedToMembersAsync(
+                        channelId,
+                        memberUserIds,
+                        new { Id = messageId, HardDeleted = true });
+
+                    _logger?.LogInformation("Message {MessageId} hard deleted (unread)", messageId);
+                    return Result.Success(true); // hard delete
+                }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error deleting message {MessageId}", request.MessageId);
-                return Result.Failure(ex.Message);
+                return Result.Failure<bool>(ex.Message);
             }
         }
     }

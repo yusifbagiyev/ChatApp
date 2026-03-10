@@ -357,10 +357,10 @@ function ChatInputArea({
 
             {/* Göndər düyməsi */}
             <button
-              className={`send-btn ${messageText.trim() || (selectedFiles && selectedFiles.length > 0) ? "" : "disabled"}`}
+              className={`send-btn ${messageText.trim() || (selectedFiles && selectedFiles.length > 0) || editMessage ? "" : "disabled"}`}
               title="Send"
               onClick={onSend}
-              disabled={!messageText.trim() && !(selectedFiles && selectedFiles.length > 0)}
+              disabled={!messageText.trim() && !(selectedFiles && selectedFiles.length > 0) && !editMessage}
             >
               <svg
                 width="20"

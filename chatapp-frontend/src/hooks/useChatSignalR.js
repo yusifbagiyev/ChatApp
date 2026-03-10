@@ -297,12 +297,18 @@ export default function useChatSignalR(
 
     // ─── handleMessageDeleted ─────────────────────────────────────────────────
     // Başqa user (ya da özümüz başqa cihazdan) mesajı siləndə
-    // "Soft delete" — mesajı silirik deyil, isDeleted: true edirik
-    // UI-da: "This message was deleted." göstərilir
+    // hardDeleted=true  → heç kim oxumayıb, mesajı tamamilə sil (UI-dan yox olur)
+    // hardDeleted=false → kimsə oxuyub, "This message was deleted." göstərilir
     function handleMessageDeleted(deletedMsg) {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === deletedMsg.id ? { ...m, isDeleted: true } : m)),
-      );
+      if (deletedMsg.hardDeleted) {
+        // Hard delete — array-dən tamamilə çıxar
+        setMessages((prev) => prev.filter((m) => m.id !== deletedMsg.id));
+      } else {
+        // Soft delete — isDeleted: true et
+        setMessages((prev) =>
+          prev.map((m) => (m.id === deletedMsg.id ? { ...m, isDeleted: true } : m)),
+        );
+      }
     }
 
     // ─── handleMessageEdited ──────────────────────────────────────────────────

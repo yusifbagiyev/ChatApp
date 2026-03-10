@@ -2498,24 +2498,25 @@
   background: transparent;
 }
 
-/* Emoji wrap — orijinal emoji simvolunu gizli saxla + üzərinə Apple img overlay */
+/* Emoji wrap — inline-block + relative ki, image onu tam doldursun */
 .mirror-emoji-wrap {
   position: relative;
-  display: inline;
+  display: inline-block;
+  vertical-align: bottom;
 }
 
-/* Gizli emoji simvolu — textarea ilə eyni eni tutur */
+/* Native emoji simvolu — gizli amma eni saxlanılır (textarea layout ilə eyni) */
 .mirror-emoji-char {
   visibility: hidden;
 }
 
-/* Apple CDN emoji şəkli — gizli simvolun üzərində göstərilir */
+/* Apple CDN emoji şəkli — wrapper-in tam sahəsini doldurur */
 .mirror-emoji-img {
   position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 1.15em;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   pointer-events: none;
 }
 
@@ -2528,6 +2529,7 @@
   background: transparent;
   font-size: 15px;
   color: transparent;
+  -webkit-text-fill-color: transparent; /* Windows-da rəngli emoji fontları tam gizlətmək üçün */
   caret-color: var(--gray-900);
   outline: none;
   padding: 6px 8px 44px 38px;
@@ -2571,6 +2573,7 @@
 
 .message-input::placeholder {
   color: var(--gray-400);
+  -webkit-text-fill-color: var(--gray-400);
   font-size: 14px;
 }
 
@@ -6014,9 +6017,9 @@
 .message-bubble.image-only > .reaction-badges-external .reaction-badge-count {
   color: #fff;
 }
-/* Reaction olduqda bubble-dan sonra əlavə boşluq */
+/* Reaction olduqda bubble-dan sonra əlavə boşluq (badge + aradakı gap) */
 .message-bubble.image-only:has(.reaction-badges-external) {
-  margin-bottom: 28px;
+  margin-bottom: 36px;
 }
 
 /* Image-only bubble — timestamp və tick rəngini ağ et */

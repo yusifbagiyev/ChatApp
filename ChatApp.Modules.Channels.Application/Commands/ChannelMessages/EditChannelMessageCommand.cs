@@ -22,8 +22,9 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
             RuleFor(x => x.MessageId)
                 .NotEmpty().WithMessage("Message ID is required");
 
+            // NotEmpty yoxdur — fayl olan mesajda texti silmək üçün boş content göndərilə bilər.
+            // Domain Edit metodu boş content + faylsız halı özü rədd edir.
             RuleFor(x => x.NewContent)
-                .NotEmpty().WithMessage("Message content cannot be empty")
                 .MaximumLength(10000).WithMessage("Message content cannot exceed 10000 characters");
 
             RuleFor(x => x.RequestedBy)

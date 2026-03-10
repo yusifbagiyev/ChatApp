@@ -387,7 +387,7 @@ namespace ChatApp.Modules.DirectMessages.Api.Controllers
             if(result.IsFailure)
                 return BadRequest(new {error=result.Error});
 
-            return Ok(new { message = "Message deleted succesfully" });
+            return Ok(new { message = "Message deleted successfully", hardDeleted = result.Value });
         }
 
 

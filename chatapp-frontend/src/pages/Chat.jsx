@@ -1953,6 +1953,9 @@ function Chat() {
   }, [selectedMessages]);
 
   // handleDeleteMessage — tək mesajı sil (action menu-dan çağırılır)
+  // Backend hardDeleted flag qaytarır:
+  //   hardDeleted=true  → heç kim oxumayıb, mesaj tamamilə silinir (UI-dan yox olur)
+  //   hardDeleted=false → kimsə oxuyub, soft delete (UI-da "This message was deleted." göstərilir)
   const handleDeleteMessage = useCallback(
     async (msg) => {
       if (!selectedChat) return;
@@ -1963,17 +1966,36 @@ function Chat() {
           `/messages/${msg.id}`,
         );
         if (!endpoint) return;
-        await apiDelete(endpoint);
-        // Soft delete — mesajı array-dən çıxarmırıq, isDeleted: true edirik
-        // UI-da "This message was deleted." göstəriləcək
-        setMessages((prev) =>
-          prev.map((m) => (m.id === msg.id ? { ...m, isDeleted: true } : m)),
-        );
+        const res = await apiDelete(endpoint);
+
+        if (res?.hardDeleted) {
+          // Hard delete — heç kim oxumayıb, mesajı array-dən tamamilə sil
+          setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+        } else {
+          // Soft delete — kimsə oxuyub, isDeleted: true et
+          setMessages((prev) =>
+            prev.map((m) => (m.id === msg.id ? { ...m, isDeleted: true } : m)),
+          );
+        }
       } catch (err) {
         console.error("Failed to delete message:", err);
       }
     },
     [selectedChat],
+  );
+
+  // handleDeleteMsgAction — delete düyməsinə basıldıqda:
+  //   status < 3 (oxunmayıb) → təsdiqlənmə olmadan birbaşa sil
+  //   status >= 3 (oxunub)   → təsdiqlənmə modalı göstər
+  const handleDeleteMsgAction = useCallback(
+    (msg) => {
+      if (msg.status < 3) {
+        handleDeleteMessage(msg);
+        return;
+      }
+      setPendingDeleteMsg(msg);
+    },
+    [handleDeleteMessage],
   );
 
   // handleDeleteSelected — seçilmiş bütün mesajları sil (SelectToolbar-dan)
@@ -2183,8 +2205,10 @@ function Chat() {
       return;
     }
 
-    // Boş mesaj göndərmə
-    if (!messageText.trim() || !selectedChat) return;
+    if (!selectedChat) return;
+
+    // Boş mesaj göndərmə — yalnız yeni mesaj üçün (edit modunda boş text icazəlidir)
+    if (!messageText.trim() && !editMessage) return;
 
     const text = messageText.trim();
     // Mesaj göndərəndə bütün unread mesajları oxundu et
@@ -2214,6 +2238,14 @@ function Chat() {
     if (editMessage) {
       const editingMsg = editMessage;
       setEditMessage(null); // Edit mode-dan çıx
+
+      // Boş text + fayl yoxdur → mesajı tamamilə sil
+      if (!text && !editingMsg.fileUrl) {
+        handleDeleteMessage(editingMsg);
+        return;
+      }
+
+      // Text var VEYA fayl var → edit (boş text faylı olan mesajda texti silir)
       try {
         const endpoint = getChatEndpoint(
           selectedChat.id,
@@ -3206,7 +3238,7 @@ function Chat() {
                           onSelect={handleEnterSelectMode}
                           onToggleSelect={handleToggleSelect}
                           onScrollToMessage={handleScrollToMessage}
-                          onDelete={setPendingDeleteMsg}
+                          onDelete={handleDeleteMsgAction}
                           onEdit={handleEditMsg}
                           onReaction={handleReaction}
                           onLoadReactionDetails={handleLoadReactionDetails}
@@ -3247,7 +3279,7 @@ function Chat() {
                               onSelect={handleEnterSelectMode}
                               onToggleSelect={handleToggleSelect}
                               onScrollToMessage={handleScrollToMessage}
-                              onDelete={setPendingDeleteMsg}
+                              onDelete={handleDeleteMsgAction}
                               onEdit={handleEditMsg}
                               onReaction={handleReaction}
                               onLoadReactionDetails={handleLoadReactionDetails}
