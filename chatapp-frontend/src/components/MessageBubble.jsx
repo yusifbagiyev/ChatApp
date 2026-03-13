@@ -3,7 +3,7 @@
 // useRef   — DOM referansları (menyu div-i, reaction div-i)
 // useEffect — kənar klik handler, menyu pozisyonu yoxlama
 // useLayoutEffect — reaction picker-in flip (yuxarı/aşağı açılma)
-import { memo, useState, useRef, useEffect, useLayoutEffect } from "react";
+import { memo, useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 
 import {
   getInitials,
@@ -293,6 +293,21 @@ const MessageBubble = memo(function MessageBubble({
     msg.fileContentType?.startsWith("image/") &&
     !msg.content;
 
+  // Şəkil placeholder ölçüləri — Bitrix24 pattern: container-ə əvvəlcədən düzgün ölçü ver
+  // Şəkil yüklənməmişdən əvvəl container düzgün hündürlük tutur → layout shift olmur
+  const imgContainerStyle = useMemo(() => {
+    if (!msg.fileWidth || !msg.fileHeight) return undefined;
+    const maxW = 450;
+    const maxH = 400;
+    if (!msg.content) {
+      // Image-only: explicit width + height (container öz ölçüsünü bilmir)
+      const scale = Math.min(maxW / msg.fileWidth, maxH / msg.fileHeight, 1);
+      return { width: Math.round(msg.fileWidth * scale), height: Math.round(msg.fileHeight * scale) };
+    }
+    // Image+text: container width CSS-dən gəlir, aspect-ratio ilə hündürlük avtomatik
+    return { aspectRatio: `${msg.fileWidth} / ${msg.fileHeight}`, maxHeight: maxH };
+  }, [msg.fileWidth, msg.fileHeight, msg.content]);
+
   // --- JSX RENDER ---
   return (
     // message-row — mesajın tam sırası (checkbox + avatar + bubble)
@@ -429,21 +444,13 @@ const MessageBubble = memo(function MessageBubble({
                 (msg.fileContentType?.startsWith("image/") ? (
                   // Şəkil — full-width preview, klikləmə ilə yeni tabda aç
                   <div
-                    className={`bubble-file-image${!msg.content ? " image-only" : ""}`}
+                    className={`bubble-file-image${!msg.content ? " image-only" : ""}${imgContainerStyle ? " has-dimensions" : ""}`}
+                    style={imgContainerStyle}
                   >
                     <img
                       src={getFileUrl(msg.fileUrl)}
                       alt={msg.fileName || "Image"}
                       loading="lazy"
-                      width={msg.fileWidth || undefined}
-                      height={msg.fileHeight || undefined}
-                      style={
-                        msg.fileWidth && msg.fileHeight
-                          ? {
-                              aspectRatio: `${msg.fileWidth}/${msg.fileHeight}`,
-                            }
-                          : undefined
-                      }
                       onLoad={onImageLoad}
                       onClick={() =>
                         onOpenImageViewer && onOpenImageViewer(msg.id)
