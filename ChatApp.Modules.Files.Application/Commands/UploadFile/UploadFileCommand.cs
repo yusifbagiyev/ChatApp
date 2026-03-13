@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 
 namespace ChatApp.Modules.Files.Application.Commands.UploadFile
@@ -93,20 +94,20 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                 var fileType=FileTypeHelper.GetFileType(contentType);
                 var extension=FileTypeHelper.GetExtensionFromContentType(contentType);
 
+                // Sıxılan şəkillər JPEG olaraq saxlanılır — SVG vektor formatıdır, sıxılmır
+                var compressibleImage = fileType == FileType.Image
+                    && !contentType.Equals("image/svg+xml", StringComparison.OrdinalIgnoreCase);
+                var effectiveExtension = compressibleImage ? ".jpg" : extension;
 
                 // Generate unique filename
-                var uniqueFileName = $"{Guid.NewGuid()}{extension}";
+                var uniqueFileName = $"{Guid.NewGuid()}{effectiveExtension}";
 
                 // Determine storage directory
-                var directory = await DetermineStorageDirectoryAsync(
-                    request.ChannelId,
-                    request.ConversationId,
+                var directory = DetermineStorageDirectory(
                     request.UploadedBy,
                     request.IsProfilePicture,
                     request.IsChannelAvatar,
-                    request.ChannelAvatarTargetId,
-                    fileType,
-                    cancellationToken);
+                    request.ChannelAvatarTargetId);
 
                 _logger?.LogInformation(
                     "Determined storage directory: {Directory} for file {FileName}",
@@ -166,7 +167,7 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                     tempStoragePath,
                     request.UploadedBy);
 
-                // If image, process dimensions and thumbnail
+                // Şəkil: sıxılma + ölçü saxlama
                 if (fileType == FileType.Image || request.IsProfilePicture)
                 {
                     try
@@ -178,7 +179,7 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogWarning(ex, "Failed to process image dimensions/thumbnail");
+                        _logger?.LogWarning(ex, "Failed to process image");
                     }
                 }
 
@@ -206,21 +207,11 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                 var relativePath = $"/uploads/{directory}/{uniqueFileName}".Replace("\\", "/");
                 var downloadUrl = $"{apiBaseUrl.TrimEnd('/')}{relativePath}";
 
-                // Generate thumbnail URL if thumbnail was created
-                string? thumbnailUrl = null;
-                if (!string.IsNullOrEmpty(fileMetadata.ThumbnailPath))
-                {
-                    var thumbnailFileName = Path.GetFileName(fileMetadata.ThumbnailPath);
-                    var thumbnailRelativePath = $"/uploads/{directory}/{thumbnailFileName}".Replace("\\", "/");
-                    thumbnailUrl = $"{apiBaseUrl.TrimEnd('/')}{thumbnailRelativePath}";
-                }
-
                 var result = new FileUploadResult(
                     fileMetadata.Id,
                     uniqueFileName,
-                    request.File.Length,
-                    downloadUrl,
-                    thumbnailUrl);
+                    fileMetadata.FileSizeInBytes,
+                    downloadUrl);
 
                 return Result.Success(result);
             }
@@ -244,83 +235,56 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
 
 
 
-        private static async Task ProcessImageAsync(IFormFile file,FileMetadata fileMetadata,string storagePath)
+        private static async Task ProcessImageAsync(IFormFile file, FileMetadata fileMetadata, string storagePath)
         {
             using var image = await Image.LoadAsync(file.OpenReadStream());
 
-            // Set dimensions
-            fileMetadata.SetImageDimensions(image.Width, image.Height);
-
-            // Generate thumbnail (max 200x200)
-            if(image.Width>200 || image.Height > 200)
+            // SVG vektor formatıdır — rasterləşdirmək mənasızdır, yalnız ölçü saxla
+            if (file.ContentType.Equals("image/svg+xml", StringComparison.OrdinalIgnoreCase))
             {
-                var thumbnailPath = storagePath.Replace(Path.GetFileName(storagePath), $"thumb_{Path.GetFileName(storagePath)}");
+                fileMetadata.SetImageDimensions(image.Width, image.Height);
+                return;
+            }
 
+            // Max 1920px (uzun tərəf), aspect ratio saxlanılır
+            if (image.Width > 1920 || image.Height > 1920)
+            {
                 image.Mutate(x => x.Resize(new ResizeOptions
                 {
-                    Size = new Size(200, 200),
+                    Size = new Size(1920, 1920),
                     Mode = ResizeMode.Max
                 }));
-
-                var thumbnailDirectory = Path.GetDirectoryName(thumbnailPath);
-                if (!string.IsNullOrEmpty(thumbnailDirectory))
-                {
-                    Directory.CreateDirectory(thumbnailDirectory);
-                }
-
-                await image.SaveAsync(thumbnailPath);
-                fileMetadata.SetThumbnailPath(thumbnailPath);
             }
+
+            // Ölçüləri (sıxılmadan sonrakı) saxla — frontend placeholder üçün
+            fileMetadata.SetImageDimensions(image.Width, image.Height);
+
+            // JPEG 85% quality ilə overwrite — thumbnail yaradılmır
+            var encoder = new JpegEncoder { Quality = 85 };
+            await image.SaveAsJpegAsync(storagePath, encoder);
+
+            // Sıxılmadan sonra fayl ölçüsünü və content type-ı yenilə
+            fileMetadata.UpdateAfterCompression(new FileInfo(storagePath).Length, "image/jpeg");
         }
 
 
-        private static Task<string> DetermineStorageDirectoryAsync(
-            Guid? channelId,
-            Guid? conversationId,
+        private static string DetermineStorageDirectory(
             Guid uploadedBy,
-            bool IsProfilePicture,
-            bool IsChannelAvatar,
-            Guid? channelAvatarTargetId,
-            FileType fileType,
-            CancellationToken cancellationToken)
+            bool isProfilePicture,
+            bool isChannelAvatar,
+            Guid? channelAvatarTargetId)
         {
-            // Profile pictures go to dedicated folder
-            if (IsProfilePicture)
-            {
-                return Task.FromResult($"avatars/conversations/{uploadedBy}");
-            }
+            // Avatarlar — dəyişməz struktur
+            if (isProfilePicture)
+                return $"avatars/conversations/{uploadedBy}";
 
-            // Channel avatars go to /avatars/channels/{channelId}/
-            if (IsChannelAvatar && channelAvatarTargetId.HasValue)
-            {
-                return Task.FromResult($"avatars/channels/{channelAvatarTargetId.Value}");
-            }
+            if (isChannelAvatar && channelAvatarTargetId.HasValue)
+                return $"avatars/channels/{channelAvatarTargetId.Value}";
 
-            // File type subfolder
-            var fileTypeFolder = fileType switch
-            {
-                FileType.Image => "images",
-                FileType.Document => "documents",
-                FileType.Video => "videos",
-                FileType.Audio => "audio",
-                FileType.Archive => "archives",
-                _ => "other"
-            };
-
-            // Channel uploads: generic/channel_{channelId}/{fileType}/
-            if (channelId.HasValue)
-            {
-                return Task.FromResult($"generic/channel_{channelId}/{fileTypeFolder}");
-            }
-
-            // Conversation uploads: generic/conversation_{conversationId}/{fileType}/
-            if (conversationId.HasValue)
-            {
-                return Task.FromResult($"generic/conversation_{conversationId}/{fileTypeFolder}");
-            }
-
-            // Generic uploads (no context): generic/{fileType}/
-            return Task.FromResult($"generic/{fileTypeFolder}");
+            // Bütün digər fayllar — tarix əsaslı flat struktur
+            // URL-də conversation/channel/user ID yoxdur
+            var yearMonth = DateTime.UtcNow.ToString("yyyy-MM");
+            return $"files/{yearMonth}";
         }
     }
 }

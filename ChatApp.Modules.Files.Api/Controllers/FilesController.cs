@@ -279,60 +279,6 @@ namespace ChatApp.Modules.Files.Api.Controllers
 
 
         /// <summary>
-        /// Download thumbnail (for images only)
-        /// </summary>
-        /// 
-        [HttpGet("{fileId:guid}/thumbnail")]
-        [RequirePermission("Files.Download")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<IActionResult> DownloadThumbnail(
-            [FromRoute] Guid fileId,
-            CancellationToken cancellationToken)
-        {
-            var userId = GetCurrentUserId();
-            if (userId == Guid.Empty)
-                return Unauthorized();
-
-            var fileMetadata = await _unitOfWork.Files.GetByIdAsync(fileId, cancellationToken);
-
-            if (fileMetadata == null)
-                return NotFound(new { error = $"File with ID {fileId} not found" });
-
-            if (string.IsNullOrEmpty(fileMetadata.ThumbnailPath))
-                return NotFound(new { error = "Thumbnail not available for this file" });
-
-            // Check if user has permission to view thumbnail (uploader, conversation participant, or channel member)
-            var hasPermission = await CheckFileAccessPermissionAsync(fileId, userId, cancellationToken);
-
-            if (!hasPermission)
-            {
-                _logger?.LogWarning(
-                    "User {UserId} attempted to access thumbnail for file {FileId} without permission",
-                    userId,
-                    fileId);
-                return Forbid();
-            }
-
-            try
-            {
-                var fileStream = await _fileStorageService.GetFileStreamAsync(
-                    fileMetadata.ThumbnailPath,
-                    cancellationToken);
-
-                return File(fileStream, fileMetadata.ContentType);
-            }
-            catch (FileNotFoundException)
-            {
-                return NotFound(new { error = "Thumbnail not found in storage" });
-            }
-        }
-
-
-
-        /// <summary>
         /// Get all files uploaded by current user
         /// </summary>
         [HttpGet("my-files")]

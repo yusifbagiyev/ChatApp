@@ -268,7 +268,6 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
             public string? FileContentType { get; init; }
             public long? FileSizeInBytes { get; init; }
             public string? FileStoragePath { get; init; }
-            public string? FileThumbnailPath { get; init; }
             public int? FileWidth { get; init; }
             public int? FileHeight { get; init; }
             public bool IsEdited { get; init; }
@@ -287,7 +286,6 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
             public string? ReplyToFileName { get; init; }
             public string? ReplyToFileContentType { get; init; }
             public string? ReplyToFileStoragePath { get; init; }
-            public string? ReplyToFileThumbnailPath { get; init; }
             public bool IsForwarded { get; init; }
         }
 
@@ -322,7 +320,6 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                        FileContentType = file != null ? file.ContentType : null,
                        FileSizeInBytes = file != null ? (long?)file.FileSizeInBytes : null,
                        FileStoragePath = file != null ? file.StoragePath : null,
-                       FileThumbnailPath = file != null ? file.ThumbnailPath : null,
                        FileWidth = file != null ? file.Width : null,
                        FileHeight = file != null ? file.Height : null,
                        IsEdited = message.IsEdited,
@@ -341,7 +338,6 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                        ReplyToFileName = repliedFile != null ? repliedFile.OriginalFileName : null,
                        ReplyToFileContentType = repliedFile != null ? repliedFile.ContentType : null,
                        ReplyToFileStoragePath = repliedFile != null ? repliedFile.StoragePath : null,
-                       ReplyToFileThumbnailPath = repliedFile != null ? repliedFile.ThumbnailPath : null,
                        IsForwarded = message.IsForwarded
                    };
         }
@@ -425,7 +421,6 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 r.FileContentType,
                 r.FileSizeInBytes,
                 FileUrlHelper.ToUrl(r.FileStoragePath),      // FileUrl
-                FileUrlHelper.ToUrl(r.FileThumbnailPath), // ThumbnailUrl
                 r.FileWidth,
                 r.FileHeight,
                 r.IsEdited,
@@ -444,7 +439,6 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 r.ReplyToFileName,
                 r.ReplyToFileContentType,
                 FileUrlHelper.ToUrl(r.ReplyToFileStoragePath),      // ReplyToFileUrl
-                FileUrlHelper.ToUrl(r.ReplyToFileThumbnailPath), // ReplyToThumbnailUrl
                 r.IsForwarded,
                 reactions.TryGetValue(r.Id, out var rxns) ? rxns : null,
                 mentions.TryGetValue(r.Id, out var mnts) ? mnts : null,

@@ -81,12 +81,6 @@ namespace ChatApp.Modules.Files.Application.Commands.DeleteFile
                 //try
                 //{
                 //    await _fileStorageService.DeleteFileAsync(file.StoragePath, cancellationToken);
-
-                //    // Delete thumbnail if exists
-                //    if (!string.IsNullOrEmpty(file.ThumbnailPath))
-                //    {
-                //        await _fileStorageService.DeleteFileAsync(file.ThumbnailPath,cancellationToken);
-                //    }
                 //}
                 //catch (Exception ex)
                 //{

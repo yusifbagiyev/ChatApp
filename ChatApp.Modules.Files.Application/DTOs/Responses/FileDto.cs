@@ -14,6 +14,5 @@ namespace ChatApp.Modules.Files.Application.DTOs.Responses
         string UploaderFullName,
         int? Width,
         int? Height,
-        bool HasThumbnail,
         DateTime UploadedAtUtc);
 }

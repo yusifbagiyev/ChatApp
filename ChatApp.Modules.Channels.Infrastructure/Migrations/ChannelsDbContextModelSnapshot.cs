@@ -496,10 +496,6 @@ namespace ChatApp.Modules.Channels.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("storage_path");
 
-                    b.Property<string>("ThumbnailPath")
-                        .HasColumnType("text")
-                        .HasColumnName("thumbnail_path");
-
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 

@@ -59,7 +59,6 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
                                     user.FullName,
                                     file.Width,
                                     file.Height,
-                                    !string.IsNullOrEmpty(file.ThumbnailPath),
                                     file.CreatedAtUtc
                                 ))
                               .FirstOrDefaultAsync(cancellationToken);
@@ -89,7 +88,6 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
                                    user.FullName,
                                    file.Width,
                                    file.Height,
-                                   !string.IsNullOrEmpty(file.ThumbnailPath),
                                    file.CreatedAtUtc
                                ))
                                .Skip(skip)

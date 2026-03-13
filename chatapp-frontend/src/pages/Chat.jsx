@@ -3048,7 +3048,6 @@ function Chat() {
         fileContentType: msg.fileContentType,
         fileSizeInBytes: msg.fileSizeInBytes,
         fileUrl: msg.fileUrl,
-        thumbnailUrl: msg.thumbnailUrl,
         isImage,
         senderFullName: msg.senderFullName,
         senderAvatarUrl: msg.senderAvatarUrl,
@@ -4511,7 +4510,7 @@ function Chat() {
                         elements.push(
                           <div key={f.id} className="ds-fm-media-item">
                             <img
-                              src={f.thumbnailUrl || f.fileUrl}
+                              src={f.fileUrl}
                               alt={f.fileName}
                               className="ds-fm-media-img"
                               onClick={() => handleScrollToMessage(f.id)}

@@ -71,11 +71,6 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Configurations
                 .HasColumnName("height");
 
 
-            builder.Property(f => f.ThumbnailPath)
-                .HasColumnName("thumbnail_path")
-                .HasMaxLength(1000);
-
-
             builder.Property(f => f.CreatedAtUtc)
                 .HasColumnName("created_at_utc")
                 .HasColumnType("timestamp with time zone")

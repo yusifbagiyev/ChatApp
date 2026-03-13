@@ -18,7 +18,7 @@ export const MAX_BATCH_FILES = 20; // Backend batch limit (max 20 mesaj bir requ
 // İcazə verilən fayl extension-ları — backend FileTypeHelper.ContentTypeMapping ilə sinxron
 export const ALLOWED_FILE_EXTENSIONS = new Set([
   // Images
-  ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp",
+  ".jpg", ".jpeg", ".png", ".webp", ".svg", ".bmp",
   // Documents
   ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv",
   // Videos

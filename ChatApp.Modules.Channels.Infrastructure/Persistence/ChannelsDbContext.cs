@@ -65,7 +65,6 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence
                 entity.Property(e => e.ContentType).HasColumnName("content_type");
                 entity.Property(e => e.FileSizeInBytes).HasColumnName("file_size_in_bytes");
                 entity.Property(e => e.StoragePath).HasColumnName("storage_path");
-                entity.Property(e => e.ThumbnailPath).HasColumnName("thumbnail_path");
                 entity.Property(e => e.Width).HasColumnName("width");
                 entity.Property(e => e.Height).HasColumnName("height");
 

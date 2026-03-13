@@ -92,7 +92,6 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
                         FileContentType: null,
                         FileSizeInBytes: null,
                         FileUrl: null,
-                        ThumbnailUrl: null,
                         FileWidth: null,
                         FileHeight: null,
                         IsEdited: message.IsEdited,
@@ -111,7 +110,6 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
                         ReplyToFileName: null,
                         ReplyToFileContentType: null,
                         ReplyToFileUrl: null,
-                        ReplyToThumbnailUrl: null,
                         IsForwarded: message.IsForwarded,
                         Reactions: new List<DirectMessageReactionDto>()
                     );

@@ -110,6 +110,12 @@ builder.Services.AddSettingsInfrastructure(builder.Configuration);
 // Register shared infrastructure (Redis, cache, session store, event bus)
 builder.Services.AddSharedInfrastructure(builder.Configuration);
 
+// HTTP Response Compression — transfer zamanı lossless sıxılma (gzip/brotli)
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+});
+
 // Register SignalR services
 builder.Services.AddSingleton<IConnectionManager, ConnectionManager>();
 builder.Services.AddScoped<IPresenceService, PresenceService>();
@@ -347,6 +353,9 @@ if (app.Environment.IsDevelopment())
 // IMPORTANT: CORS must be before routing for SignalR
 app.UseCors("AllowFrontend");
 
+// Response compression middleware — statik fayllardan əvvəl olmalıdır
+app.UseResponseCompression();
+
 // Configure static files to serve uploaded files from the storage path
 var fileStoragePath = builder.Configuration.GetSection("FileStorage")["LocalPath"] ?? "D:\\ChatAppUploads";
 if (!Directory.Exists(fileStoragePath))
@@ -357,7 +366,12 @@ if (!Directory.Exists(fileStoragePath))
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(fileStoragePath),
-    RequestPath = "/uploads"
+    RequestPath = "/uploads",
+    OnPrepareResponse = ctx =>
+    {
+        // GUID filename = content dəyişmir, 1 il cache
+        ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+    }
 });
 
 app.UseRouting();

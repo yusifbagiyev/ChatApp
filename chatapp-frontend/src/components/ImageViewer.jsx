@@ -138,7 +138,7 @@ const ImageViewer = memo(function ImageViewer({ images, currentIndex, onClose, o
               onClick={() => onNavigate(idx)}
             >
               <img
-                src={getFileUrl(img.thumbnailUrl || img.fileUrl)}
+                src={getFileUrl(img.fileUrl)}
                 alt={img.fileName}
                 loading="lazy"
               />

@@ -121,7 +121,6 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
                         FileContentType: null,
                         FileSizeInBytes: null,
                         FileUrl: null,
-                        ThumbnailUrl: null,
                         FileWidth: null,
                         FileHeight: null,
                         IsEdited: message.IsEdited,
@@ -138,7 +137,6 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
                         ReplyToFileName: null,
                         ReplyToFileContentType: null,
                         ReplyToFileUrl: null,
-                        ReplyToThumbnailUrl: null,
                         IsForwarded: message.IsForwarded
                     );
 

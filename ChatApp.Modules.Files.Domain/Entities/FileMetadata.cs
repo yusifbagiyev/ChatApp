@@ -20,7 +20,6 @@ namespace ChatApp.Modules.Files.Domain.Entities
         // Optional For Image
         public int? Width { get; private set; }
         public int? Height { get; private set; }
-        public string? ThumbnailPath { get; private set; }
 
         private FileMetadata() { }
 
@@ -71,16 +70,13 @@ namespace ChatApp.Modules.Files.Domain.Entities
         }
 
 
-        public void SetThumbnailPath(string thumbnailPath)
+        public void UpdateAfterCompression(long newFileSize, string newContentType)
         {
-            if (FileType != FileType.Image)
-                throw new InvalidOperationException("Cannot set thumbnail for non-image files");
-
-            if(string.IsNullOrWhiteSpace(thumbnailPath))
-                throw new ArgumentException("Thumbnail path cannot be empty", nameof(thumbnailPath));
-
-            ThumbnailPath = thumbnailPath;
-            UpdatedAtUtc=DateTime.UtcNow;
+            if (newFileSize <= 0)
+                throw new ArgumentException("File size must be greater than 0", nameof(newFileSize));
+            FileSizeInBytes = newFileSize;
+            ContentType = newContentType;
+            UpdatedAtUtc = DateTime.UtcNow;
         }
 
 

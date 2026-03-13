@@ -84,7 +84,8 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(ping:*)",
       "Bash(\"C:/Users/ybaghiyev/Desktop/ChatApp/tasks/lessons.md\":*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

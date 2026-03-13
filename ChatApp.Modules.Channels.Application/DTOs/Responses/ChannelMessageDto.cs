@@ -15,7 +15,6 @@ namespace ChatApp.Modules.Channels.Application.DTOs.Responses
         string? FileContentType,
         long? FileSizeInBytes,
         string? FileUrl,           // Statik fayl URL-i (API call əvəzinə)
-        string? ThumbnailUrl,      // Şəkil thumbnail URL-i
         int? FileWidth,            // Şəkil genişliyi (layout shift önləmək üçün)
         int? FileHeight,           // Şəkil hündürlüyü
         bool IsEdited,
@@ -32,7 +31,6 @@ namespace ChatApp.Modules.Channels.Application.DTOs.Responses
         string? ReplyToFileName,
         string? ReplyToFileContentType,
         string? ReplyToFileUrl,        // Reply mesajının fayl URL-i
-        string? ReplyToThumbnailUrl,   // Reply mesajının thumbnail URL-i
         bool IsForwarded,
         int ReadByCount = 0,
         int TotalMemberCount = 0,
