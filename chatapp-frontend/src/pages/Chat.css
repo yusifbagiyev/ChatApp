@@ -5453,10 +5453,11 @@
 
 .mention-panel {
   position: absolute;
-  bottom: 70px;
+  bottom: 100%;
   left: 14px;
+  margin-bottom: 6px;
   width: 400px;
-  height: 200px;
+  max-height: 260px;
   background: var(--white);
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);

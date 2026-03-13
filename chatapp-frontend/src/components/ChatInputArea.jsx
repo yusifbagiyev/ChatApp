@@ -378,18 +378,17 @@ function ChatInputArea({
             </button>
           </div>
         </div>
+        {/* Mention dropdown panel — @ yazıldıqda göstər */}
+        {mentionOpen && (
+          <MentionPanel
+            items={mentionItems}
+            selectedIndex={mentionSelectedIndex}
+            onSelect={onMentionSelect}
+            isLoading={mentionLoading}
+            panelRef={mentionPanelRef}
+          />
+        )}
       </div>
-
-      {/* Mention dropdown panel — @ yazıldıqda göstər */}
-      {mentionOpen && (
-        <MentionPanel
-          items={mentionItems}
-          selectedIndex={mentionSelectedIndex}
-          onSelect={onMentionSelect}
-          isLoading={mentionLoading}
-          panelRef={mentionPanelRef}
-        />
-      )}
 
       {/* Emoji picker panel — Apple stilində modern emojilər */}
       {emojiOpen && (
