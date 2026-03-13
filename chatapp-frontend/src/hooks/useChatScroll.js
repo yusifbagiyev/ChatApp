@@ -20,7 +20,8 @@ import { getChatEndpoint, MESSAGE_PAGE_SIZE } from "../utils/chatUtils";
 // selectedChat: hansı chat açıqdır
 // setMessages: messages state-ini yeniləmək üçün
 // allReadPatchRef: unreadCount===0 ilə girdikdə true — scroll ilə yüklənən mesajları isRead:true patch et
-export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef, floatingDateRef) {
+// setShowScrollDown: scroll-to-bottom butonunun görünürlüyünü idarə et (Chat.jsx-dəki ayrı effect buraya birləşdirilib)
+export default function useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef, floatingDateRef, setShowScrollDown) {
 
   // ─── useRef-lər ─────────────────────────────────────────────────────────────
   // useRef nədir? DOM referansı ya da "mutable container" üçün.
@@ -42,6 +43,9 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
 
   // scrollRafRef: requestAnimationFrame ID-si — throttling üçün
   const scrollRafRef = useRef(null);
+
+  // scrollbarTimerRef: scrollbar gizlənmə timer-i (800ms inactivity sonra)
+  const scrollbarTimerRef = useRef(null);
 
   // loadingOlder: "köhnə mesajlar yüklənir" spinner-i göstərmək üçün (UI state)
   // Bu useState-dir — UI-ya təsir edir
@@ -243,6 +247,18 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
       handleScrollUp();            // Yuxarı scroll yoxla
       handleScrollDown();          // Aşağı scroll yoxla
       updateFloatingDate();        // Cari tarix label-ini yenilə
+
+      // ─── Scroll-to-bottom butonu + scrollbar görünürlüyü ───
+      // Chat.jsx-dəki ayrı useEffect buraya birləşdirilib — dublikat event listener aradan qaldırılıb
+      const area = messagesAreaRef.current;
+      if (area && setShowScrollDown) {
+        const dist = area.scrollHeight - area.scrollTop - area.clientHeight;
+        setShowScrollDown(area.scrollHeight > area.clientHeight && dist > area.clientHeight);
+        // Scrollbar göstər, 800ms sonra gizlə
+        area.classList.add("scrolling");
+        if (scrollbarTimerRef.current) clearTimeout(scrollbarTimerRef.current);
+        scrollbarTimerRef.current = setTimeout(() => area.classList.remove("scrolling"), 800);
+      }
     });
   }
 

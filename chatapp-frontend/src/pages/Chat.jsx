@@ -306,7 +306,7 @@ function Chat() {
     hasMoreDownRef,
     loadingOlder,
     scrollRestoreRef,
-  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef, floatingDateRef);
+  } = useChatScroll(messagesAreaRef, messages, selectedChat, setMessages, allReadPatchRef, floatingDateRef, setShowScrollDown);
 
   // --- EFFECT-LƏR ---
 
@@ -466,28 +466,7 @@ function Chat() {
     }
   }, [messages]);
 
-  // ─── Scroll-to-bottom butonu + scrollbar görünürlüyü ───
-  // 1 viewport-dan çox yuxarı scroll olunduqda buton görünür
-  // Scroll zamanı scrollbar görünür, dayananda 800ms sonra gizlənir
-  useEffect(() => {
-    const area = messagesAreaRef.current;
-    if (!area) return;
-    let scrollTimer = null;
-    const onScroll = () => {
-      const dist = area.scrollHeight - area.scrollTop - area.clientHeight;
-      // scrollHeight <= clientHeight → content overflow yoxdur → button gizlə
-      setShowScrollDown(area.scrollHeight > area.clientHeight && dist > area.clientHeight);
-      // Scrollbar göstər
-      area.classList.add("scrolling");
-      if (scrollTimer) clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(() => area.classList.remove("scrolling"), 800);
-    };
-    area.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      area.removeEventListener("scroll", onScroll);
-      if (scrollTimer) clearTimeout(scrollTimer);
-    };
-  }, [selectedChat]);
+  // Scroll-to-bottom butonu + scrollbar görünürlüyü — useChatScroll-a birləşdirilib
 
   // ─── Mark-as-read mexanizmi ───
   // initialMsgIdsRef — conversation açılanda yüklənən mesaj ID-ləri
@@ -2487,94 +2466,39 @@ function Chat() {
     }
   }
 
-  // Emoji panelinin kənarına klikləndikdə bağla
-  // emojiOpen=true olduqda event listener-i qeydiyyata al,
-  // emojiOpen=false olduqda yenidən sil (cleanup funksiyası)
+  // ─── Birləşdirilmiş click-outside handler ───
+  // 7 ayrı useEffect əvəzinə tək event listener — daha az memory, daha az GC
   useEffect(() => {
+    const anyOpen = emojiOpen || showSidebarMenu || favMenuId || linksMenuId || filesMenuId || memberMenuId || showAddMember;
+    if (!anyOpen) return;
+
     function handleClickOutside(e) {
-      if (
-        emojiPanelRef.current &&
-        !emojiPanelRef.current.contains(e.target) && // Klik panelin içərisindədirsə bağlama
-        !e.target.closest(".emoji-btn") // Emoji button-una klik → toggle edir
-      ) {
+      // Emoji panel — .emoji-btn istisnası (toggle üçün)
+      if (emojiOpen && emojiPanelRef.current && !emojiPanelRef.current.contains(e.target) && !e.target.closest(".emoji-btn")) {
         setEmojiOpen(false);
       }
-    }
-    if (emojiOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [emojiOpen]);
-
-  // Sidebar more menu — kənarına klikləndikdə bağla
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (
-        sidebarMenuRef.current &&
-        !sidebarMenuRef.current.contains(e.target)
-      ) {
+      // Sidebar more menu
+      if (showSidebarMenu && sidebarMenuRef.current && !sidebarMenuRef.current.contains(e.target)) {
         setShowSidebarMenu(false);
       }
-    }
-    if (showSidebarMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showSidebarMenu]);
-
-  // Favorite mesaj more menu — click-outside
-  useEffect(() => {
-    if (!favMenuId) return;
-    function handleClickOutside(e) {
-      if (favMenuRef.current && !favMenuRef.current.contains(e.target)) {
+      // Favorite mesaj more menu
+      if (favMenuId && favMenuRef.current && !favMenuRef.current.contains(e.target)) {
         setFavMenuId(null);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [favMenuId]);
-
-  // Links more menu — click-outside
-  useEffect(() => {
-    if (!linksMenuId) return;
-    function handleClickOutside(e) {
-      if (linksMenuRef.current && !linksMenuRef.current.contains(e.target)) {
+      // Links more menu
+      if (linksMenuId && linksMenuRef.current && !linksMenuRef.current.contains(e.target)) {
         setLinksMenuId(null);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [linksMenuId]);
-
-  // Files more menu — click-outside
-  useEffect(() => {
-    if (!filesMenuId) return;
-    function handleClickOutside(e) {
-      if (filesMenuRef.current && !filesMenuRef.current.contains(e.target)) {
+      // Files more menu
+      if (filesMenuId && filesMenuRef.current && !filesMenuRef.current.contains(e.target)) {
         setFilesMenuId(null);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [filesMenuId]);
-
-  // Member context menu — click-outside
-  useEffect(() => {
-    if (!memberMenuId) return;
-    function handleClickOutside(e) {
-      if (memberMenuRef.current && !memberMenuRef.current.contains(e.target)) {
+      // Member context menu
+      if (memberMenuId && memberMenuRef.current && !memberMenuRef.current.contains(e.target)) {
         setMemberMenuId(null);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [memberMenuId]);
-
-  // Add member panel — click-outside bağlama
-  useEffect(() => {
-    if (!showAddMember) return;
-    function handleClickOutside(e) {
-      if (addMemberRef.current && !addMemberRef.current.contains(e.target)) {
+      // Add member panel — əlavə state sıfırlama
+      if (showAddMember && addMemberRef.current && !addMemberRef.current.contains(e.target)) {
         setShowAddMember(false);
         setAddMemberSearch("");
         setAddMemberSearchActive(false);
@@ -2583,7 +2507,7 @@ function Chat() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showAddMember]);
+  }, [emojiOpen, showSidebarMenu, favMenuId, linksMenuId, filesMenuId, memberMenuId, showAddMember]);
 
   // Add member panel açılanda — channel members-i yenilə (leave/remove dəyişikliklərini göstər)
   useEffect(() => {
@@ -3004,12 +2928,13 @@ function Chat() {
 
   // hasOthersSelected — seçilmiş mesajların arasında başqasının mesajı varmı?
   // true olduqda Delete button deaktiv olur
+  // Optimallaşdırılmış: messages-ı bir dəfə iterate edir, Set.has() ilə O(1) yoxlama — cəmi O(n)
   const hasOthersSelected = useMemo(() => {
     if (selectedMessages.size === 0) return false;
-    return [...selectedMessages].some((id) => {
-      const m = messages.find((msg) => msg.id === id);
-      return m && m.senderId !== user.id; // Başqasının mesajıdırsa true
-    });
+    for (const m of messages) {
+      if (selectedMessages.has(m.id) && m.senderId !== user.id) return true;
+    }
+    return false;
   }, [selectedMessages, messages, user.id]);
 
   // favoriteIds — favori mesajların ID-ləri Set-i (O(1) lookup üçün)
