@@ -90,6 +90,18 @@ const MessageBubble = memo(function MessageBubble({
 }) {
   // --- LOKAL STATE ---
 
+  // Şəkil yüklənmə vəziyyəti — shimmer + fade-in üçün
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  // Şəkil URL dəyişdikdə state reset — render zamanı (React 19 safe, useState pattern)
+  const [prevFileUrl, setPrevFileUrl] = useState(msg.fileUrl);
+  if (prevFileUrl !== msg.fileUrl) {
+    setPrevFileUrl(msg.fileUrl);
+    setImgLoaded(false);
+    setImgError(false);
+  }
+
   // menuOpen — "⋯" düyməsinə klik → MessageActionMenu açıq/bağlı
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -441,19 +453,39 @@ const MessageBubble = memo(function MessageBubble({
               {/* Fayl/şəkil — mətn-dən ƏVVƏL render olunur */}
               {msg.fileUrl &&
                 (msg.fileContentType?.startsWith("image/") ? (
-                  // Şəkil — full-width preview, klikləmə ilə yeni tabda aç
+                  // Şəkil — Bitrix24 style: shimmer placeholder → fade-in
                   <div
                     className={`bubble-file-image${!msg.content ? " image-only" : ""}${imgContainerStyle ? " has-dimensions" : ""}`}
                     style={imgContainerStyle}
                   >
-                    <img
-                      src={getFileUrl(msg.fileUrl)}
-                      alt={msg.fileName || "Image"}
-                      loading="lazy"
-                      onClick={() =>
-                        onOpenImageViewer && onOpenImageViewer(msg.id)
-                      }
-                    />
+                    {/* Shimmer placeholder — şəkil yüklənənə qədər animasiyalı fon */}
+                    {!imgLoaded && !imgError && (
+                      <div className="img-shimmer" />
+                    )}
+                    {/* Error state — klikləyərək yenidən yüklə */}
+                    {imgError && (
+                      <div className="img-error" onClick={() => { setImgError(false); setImgLoaded(false); }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="23 4 23 10 17 10" />
+                          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                        </svg>
+                        <span>Click to retry</span>
+                      </div>
+                    )}
+                    {/* Əsl şəkil — fade-in ilə görünür, error-da gizlənir */}
+                    {!imgError && (
+                      <img
+                        src={getFileUrl(msg.fileUrl)}
+                        alt={msg.fileName || "Image"}
+                        loading="lazy"
+                        className={imgLoaded ? "loaded" : ""}
+                        onLoad={() => setImgLoaded(true)}
+                        onError={() => setImgError(true)}
+                        onClick={() =>
+                          onOpenImageViewer && onOpenImageViewer(msg.id)
+                        }
+                      />
+                    )}
                   </div>
                 ) : (
                   // Non-image fayl — Bitrix24 style kart
