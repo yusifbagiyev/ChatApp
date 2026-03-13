@@ -107,7 +107,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                     request.UploadedBy,
                     request.IsProfilePicture,
                     request.IsChannelAvatar,
-                    request.ChannelAvatarTargetId);
+                    request.ChannelAvatarTargetId,
+                    fileType);
 
                 _logger?.LogInformation(
                     "Determined storage directory: {Directory} for file {FileName}",
@@ -272,7 +273,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             Guid uploadedBy,
             bool isProfilePicture,
             bool isChannelAvatar,
-            Guid? channelAvatarTargetId)
+            Guid? channelAvatarTargetId,
+            FileType fileType)
         {
             // Avatarlar — dəyişməz struktur
             if (isProfilePicture)
@@ -281,10 +283,19 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             if (isChannelAvatar && channelAvatarTargetId.HasValue)
                 return $"avatars/channels/{channelAvatarTargetId.Value}";
 
-            // Bütün digər fayllar — tarix əsaslı flat struktur
-            // URL-də conversation/channel/user ID yoxdur
-            var yearMonth = DateTime.UtcNow.ToString("yyyy-MM");
-            return $"files/{yearMonth}";
+            // İstifadəçi + fayl tipi əsaslı struktur:
+            // files/{userId}/images/, files/{userId}/documents/ və s.
+            var typeFolder = fileType switch
+            {
+                FileType.Image    => "images",
+                FileType.Document => "documents",
+                FileType.Video    => "videos",
+                FileType.Audio    => "audio",
+                FileType.Archive  => "archives",
+                _                 => "other"
+            };
+
+            return $"files/{uploadedBy}/{typeFolder}";
         }
     }
 }
