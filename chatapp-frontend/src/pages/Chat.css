@@ -671,6 +671,13 @@
   stroke: #34b7f1;
 }
 
+/* Pending saat ikonu — normal tick-dən fərqli ölçü (kvadrat SVG) */
+.preview-tick.pending svg {
+  width: 13px;
+  height: 13px;
+  stroke: var(--gray-400);
+}
+
 /* ↩ reply icon — öz mesajım və Notes üçün */
 .preview-reply-icon {
   display: inline-flex;

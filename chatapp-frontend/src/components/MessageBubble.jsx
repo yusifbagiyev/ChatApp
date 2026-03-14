@@ -329,7 +329,7 @@ const MessageBubble = memo(function MessageBubble({
       data-bubble-id={msg.id}
       // selectMode aktiv + mesaj silinməyibsə klik → toggle select
       onClick={
-        selectMode && !msg.isDeleted ? () => onToggleSelect(msg.id) : undefined
+        selectMode && !msg.isDeleted && !msg._optimistic ? () => onToggleSelect(msg.id) : undefined
       }
       // Spread operator ilə şərti data-* atributları əlavə et
       // !isOwn + !msg.isRead → IntersectionObserver üçün lazımdır
@@ -367,7 +367,7 @@ const MessageBubble = memo(function MessageBubble({
       <div
         className={`message-bubble ${isOwn ? "own" : ""}${menuOpen ? " menu-open" : ""}${reactionOpen ? " reaction-open" : ""}${pickerHovered ? " picker-hovered" : ""}${selectMode ? " select-mode" : ""}${isImageOnly ? " image-only" : ""}`}
         onContextMenu={
-          selectMode
+          selectMode || msg._optimistic
             ? undefined
             : (e) => {
                 e.preventDefault();
@@ -719,8 +719,23 @@ const MessageBubble = memo(function MessageBubble({
             {formatMessageTime(msg.createdAtUtc)}
           </span>
 
-          {/* Read ticks — yalnız öz mesajları üçün, status >= 1 */}
-          {/* status: 1=Sent(tək tik), 2=Delivered(ikiqat tik), 3=Read(mavi tik) */}
+          {/* Status icon — yalnız öz mesajları üçün */}
+          {/* status: 0=Pending(saat), 1=Sent(tək tik), 2=Delivered(ikiqat tik), 3=Read(mavi tik) */}
+          {isOwn && msg.status === 0 && (
+            <svg
+              className="read-check"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#9ca3af"
+              strokeWidth="2"
+            >
+              {/* Saat ikonu — mesaj hələ göndərilmir (Pending) */}
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          )}
           {isOwn && msg.status >= 1 && (
             <svg
               className="read-check"
@@ -745,8 +760,8 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
 
-        {/* More butonu — həmişə DOM-da, CSS :hover ilə görünür */}
-        {!selectMode && (
+        {/* More butonu — həmişə DOM-da, CSS :hover ilə görünür (pending mesajda yox) */}
+        {!selectMode && !msg._optimistic && (
           <div className={`bubble-more-wrap ${isOwn ? "own" : ""}`}>
             <button
               className="bubble-action-btn"
@@ -794,8 +809,8 @@ const MessageBubble = memo(function MessageBubble({
           />
         )}
 
-        {/* React butonu + picker — hover ilə açılır, CSS ilə göstərilir */}
-        {!selectMode && !msg.isDeleted && (
+        {/* React butonu + picker — hover ilə açılır, CSS ilə göstərilir (pending mesajda yox) */}
+        {!selectMode && !msg.isDeleted && !msg._optimistic && (
           <div
             className={`bubble-react-wrap ${isOwn ? "own" : ""}${reactionOpen ? " picker-open" : ""}`}
             onMouseEnter={() => {

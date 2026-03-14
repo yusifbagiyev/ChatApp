@@ -45,12 +45,16 @@ export default function useChatSignalR(
         ) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === message.id)) return prev;
+            // Öz mesajımızın echo-su — optimistic mesajları sil (real data ilə əvəz olunur)
+            const cleaned = message.senderId === userId
+              ? prev.filter((m) => !m._optimistic)
+              : prev;
             if (message.senderId === userId) {
               setShouldScrollBottom(true);
             }
             // Başqasının mesajı — skipAutoScroll yoxdur
             // Auto-scroll effect "near bottom" yoxlaması ilə scroll edəcək (< 80px)
-            return [message, ...prev];
+            return [message, ...cleaned];
           });
         }
         return current;
@@ -124,10 +128,14 @@ export default function useChatSignalR(
         if (current && current.type === 1 && current.id === message.channelId) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === message.id)) return prev;
+            // Öz mesajımızın echo-su — optimistic mesajları sil
+            const cleaned = message.senderId === userId
+              ? prev.filter((m) => !m._optimistic)
+              : prev;
             if (message.senderId === userId) {
               setShouldScrollBottom(true);
             }
-            return [message, ...prev];
+            return [message, ...cleaned];
           });
         }
         return current;

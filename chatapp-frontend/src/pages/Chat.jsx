@@ -134,6 +134,12 @@ function Chat() {
   const highlightTimerRef = useRef(null);
   const handleSendMessageRef = useRef(null);
 
+  // ─── Conversation Cache — chat dəyişəndə blank screen əvəzinə cache-dən göstər ───
+  // Map<chatId, { messages, pinnedMessages, hasMore, hasMoreDown, timestamp }>
+  const messageCacheRef = useRef(new Map());
+  const CACHE_TTL = 5 * 60 * 1000; // 5 dəqiqə
+  const CACHE_MAX_SIZE = 10;       // Ən çox 10 chat cache-lənir
+
   // allReadPatchRef — unreadCount===0 ilə girdikdə true olur
   // useChatScroll-da scroll ilə yüklənən mesajları da isRead:true patch etmək üçün
   // Backend channel mesajları üçün oxunmuş olsa belə isRead:false qaytarır
@@ -1112,11 +1118,32 @@ function Chat() {
     const savedDraft = draftsRef.current[chat.id] || "";
     setMessageText(savedDraft);
 
+    // ── Cache SAVE — köhnə chatın mesajlarını cache-ə yaz ──
+    if (selectedChat && messages.length > 0) {
+      messageCacheRef.current.set(selectedChat.id, {
+        messages,
+        pinnedMessages,
+        hasMore: hasMoreRef.current,
+        hasMoreDown: hasMoreDownRef.current,
+        timestamp: Date.now(),
+      });
+      // Cache limit — ən köhnə entry-ləri sil
+      if (messageCacheRef.current.size > CACHE_MAX_SIZE) {
+        const oldest = messageCacheRef.current.keys().next().value;
+        messageCacheRef.current.delete(oldest);
+      }
+    }
+
+    // ── Cache RESTORE — yeni chatın cache-i varsa dərhal göstər ──
+    const cached = messageCacheRef.current.get(chat.id);
+    const cacheValid = cached && (Date.now() - cached.timestamp < CACHE_TTL);
+
     // State sıfırla — yeni chat seçildi
-    setChatLoading(true); // Mesajlar yüklənənə qədər loading overlay göstər
+    setChatLoading(!cacheValid); // Cache varsa loading göstərmə
     setSelectedChat(chat);
-    setMessages([]);
-    setPinnedMessages([]);
+    setMessages(cacheValid ? cached.messages : []);
+    setPinnedMessages(cacheValid ? cached.pinnedMessages : []);
+    if (cacheValid) setShouldScrollBottom(true); // Cache-dən yüklənəndə aşağıya scroll et
     // unreadCount dərhal sıfırlanmır — IntersectionObserver mesajlar göründükcə 1-1 azaldır
     setPinBarExpanded(false);
     setCurrentPinIndex(0);
@@ -1137,8 +1164,8 @@ function Chat() {
     hasNewUnreadRef.current = false; // Əvvəlki chatın SignalR unread flag-ını sıfırla
     firstUnreadMsgIdRef.current = null; // Əvvəlki chatın ilk unread mesaj ID-sini sıfırla
     pendingScrollToUnreadRef.current = false; // Əvvəlki chatın pending scroll-unu sıfırla
-    hasMoreRef.current = true; // Yenidən köhnə mesaj yükləmək mümkündür
-    hasMoreDownRef.current = false; // Around mode yox
+    hasMoreRef.current = cacheValid ? cached.hasMore : true;
+    hasMoreDownRef.current = cacheValid ? cached.hasMoreDown : false;
     // lastReadLaterMessageId varsa — around endpoint ilə yüklə, əks halda normal
     const hasReadLater = !!chat.lastReadLaterMessageId;
 
@@ -1300,6 +1327,17 @@ function Chat() {
           : finalMsgData,
       );
       // setChatLoading(false) finally blokunda — hər halda çağırılır
+
+      // ── Cache UPDATE — API-dən gələn fresh data ilə cache-i yenilə ──
+      messageCacheRef.current.set(chat.id, {
+        messages: allReadPatchRef.current
+          ? finalMsgData.map((m) => m.isRead ? m : { ...m, isRead: true })
+          : finalMsgData,
+        pinnedMessages: pinData || [],
+        hasMore: hasMoreRef.current,
+        hasMoreDown: hasMoreDownRef.current,
+        timestamp: Date.now(),
+      });
 
       readBatchChatRef.current = {
         chatId: chat.id,
@@ -1780,26 +1818,64 @@ function Chat() {
       return; // Edit-dən sonra normal send etmə
     }
 
-    setReplyTo(null); // Reply-ı sıfırla
+    // Reply state-i saxla (optimistic mesaj üçün lazımdır), sonra sıfırla
+    const currentReply = replyTo;
+    setReplyTo(null);
+
+    // ── Optimistic UI: mesajı dərhal göstər, status=Pending ──
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const now = new Date().toISOString();
+    const optimisticMsg = {
+      id: tempId,
+      content: text,
+      senderId: user.id,
+      senderFullName: user.fullName,
+      createdAtUtc: now,
+      isRead: true,
+      isEdited: false,
+      isDeleted: false,
+      isPinned: false,
+      status: 0, // Pending — saat ikonu göstərilir
+      reactions: [],
+      fileUrl: null,
+      replyToMessageId: currentReply ? currentReply.id : null,
+      replyToContent: currentReply ? currentReply.content : null,
+      replyToSenderFullName: currentReply ? currentReply.senderFullName : null,
+      _optimistic: true, // Flag — SignalR echo gəldikdə silmək üçün
+    };
+
+    // Mesajı dərhal UI-da göstər (newest-first: əvvələ əlavə et)
+    setMessages((prev) => [optimisticMsg, ...prev]);
+    setShouldScrollBottom(true);
+
+    // ConversationList-də dərhal Pending statusla göstər
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === selectedChat.id
+          ? {
+              ...c,
+              lastMessage: text,
+              lastMessageAtUtc: now,
+              lastMessageSenderId: user.id,
+              lastMessageStatus: "Pending",
+            }
+          : c,
+      ),
+    );
 
     try {
       let chatId = selectedChat.id;
       let chatType = selectedChat.type;
 
       // ── DepartmentUser (type=2): əvvəlcə conversation yarat ──
-      // DepartmentUser hələ real conversation deyil — sadəcə eyni departamentdəki istifadəçidir.
-      // İlk mesaj göndərildikdə backend conversation yaradır, biz sonra type-ı 0-a çeviririk.
       if (chatType === 2) {
-        // POST /api/conversations — { otherUserId } göndər, conversationId qaytarır
         const result = await apiPost("/api/conversations", {
-          otherUserId: selectedChat.id, // DepartmentUser id = userId
+          otherUserId: selectedChat.id,
         });
 
-        // Backend: { conversationId: Guid } qaytarır
         chatId = result.conversationId;
-        chatType = 0; // Artıq real DM conversation-dır
+        chatType = 0;
 
-        // selectedChat-ı yenilə — type 2 → type 0
         const updatedChat = {
           ...selectedChat,
           id: chatId,
@@ -1808,7 +1884,6 @@ function Chat() {
         };
         setSelectedChat(updatedChat);
 
-        // Conversation list-dəki DepartmentUser-i real conversation-a çevir
         setConversations((prev) =>
           prev.map((c) =>
             c.id === selectedChat.id && c.type === 2
@@ -1817,28 +1892,39 @@ function Chat() {
           ),
         );
 
-        // Yeni conversation-ın SignalR qrupuna qoşul
         joinConversation(chatId);
       }
 
       const endpoint = getChatEndpoint(chatId, chatType, "/messages");
       if (!endpoint) return;
 
-      // Mention-ları hazırla (hook funksiyası ilə)
       const mentionsToSend = mention.prepareMentionsForSend(text, chatType);
 
-      // POST /api/conversations/{id}/messages — yeni mesaj göndər
+      // POST — mesaj göndər
       await apiPost(endpoint, {
         content: text,
-        replyToMessageId: replyTo ? replyTo.id : null, // Reply varsa id-ni göndər
+        replyToMessageId: currentReply ? currentReply.id : null,
         ...(mentionsToSend.length > 0 ? { mentions: mentionsToSend } : {}),
       });
 
-      // Hidden conversation-a mesaj göndərildikdə — siyahıda yoxdursa əlavə et
+      // ── API uğurlu → optimistic mesajın statusunu Sent (1) et ──
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, status: 1 } : m)),
+      );
+
+      // ConversationList-də statusu Sent et
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === chatId && c.lastMessageStatus === "Pending"
+            ? { ...c, lastMessageStatus: "Sent" }
+            : c,
+        ),
+      );
+
+      // Hidden conversation — siyahıda yoxdursa əlavə et
       setConversations((prev) => {
         const existsInList = prev.some((c) => c.id === chatId);
         if (!existsInList) {
-          // selectedChat-dan conversation yaradıb siyahıya əlavə et
           const newConv = {
             id: chatId,
             name: selectedChat.name,
@@ -1847,7 +1933,7 @@ function Chat() {
             otherUserId: selectedChat.otherUserId,
             otherUserPosition: selectedChat.otherUserPosition,
             lastMessage: text,
-            lastMessageAtUtc: new Date().toISOString(),
+            lastMessageAtUtc: now,
             lastMessageSenderId: user.id,
             lastMessageStatus: "Sent",
             unreadCount: 0,
@@ -1856,18 +1942,19 @@ function Chat() {
         }
         return prev;
       });
-
-      // Mesajları yenidən yüklə (SignalR yoksa fallback)
-      const data = await apiGet(`${endpoint}?pageSize=${MESSAGE_PAGE_SIZE}`);
-      hasMoreDownRef.current = false;
-      setShouldScrollBottom(true); // Yeni mesajdan sonra aşağıya scroll et
-      // Functional merge — SignalR status > API status (race condition qoruması)
-      setMessages((prev) => {
-        const prevMap = new Map(prev.map(m => [m.id, m]));
-        return data.map((m) => mergeMessageWithPrev(m, prevMap.get(m.id)));
-      });
     } catch (err) {
       console.error("Failed to send message:", err);
+      // Optimistic mesajı sil — göndərilə bilmədi
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      // ConversationList-dəki Pending statusu geri qaytar
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedChat.id && c.lastMessageStatus === "Pending"
+            ? { ...c, lastMessageStatus: null }
+            : c,
+        ),
+      );
+      showToast("Mesaj göndərilə bilmədi", "error");
     }
   }
 

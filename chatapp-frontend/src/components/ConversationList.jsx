@@ -538,16 +538,25 @@ function ConversationList({
                       )}
                     </div>
                     <div className="conversation-time-wrapper">
-                      {/* Tick icon — time-ın solunda, yalnız öz mesajımda (Notes-da yox) */}
+                      {/* Status icon — time-ın solunda, yalnız öz mesajımda (Notes-da yox) */}
                       {isOwnLastMessage && c.type !== 2 && !c.isNotes && c.lastMessage && (
-                        <span className={`preview-tick ${c.lastMessageStatus === "Read" ? "read" : ""}`}>
-                          <svg viewBox="0 0 16 11">
-                            <polyline points="1 5.5 5 9.5 11 1" />
-                            {c.lastMessageStatus === "Read" && (
-                              <polyline points="5.5 5.5 9.5 9.5 15 1" />
-                            )}
-                          </svg>
-                        </span>
+                        c.lastMessageStatus === "Pending" ? (
+                          <span className="preview-tick pending">
+                            <svg viewBox="0 0 16 16">
+                              <circle cx="8" cy="8" r="6.5" fill="none" strokeWidth="1.5" />
+                              <polyline points="8 4 8 8 11 9.5" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </span>
+                        ) : (
+                          <span className={`preview-tick ${c.lastMessageStatus === "Read" ? "read" : ""}`}>
+                            <svg viewBox="0 0 16 11">
+                              <polyline points="1 5.5 5 9.5 11 1" />
+                              {c.lastMessageStatus === "Read" && (
+                                <polyline points="5.5 5.5 9.5 9.5 15 1" />
+                              )}
+                            </svg>
+                          </span>
+                        )
                       )}
                       <span className="conversation-time">
                         {formatTime(c.lastMessageAtUtc)}
