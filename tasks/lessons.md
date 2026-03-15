@@ -93,6 +93,15 @@
   4. User konkret rəng deyirsə (F0F6EE), DƏQIQ o rəngi istifadə et — özündən "daha yaxşı" variant uydurma (#c8e6c9 kimi)
   5. **Kor-koranə CSS property dəyişmə** — əvvəl problemi anla, SONRA bir dəyişiklik et. 4-5 fərqli yanaşma sınamaq əvəzinə, DevTools-da kök səbəbi tap
 
+### Lesson: SignalR notification metodlarını yazarkən dublikat göndərmə və lazımsız log yoxla
+- **Date**: 2026-03-15
+- **Context**: DM metodlarında həm group-a, həm receiver-in connection-larına eyni event göndərilirdi → receiver 2 dəfə alırdı. Həmçinin bütün metodlarda `LogDebug` var idi — production-da görünmür, amma hər çağırışda parse yükü yaradır.
+- **Mistake**: Kodu refactor/optimize edərkən bu problemləri görmədim, user soruşana qədər yadıma düşmədi.
+- **Rule**:
+  1. **Dublikat göndərmə yoxla**: Eyni event-i həm group-a, həm birbaşa connection-lara göndərmə. Biri kifayətdir — receiver-in ID-sini bilirsənsə birbaşa connection-larına göndər
+  2. **Lazımsız log-ları sil**: `LogDebug` production-da görünmür, yüksək trafik servislərdə (SignalR, messaging) əlavə yükdür. Yalnız `Warning/Error` level saxla
+  3. **Kod oxuyarkən "bu doğrudur?" soruşmağı unutma**: Refactor/optimize edərkən yalnız strukturu deyil, hər metodun davranışını da yoxla — dublikat, boş group-a göndərmə, lazımsız parametrlər kimi problemləri axtar
+
 ### Lesson: function → useCallback çevirərkən TDZ (Temporal Dead Zone) yoxla
 - **Date**: 2026-03-14
 - **Context**: `handlePinBarClick`-ı `function` → `const useCallback` çevirdim. Bu funksiya `handleScrollToMessage`-ı çağırırdı, amma `handleScrollToMessage` kodda AŞAĞIDA təyin olunmuşdu.

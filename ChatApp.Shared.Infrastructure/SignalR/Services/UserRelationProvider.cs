@@ -66,7 +66,6 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
                 _cache.Set(cacheKey, userIds, new MemoryCacheEntryOptions()
                     .SetAbsoluteExpiration(_cacheExpiration));
 
-                _logger.LogDebug("Loaded {Count} related users for {UserId}", userIds.Count, userId);
                 return userIds;
             }
             catch (Exception ex)

@@ -12,30 +12,45 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Configuratio
 
             builder.HasKey(m => m.Id);
 
+            builder.Property(m => m.Id)
+                .HasColumnName("id");
+
             builder.Property(m => m.ConversationId)
-                .IsRequired();
+                .IsRequired()
+                .HasColumnName("conversation_id");
 
             builder.Property(m => m.UserId)
-                .IsRequired();
+                .IsRequired()
+                .HasColumnName("user_id");
 
             builder.Property(m => m.IsActive)
                 .IsRequired()
-                .HasDefaultValue(true);
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
 
             builder.Property(m => m.IsPinned)
                 .IsRequired()
-                .HasDefaultValue(false);
+                .HasDefaultValue(false)
+                .HasColumnName("is_pinned");
 
             builder.Property(m => m.IsMuted)
                 .IsRequired()
-                .HasDefaultValue(false);
+                .HasDefaultValue(false)
+                .HasColumnName("is_muted");
 
             builder.Property(m => m.IsMarkedReadLater)
                 .IsRequired()
-                .HasDefaultValue(false);
+                .HasDefaultValue(false)
+                .HasColumnName("is_marked_read_later");
 
             builder.Property(m => m.LastReadLaterMessageId)
-                .IsRequired(false);
+                .IsRequired(false)
+                .HasColumnName("last_read_later_message_id");
+
+            builder.Property(m => m.IsHidden)
+                .IsRequired()
+                .HasDefaultValue(false)
+                .HasColumnName("is_hidden");
 
             // Indexes
             builder.HasIndex(m => new { m.ConversationId, m.UserId })
@@ -53,10 +68,12 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Configuratio
 
             // Timestamps
             builder.Property(m => m.CreatedAtUtc)
-                .IsRequired();
+                .IsRequired()
+                .HasColumnName("created_at_utc");
 
             builder.Property(m => m.UpdatedAtUtc)
-                .IsRequired();
+                .IsRequired()
+                .HasColumnName("updated_at_utc");
         }
     }
 }
