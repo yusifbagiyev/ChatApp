@@ -23,6 +23,7 @@ import {
   joinChannel,
   leaveChannel,
   getConnection, // aktiv SignalR bağlantısını qaytarır
+  onConnectionStateChange, // SignalR bağlantı state listener
 } from "../services/signalr";
 
 // Custom hook-lar — ayrı fayllarda saxlanılan məntiqi bloklar
@@ -147,6 +148,12 @@ function Chat() {
 
   // shouldScrollBottom — yeni mesaj gəldikdə / chat seçildikdə aşağıya scroll et
   const [shouldScrollBottom, setShouldScrollBottom] = useState(false);
+
+  // ─── Network / Connection State ─────────────────────────────────────────────
+  // isOffline: navigator.onLine === false (internet bağlantısı yoxdur)
+  // connectionState: SignalR bağlantı vəziyyəti ("connected" | "reconnecting" | "disconnected")
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [connectionState, setConnectionState] = useState("connected");
 
   // chatLoading — conversation seçildikdə mesajlar yüklənənə qədər true
   const [chatLoading, setChatLoading] = useState(false);
@@ -314,6 +321,24 @@ function Chat() {
     setCurrentPinIndex,
     setLastReadTimestamp,
   );
+
+  // ─── Network / Connection State Effect ──────────────────────────────────────
+  // Online/offline event + SignalR connection state listener
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // SignalR connection state callback
+    onConnectionStateChange((state) => setConnectionState(state));
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      onConnectionStateChange(null);
+    };
+  }, []);
 
   // shouldScrollBottom true olduqda ən alt mesaja scroll et
   // useLayoutEffect — paint-dən ƏVVƏL işləyir → flash yoxdur
@@ -2382,6 +2407,16 @@ function Chat() {
   // --- JSX RENDER ---
   return (
     <div className="main-layout">
+      {/* Network status banner — offline / reconnecting */}
+      {(isOffline || connectionState === "reconnecting" || connectionState === "disconnected") && (
+        <div className={`network-banner ${isOffline ? "offline" : connectionState}`}>
+          {isOffline
+            ? "İnternet bağlantısı yoxdur"
+            : connectionState === "reconnecting"
+              ? "Bağlantı bərpa olunur..."
+              : "Bağlantı kəsildi. Yenidən qoşulur..."}
+        </div>
+      )}
       {/* Sidebar — sol dar nav bar (logout button) */}
       <Sidebar onLogout={logout} />
 

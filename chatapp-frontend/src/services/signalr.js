@@ -26,6 +26,23 @@ let connectionPromise = null;
 // stopRequested: logout zamanı true olur — onclose handler-da retry olmasın
 let stopRequested = false;
 
+// retryTimerId: onclose retry setTimeout ID-si — cleanup üçün
+let retryTimerId = null;
+
+// ─── Tab bağlananda bağlantını təmiz bağla ──────────────────────────────────
+// beforeunload: tab/window bağlananda fire olur
+// Bu olmasa onclose handler retry loop davam edər — memory leak
+window.addEventListener("beforeunload", () => {
+  stopRequested = true;
+  if (retryTimerId) {
+    clearTimeout(retryTimerId);
+    retryTimerId = null;
+  }
+  if (connection) {
+    connection.stop();
+  }
+});
+
 // ─── getSignalRToken ──────────────────────────────────────────────────────────
 // SignalR JWT token alır. SignalR WebSocket-də HTTP cookie işlətmir,
 // ona görə ayrıca JWT token lazımdır.
@@ -77,12 +94,14 @@ export async function startConnection() {
     // 2. Lifecycle event-ləri qur
     // onreconnecting: şəbəkə kəsildikdə — connection null-a set et
     conn.onreconnecting(() => {
-      connection = null; // Köhnə reference-i sil
+      connection = null;
+      notifyConnectionState("reconnecting");
     });
 
     // onreconnected: yenidən qoşulduqda — yeni bağlantını set et
     conn.onreconnected(() => {
       connection = conn;
+      notifyConnectionState("connected");
     });
 
     // onclose: bağlantı tamamilə bağlandıqda (bütün reconnect cəhdləri uğursuz)
@@ -90,10 +109,15 @@ export async function startConnection() {
     conn.onclose(() => {
       connection = null;
       connectionPromise = null;
+      notifyConnectionState("disconnected");
 
       if (!stopRequested) {
         console.warn("SignalR: connection lost. Retrying in 5s...");
-        setTimeout(() => {
+        if (retryTimerId) clearTimeout(retryTimerId);
+        retryTimerId = setTimeout(() => {
+          retryTimerId = null;
+          // Retry-dan əvvəl yenidən yoxla — bu müddətdə logout ola bilər
+          if (stopRequested) return;
           startConnection().catch((err) =>
             console.error("SignalR: reconnect from scratch failed:", err),
           );
@@ -103,6 +127,7 @@ export async function startConnection() {
 
     // 3. Bağlantını başlat (WebSocket el sıxışması)
     await conn.start();
+    notifyConnectionState("connected");
 
     // 4. Singleton-u set et
     connection = conn;
@@ -118,6 +143,12 @@ export async function startConnection() {
 export async function stopConnection() {
   // stopRequested = true → onclose handler retry etməsin
   stopRequested = true;
+
+  // Pending retry timer-i ləğv et
+  if (retryTimerId) {
+    clearTimeout(retryTimerId);
+    retryTimerId = null;
+  }
 
   // Əgər bağlantı hələ qurulursa — əvvəl gözlə, sonra dayandır
   if (connectionPromise) {
@@ -137,6 +168,19 @@ export async function stopConnection() {
 // Məsələn: getConnection().invoke("GetOnlineStatus", [userId])
 export function getConnection() {
   return connection;
+}
+
+// ─── Connection State Listener ──────────────────────────────────────────────
+// Chat.jsx-dən SignalR bağlantı vəziyyətini izləmək üçün callback register et
+// callback(state): "connected" | "reconnecting" | "disconnected"
+let connectionStateCallback = null;
+
+export function onConnectionStateChange(callback) {
+  connectionStateCallback = callback;
+}
+
+function notifyConnectionState(state) {
+  if (connectionStateCallback) connectionStateCallback(state);
 }
 
 // ─── Group Management ─────────────────────────────────────────────────────────

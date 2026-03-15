@@ -162,8 +162,18 @@ async function apiFetch(endpoint, options = {}) {
 
 // ─── Convenience Functions ────────────────────────────────────────────────────
 // GET sorğusu — body yoxdur, sadəcə endpoint
-function apiGet(endpoint) {
-  return apiFetch(endpoint);
+// Auto-retry: network xətası olduqda 1 dəfə yenidən cəhd edir (1s gecikmə ilə)
+// POST/PUT/DELETE retry olunmur — dublikat data yarana bilər
+async function apiGet(endpoint) {
+  try {
+    return await apiFetch(endpoint);
+  } catch (err) {
+    // Yalnız network/fetch xətalarında retry et, session expired-da yox
+    if (sessionExpired || err.message === "Session expired") throw err;
+    // 1 saniyə gözlə, sonra yenidən cəhd et
+    await new Promise((r) => setTimeout(r, 1000));
+    return apiFetch(endpoint);
+  }
 }
 
 // POST sorğusu — body var (JSON)
