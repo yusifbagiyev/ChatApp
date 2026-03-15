@@ -221,9 +221,18 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
 
     // Yalnız viewport-dan tam çıxmış separator-un label-ini göstər
     // bottom <= areaTop → separator (padding daxil) artıq görünmür
+    // Həmçinin: növbəti separator yuxarıya yaxınlaşırsa floating-date-i gizlət (üst-üstə düşməsin)
     for (const sep of separators) {
-      if (sep.getBoundingClientRect().bottom <= areaTop) {
+      const rect = sep.getBoundingClientRect();
+      if (rect.bottom <= areaTop) {
         label = sep.querySelector("span")?.textContent || "";
+      } else {
+        // İlk görünən separator — floating-date ilə üst-üstə düşürsə label-i sıfırla
+        // el.offsetHeight + 12 = floating-date hündürlüyü + top padding
+        if (label && rect.top < areaTop + el.offsetHeight + 12) {
+          label = "";
+        }
+        break;
       }
     }
 

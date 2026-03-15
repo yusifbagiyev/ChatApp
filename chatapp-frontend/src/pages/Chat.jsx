@@ -1129,6 +1129,7 @@ function Chat() {
       messageCacheRef.current.set(selectedChat.id, {
         messages,
         pinnedMessages,
+        favoriteMessages: sidebar.favoriteMessages,
         hasMore: hasMoreRef.current,
         hasMoreDown: hasMoreDownRef.current,
         timestamp: Date.now(),
@@ -1186,23 +1187,66 @@ function Chat() {
       );
     }
 
+    // ── Cache HIT — API call-ları skip et, yalnız post-processing ──
+    // readLater varsa cache-dən istifadə etmə — around endpoint lazımdır
+    if (cacheValid && !hasReadLater) {
+      readBatchChatRef.current = { chatId: chat.id, chatType: String(chat.type) };
+      const unread = chat.unreadCount || 0;
+      allReadPatchRef.current = (unread === 0);
+      initialMsgIdsRef.current = new Set(
+        cached.messages.filter((m) => !m.isRead && m.senderId !== user?.id).map((m) => m.id),
+      );
+      // Favorites — cache-dən restore et
+      if (cached.favoriteMessages) {
+        sidebar.setFavoriteMessages(cached.favoriteMessages);
+      }
+      // Online status / channel members — fire-and-forget
+      if (chat.type === 0 && chat.otherUserId) {
+        const conn = getConnection();
+        if (conn) {
+          conn.invoke("GetOnlineStatus", [chat.otherUserId])
+            .then((statusMap) => {
+              if (statusMap?.[chat.otherUserId]) {
+                setOnlineUsers((prev) => { const next = new Set(prev); next.add(chat.otherUserId); return next; });
+              }
+            })
+            .catch(() => {});
+        }
+      } else if (chat.type === 1 && !channelMembers[chat.id]) {
+        apiGet(`/api/channels/${chat.id}/members?take=100`)
+          .then((members) => {
+            setChannelMembers((prev) => ({
+              ...prev,
+              [chat.id]: members.reduce((map, m) => {
+                map[m.userId] = { fullName: m.fullName, avatarUrl: m.avatarUrl, role: m.role };
+                return map;
+              }, {}),
+            }));
+          })
+          .catch(() => {});
+      }
+      setTimeout(() => inputRef.current?.focus(), 0);
+      setChatLoading(false);
+      return;
+    }
+
     try {
       const msgBase = getChatEndpoint(chat.id, chat.type, "/messages");
       if (!msgBase) return;
       const pinEndpoint = `${msgBase}/pinned`;
 
-      // Favori mesajları paralel yüklə (fire-and-forget — əsas axına təsir etmir)
-      sidebar.loadFavoriteMessages(chat);
+      const favEndpoint = `${msgBase}/favorites`;
 
       // Read later varsa around endpoint, yoxdursa normal endpoint
       const msgEndpoint = hasReadLater
         ? `${msgBase}/around/${chat.lastReadLaterMessageId}`
         : `${msgBase}?pageSize=${MESSAGE_PAGE_SIZE}`;
 
-      // Promise.all — API çağrılarını paralel icra et
+      // Promise.all — API çağrılarını paralel icra et (favorites daxil)
       const promises = [
         apiGet(msgEndpoint),
         apiGet(pinEndpoint).catch(() => []),
+        apiGet(favEndpoint).catch(() => []),
       ];
 
       // Read later varsa: həm də DELETE read-later çağır (icon-u conversation list-dən sil)
@@ -1222,13 +1266,19 @@ function Chat() {
         }
       }
 
-      const [msgData, pinData, , latestForSeparator] = await Promise.all(promises);
+      const [msgData, pinData, favData, , latestForSeparator] = await Promise.all(promises);
 
       // Pinlənmiş mesajları DESC sırala
       const sortedPins = (pinData || []).sort(
         (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
       );
       setPinnedMessages(sortedPins);
+
+      // Favori mesajları set et
+      const sortedFavs = (favData || []).sort(
+        (a, b) => new Date(b.favoritedAtUtc) - new Date(a.favoritedAtUtc),
+      );
+      sidebar.setFavoriteMessages(sortedFavs);
 
       // ─── Separator üçün əlavə səhifə yüklə ─────────────────────────────────
       // unread > ilk yüklənmiş mesaj sayı → separator sərhədi hələ yüklənməyib
@@ -1339,7 +1389,8 @@ function Chat() {
         messages: allReadPatchRef.current
           ? finalMsgData.map((m) => m.isRead ? m : { ...m, isRead: true })
           : finalMsgData,
-        pinnedMessages: pinData || [],
+        pinnedMessages: sortedPins,
+        favoriteMessages: sortedFavs,
         hasMore: hasMoreRef.current,
         hasMoreDown: hasMoreDownRef.current,
         timestamp: Date.now(),
