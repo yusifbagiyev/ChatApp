@@ -208,6 +208,9 @@ function Chat() {
   // pendingScrollToUnread — normal mode-da new messages separator-a scroll etmək üçün
   const pendingScrollToUnreadRef = useRef(false);
 
+  // chatRequestId — hər handleSelectChat çağırışında artır, stale API cavablarını ignore etmək üçün
+  const chatRequestIdRef = useRef(0);
+
   // pendingDeleteMsg — action menu-dan tək mesaj silmə təsdiqləməsi
   const [pendingDeleteMsg, setPendingDeleteMsg] = useState(null);
 
@@ -1086,6 +1089,9 @@ function Chat() {
       return;
     }
 
+    // Stale request detection — hər yeni chat seçimində ID artır
+    const requestId = ++chatRequestIdRef.current;
+
     // Hook state-lərini sıfırla
     channel.setShowCreateChannel(false);
     channel.setEditChannelData(null);
@@ -1267,6 +1273,9 @@ function Chat() {
       }
 
       const [msgData, pinData, favData, , latestForSeparator] = await Promise.all(promises);
+
+      // Stale response — istifadəçi artıq başqa conversation-a keçib
+      if (requestId !== chatRequestIdRef.current) return;
 
       // Pinlənmiş mesajları DESC sırala
       const sortedPins = (pinData || []).sort(
@@ -1454,11 +1463,15 @@ function Chat() {
       // Birbaşa çağırsaq, DOM hazır olmaya bilər
       setTimeout(() => inputRef.current?.focus(), 0);
     } catch (err) {
+      if (requestId !== chatRequestIdRef.current) return;
       console.error("Failed to load messages:", err);
       setMessages([]);
     } finally {
-      setChatLoading(false); // Hər halda (uğurlu, xəta, early return) loading-i gizlət
-      setShowScrollDown(false); // Loading bitdikdə buton sıfırlansın — scroll event yenidən qiymətləndirəcək
+      // Yalnız cari request-in finally-si loading-i söndürsün
+      if (requestId === chatRequestIdRef.current) {
+        setChatLoading(false);
+        setShowScrollDown(false);
+      }
     }
   }
 
@@ -2538,6 +2551,19 @@ function Chat() {
               >
                 {/* Floating date — scroll zamanı cari tarixi yuxarıda göstər */}
                 <div className="floating-date" ref={floatingDateRef} />
+
+                {/* Empty state — mesaj yoxdur və loading deyil */}
+                {!chatLoading && messages.length === 0 && (
+                  <div className="empty-chat-state">
+                    <div className="empty-chat-icon">
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                    </div>
+                    <span className="empty-chat-title">No messages yet</span>
+                    <span className="empty-chat-subtitle">Send the first message to start a conversation</span>
+                  </div>
+                )}
 
                 {/* senderRuns — separator-lar + sender qrupları */}
                 {senderRuns.map((run, runIdx) => {

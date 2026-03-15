@@ -1348,6 +1348,37 @@
 }
 
 /* ===================================
+   EMPTY CHAT STATE
+   =================================== */
+
+.empty-chat-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 8px;
+  padding: 40px 20px;
+  user-select: none;
+}
+
+.empty-chat-icon {
+  color: rgba(126, 161, 182, 0.5);
+  margin-bottom: 8px;
+}
+
+.empty-chat-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7b8d);
+}
+
+.empty-chat-subtitle {
+  font-size: 13px;
+  color: var(--text-tertiary, #8e9baa);
+}
+
+/* ===================================
    SCROLL-TO-BOTTOM BUTTON
    =================================== */
 
