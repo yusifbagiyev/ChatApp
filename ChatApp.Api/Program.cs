@@ -121,6 +121,7 @@ builder.Services.AddSingleton<IConnectionManager, ConnectionManager>();
 builder.Services.AddScoped<IPresenceService, PresenceService>();
 builder.Services.AddScoped<ISignalRNotificationService, SignalRNotificationService>();
 builder.Services.AddSingleton<IChannelMemberCache, ChannelMemberCache>();
+builder.Services.AddSingleton<IUserRelationProvider, UserRelationProvider>();
 
 
 // Add SignalR

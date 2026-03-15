@@ -31,23 +31,12 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         public async Task NotifyChannelMessageToMembersAsync(Guid channelId, List<Guid> memberUserIds, object messageDto)
         {
-            _logger?.LogDebug("Broadcasting new message to channel {ChannelId} and {MemberCount} members directly",
+            _logger?.LogDebug("Broadcasting new message to channel {ChannelId} to {MemberCount} members",
                 channelId, memberUserIds.Count);
 
-            // 1. Send to channel group (for users actively viewing the channel)
-            await _hubContext.Clients
-                .Group($"channel_{channelId}")
-                .SendAsync("NewChannelMessage", messageDto);
-
-            // 2. ALSO send directly to each member's connections (for lazy loading support)
-            // This ensures notifications work even if user hasn't joined the channel group yet
-            // OPTIMIZATION: Batch all connections and send once instead of N individual sends
-            var allConnections = new List<string>();
-            foreach (var memberId in memberUserIds)
-            {
-                var memberConnections = await _connectionManager.GetUserConnectionsAsync(memberId);
-                allConnections.AddRange(memberConnections);
-            }
+            // Direct connections only — group broadcast silindi (dublikat yaradırdı)
+            // Bütün üzv connection-larını toplayıb bir dəfə göndəririk
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
 
             if (allConnections.Count > 0)
             {
@@ -135,22 +124,10 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         public async Task NotifyChannelMessageEditedToMembersAsync(Guid channelId, List<Guid> memberUserIds, object messageDto)
         {
-            _logger?.LogDebug("Broadcasting edited message to channel {ChannelId} and {MemberCount} members directly",
+            _logger?.LogDebug("Broadcasting edited message to channel {ChannelId} to {MemberCount} members",
                 channelId, memberUserIds.Count);
 
-            // 1. Send to channel group (for active viewers)
-            await _hubContext.Clients
-                .Group($"channel_{channelId}")
-                .SendAsync("ChannelMessageEdited", messageDto);
-
-            // 2. Send directly to each member's connections (for lazy loading)
-            // OPTIMIZATION: Batch all connections
-            var allConnections = new List<string>();
-            foreach (var memberId in memberUserIds)
-            {
-                var memberConnections = await _connectionManager.GetUserConnectionsAsync(memberId);
-                allConnections.AddRange(memberConnections);
-            }
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
 
             if (allConnections.Count > 0)
             {
@@ -193,22 +170,10 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         public async Task NotifyChannelMessageDeletedToMembersAsync(Guid channelId, List<Guid> memberUserIds, object messageDto)
         {
-            _logger?.LogDebug("Broadcasting deleted message to channel {ChannelId} and {MemberCount} members directly",
+            _logger?.LogDebug("Broadcasting deleted message to channel {ChannelId} to {MemberCount} members",
                 channelId, memberUserIds.Count);
 
-            // 1. Send to channel group (for active viewers)
-            await _hubContext.Clients
-                .Group($"channel_{channelId}")
-                .SendAsync("ChannelMessageDeleted", messageDto);
-
-            // 2. Send directly to each member's connections (for lazy loading)
-            // OPTIMIZATION: Batch all connections
-            var allConnections = new List<string>();
-            foreach (var memberId in memberUserIds)
-            {
-                var memberConnections = await _connectionManager.GetUserConnectionsAsync(memberId);
-                allConnections.AddRange(memberConnections);
-            }
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
 
             if (allConnections.Count > 0)
             {
@@ -254,25 +219,13 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         public async Task NotifyChannelMessagesReadToMembersAsync(Guid channelId, List<Guid> memberUserIds, Guid userId, Dictionary<Guid, int> messageReadCounts)
         {
-            _logger?.LogDebug("Broadcasting {Count} messages read for user {UserId} to channel {ChannelId} and {MemberCount} members directly",
+            _logger?.LogDebug("Broadcasting {Count} messages read for user {UserId} to channel {ChannelId} to {MemberCount} members",
                 messageReadCounts.Count, userId, channelId, memberUserIds.Count);
 
-            // 1. Send to channel group (for users actively viewing the channel)
-            await NotifyChannelMessagesReadAsync(channelId, userId, messageReadCounts);
-
-            // 2. ALSO send directly to each member's connections (for lazy loading support)
-            // This ensures users who left the channel (and left the group) still receive the update
-            // OPTIMIZATION: Batch all connections and send once instead of N individual sends
-            var allConnections = new List<string>();
-            foreach (var memberId in memberUserIds)
-            {
-                var connections = await _connectionManager.GetUserConnectionsAsync(memberId);
-                allConnections.AddRange(connections);
-            }
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
 
             if (allConnections.Count > 0)
             {
-                // Send to all member connections in a single operation
                 await _hubContext.Clients
                     .Clients(allConnections)
                     .SendAsync("ChannelMessagesRead", channelId, userId, messageReadCounts);
@@ -311,23 +264,10 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         public async Task NotifyChannelMessageReactionsUpdatedToMembersAsync(Guid channelId, List<Guid> memberUserIds, Guid messageId, object reactions)
         {
-            _logger?.LogDebug("Broadcasting reactions updated for message {MessageId} to channel {ChannelId} and {MemberCount} members directly",
+            _logger?.LogDebug("Broadcasting reactions updated for message {MessageId} to channel {ChannelId} to {MemberCount} members",
                 messageId, channelId, memberUserIds.Count);
 
-            // 1. Send to channel group (for users actively viewing the channel - real-time)
-            await _hubContext.Clients
-                .Group($"channel_{channelId}")
-                .SendAsync("ChannelMessageReactionsUpdated", new { messageId, reactions });
-
-            // 2. ALSO send directly to each member's connections (for lazy loading support)
-            // This ensures reactions propagate even if user hasn't joined the channel group yet
-            // OPTIMIZATION: Batch all connections
-            var allConnections = new List<string>();
-            foreach (var memberId in memberUserIds)
-            {
-                var memberConnections = await _connectionManager.GetUserConnectionsAsync(memberId);
-                allConnections.AddRange(memberConnections);
-            }
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
 
             if (allConnections.Count > 0)
             {
@@ -389,26 +329,11 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         public async Task NotifyUserTypingInChannelToMembersAsync(Guid channelId, List<Guid> memberUserIds, Guid typingUserId, string fullName, bool isTyping)
         {
-            _logger?.LogDebug("Broadcasting typing indicator to channel {ChannelId} and {MemberCount} members directly",
+            _logger?.LogDebug("Broadcasting typing indicator to channel {ChannelId} to {MemberCount} members",
                 channelId, memberUserIds.Count);
 
-            // Sender-in connection-larını al — group broadcast-dan istisna etmək üçün
-            var senderConnections = await _connectionManager.GetUserConnectionsAsync(typingUserId);
-
-            // 1. Send to channel group EXCLUDING sender (sender öz typing-ini görməsin)
-            await _hubContext.Clients
-                .GroupExcept($"channel_{channelId}", senderConnections)
-                .SendAsync("UserTypingInChannel", channelId, typingUserId, fullName, isTyping);
-
-            // 2. ALSO send directly to each member's connections (for lazy loading support)
-            // This allows typing indicators to appear in conversation list even if user hasn't joined the channel
-            // OPTIMIZATION: Batch all connections
-            var allConnections = new List<string>();
-            foreach (var memberId in memberUserIds)
-            {
-                var memberConnections = await _connectionManager.GetUserConnectionsAsync(memberId);
-                allConnections.AddRange(memberConnections);
-            }
+            // memberUserIds artıq sender-siz gəlir (ChatHub-da exclude olunub)
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
 
             if (allConnections.Count > 0)
             {
@@ -421,25 +346,11 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         public async Task NotifyUserTypingInConversationToMembersAsync(Guid conversationId, List<Guid> memberUserIds, Guid typingUserId, bool isTyping)
         {
-            _logger?.LogDebug("Broadcasting typing indicator to conversation {ConversationId} and {MemberCount} members directly",
+            _logger?.LogDebug("Broadcasting typing indicator to conversation {ConversationId} to {MemberCount} members",
                 conversationId, memberUserIds.Count);
 
-            // Sender-in connection-larını al — group broadcast-dan istisna etmək üçün
-            var senderConnections = await _connectionManager.GetUserConnectionsAsync(typingUserId);
-
-            // 1. Send to conversation group EXCLUDING sender (sender öz typing-ini görməsin)
-            await _hubContext.Clients
-                .GroupExcept($"conversation_{conversationId}", senderConnections)
-                .SendAsync("UserTypingInConversation", conversationId, typingUserId, isTyping);
-
-            // 2. ALSO send directly to each member's connections (for lazy loading)
-            // OPTIMIZATION: Batch all connections
-            var allConnections = new List<string>();
-            foreach (var memberId in memberUserIds)
-            {
-                var memberConnections = await _connectionManager.GetUserConnectionsAsync(memberId);
-                allConnections.AddRange(memberConnections);
-            }
+            // memberUserIds artıq sender-siz gəlir (ChatHub-da exclude olunub)
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
 
             if (allConnections.Count > 0)
             {
@@ -496,21 +407,10 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         public async Task NotifyChannelMessagePinnedToMembersAsync(Guid channelId, List<Guid> memberUserIds, object messageDto)
         {
-            _logger?.LogInformation("Broadcasting pinned message to channel {ChannelId} and {MemberCount} members directly",
+            _logger?.LogInformation("Broadcasting pinned message to channel {ChannelId} to {MemberCount} members",
                 channelId, memberUserIds.Count);
 
-            // 1. Send to channel group
-            await _hubContext.Clients
-                .Group($"channel_{channelId}")
-                .SendAsync("ChannelMessagePinned", messageDto);
-
-            // 2. Send directly to each member's connections
-            var allConnections = new List<string>();
-            foreach (var memberId in memberUserIds)
-            {
-                var memberConnections = await _connectionManager.GetUserConnectionsAsync(memberId);
-                allConnections.AddRange(memberConnections);
-            }
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
 
             if (allConnections.Count > 0)
             {
@@ -522,21 +422,10 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         public async Task NotifyChannelMessageUnpinnedToMembersAsync(Guid channelId, List<Guid> memberUserIds, object messageDto)
         {
-            _logger?.LogInformation("Broadcasting unpinned message to channel {ChannelId} and {MemberCount} members directly",
+            _logger?.LogInformation("Broadcasting unpinned message to channel {ChannelId} to {MemberCount} members",
                 channelId, memberUserIds.Count);
 
-            // 1. Send to channel group
-            await _hubContext.Clients
-                .Group($"channel_{channelId}")
-                .SendAsync("ChannelMessageUnpinned", messageDto);
-
-            // 2. Send directly to each member's connections
-            var allConnections = new List<string>();
-            foreach (var memberId in memberUserIds)
-            {
-                var memberConnections = await _connectionManager.GetUserConnectionsAsync(memberId);
-                allConnections.AddRange(memberConnections);
-            }
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
 
             if (allConnections.Count > 0)
             {
@@ -544,6 +433,18 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
                     .Clients(allConnections)
                     .SendAsync("ChannelMessageUnpinned", messageDto);
             }
+        }
+        // ─── Helper: Bütün üzv connection-larını toplayır ────────────────────────
+        // Təkrarlanan foreach loop əvəzinə ortaq metod
+        private async Task<List<string>> CollectMemberConnectionsAsync(List<Guid> memberUserIds)
+        {
+            var allConnections = new List<string>();
+            foreach (var memberId in memberUserIds)
+            {
+                var memberConnections = await _connectionManager.GetUserConnectionsAsync(memberId);
+                allConnections.AddRange(memberConnections);
+            }
+            return allConnections;
         }
     }
 }

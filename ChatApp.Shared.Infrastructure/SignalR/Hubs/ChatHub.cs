@@ -15,17 +15,20 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
         private readonly IPresenceService _presenceService;
         private readonly ISignalRNotificationService _signalRNotificationService;
         private readonly IChannelMemberCache _channelMemberCache;
+        private readonly IUserRelationProvider _userRelationProvider;
 
         public ChatHub(
             IConnectionManager connectionManager,
             IPresenceService presenceService,
             ISignalRNotificationService signalRNotificationService,
-            IChannelMemberCache channelMemberCache)
+            IChannelMemberCache channelMemberCache,
+            IUserRelationProvider userRelationProvider)
         {
             _connectionManager= connectionManager;
             _presenceService= presenceService;
             _signalRNotificationService = signalRNotificationService;
             _channelMemberCache = channelMemberCache;
+            _userRelationProvider = userRelationProvider;
         }
 
         public override async Task OnConnectedAsync()
@@ -37,8 +40,8 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
                 await _connectionManager.AddConnectionAsync(userId, Context.ConnectionId);
                 await _presenceService.UserConnectedAsync(userId, Context.ConnectionId);
 
-                // Notify all clients about user coming online
-                await Clients.All.SendAsync("UserOnline", userId);
+                // Notify only related users (channel co-members + DM partners) about user coming online
+                await NotifyPresenceToRelatedUsersAsync(userId, "UserOnline");
             }
             await base.OnConnectedAsync();
         }
@@ -58,8 +61,8 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
 
                 if (!isStillOnline)
                 {
-                    // Notify all clients about user going offline
-                    await Clients.All.SendAsync("UserOffline", userId);
+                    // Notify only related users about user going offline
+                    await NotifyPresenceToRelatedUsersAsync(userId, "UserOffline");
                 }
             }
             await base.OnDisconnectedAsync(exception);
@@ -194,6 +197,30 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
             return await _presenceService.GetUsersOnlineStatusAsync(userIds);
         }
 
+
+        /// <summary>
+        /// Sends presence event only to users who share a channel or DM conversation.
+        /// Replaces Clients.All broadcast — reduces network traffic from O(N) to O(related).
+        /// </summary>
+        private async Task NotifyPresenceToRelatedUsersAsync(Guid userId, string eventName)
+        {
+            var relatedUserIds = await _userRelationProvider.GetRelatedUserIdsAsync(userId);
+
+            if (relatedUserIds.Count == 0) return;
+
+            // Collect connections of all related users who are currently online
+            var allConnections = new List<string>();
+            foreach (var relatedUserId in relatedUserIds)
+            {
+                var connections = await _connectionManager.GetUserConnectionsAsync(relatedUserId);
+                allConnections.AddRange(connections);
+            }
+
+            if (allConnections.Count > 0)
+            {
+                await Clients.Clients(allConnections).SendAsync(eventName, userId);
+            }
+        }
 
         private Guid GetUserId()
         {

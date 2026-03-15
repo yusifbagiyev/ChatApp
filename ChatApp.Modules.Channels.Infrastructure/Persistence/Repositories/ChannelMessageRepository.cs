@@ -404,13 +404,11 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             public string? ReplyToFileContentType { get; init; }
             public string? ReplyToFileStoragePath { get; init; }
             public bool IsForwarded { get; init; }
-            public List<Guid> ReadBy { get; init; } = null!;
-            public List<ChannelMessageReactionDto> Reactions { get; init; } = null!;
         }
 
         /// <summary>
-        /// Builds the base LINQ query with all necessary joins (sender, file, reply, reply sender, reply file)
-        /// and inline subqueries for ReadBy and Reactions.
+        /// Builds the base LINQ query with all necessary joins (sender, file, reply, reply sender, reply file).
+        /// ReadBy and Reactions are loaded in batch by LoadRelatedDataAsync (not inline — avoids N+1).
         /// Each public method calls this then adds its specific .Where(), .OrderBy(), .Take().
         /// </summary>
         private IQueryable<RawChannelMessageProjection> BuildBaseQuery()
@@ -455,24 +453,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                        ReplyToFileName = repliedFile != null ? repliedFile.OriginalFileName : null,
                        ReplyToFileContentType = repliedFile != null ? repliedFile.ContentType : null,
                        ReplyToFileStoragePath = repliedFile != null ? repliedFile.StoragePath : null,
-                       IsForwarded = message.IsForwarded,
-                       // Get list of users who have read this message from ChannelMessageRead table
-                       ReadBy = _context.ChannelMessageReads
-                           .Where(r => r.MessageId == message.Id && r.UserId != message.SenderId)
-                           .Select(r => r.UserId)
-                           .ToList(),
-                       // Get reactions grouped by emoji with user details
-                       Reactions = (from reaction in _context.ChannelMessageReactions
-                        join reactionUser in _context.Set<UserReadModel>() on reaction.UserId equals reactionUser.Id
-                        where reaction.MessageId == message.Id
-                        group new { reaction, reactionUser } by reaction.Reaction into g
-                        select new ChannelMessageReactionDto(
-                            g.Key,
-                            g.Count(),
-                            g.Select(x => x.reaction.UserId).ToList(),
-                            g.Select(x => x.reactionUser.FullName).ToList(),
-                            g.Select(x => x.reactionUser.AvatarUrl).ToList()
-                        )).ToList()
+                       IsForwarded = message.IsForwarded
                    };
         }
 
@@ -482,24 +463,63 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
         /// </summary>
         private async Task<(Dictionary<Guid, int> reactionCounts,
                              Dictionary<Guid, int> readCounts,
-                             Dictionary<Guid, List<ChannelMessageMentionDto>> mentions)>
+                             Dictionary<Guid, List<ChannelMessageMentionDto>> mentions,
+                             Dictionary<Guid, List<Guid>> readByUsers,
+                             Dictionary<Guid, List<ChannelMessageReactionDto>> reactions)>
             LoadRelatedDataAsync(List<Guid> messageIds, CancellationToken cancellationToken)
         {
-            // Batch load reaction counts
-            var reactionCounts = await _context.ChannelMessageReactions
-                .Where(r => messageIds.Contains(r.MessageId))
-                .GroupBy(r => r.MessageId)
-                .Select(g => new { MessageId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Count, cancellationToken);
+            // Get sender IDs for excluding from read lists
+            var senderMap = await _context.ChannelMessages
+                .Where(m => messageIds.Contains(m.Id))
+                .Select(m => new { m.Id, m.SenderId })
+                .ToDictionaryAsync(x => x.Id, x => x.SenderId, cancellationToken);
 
-            // Batch load read counts (exclude sender from read count)
-            var readCounts = await _context.ChannelMessageReads
+            // Batch load all read records (single query for counts + user lists)
+            var allReads = await _context.ChannelMessageReads
                 .Where(r => messageIds.Contains(r.MessageId))
-                .Join(_context.ChannelMessages, r => r.MessageId, m => m.Id, (r, m) => new { r, m })
-                .Where(x => x.r.UserId != x.m.SenderId)
-                .GroupBy(x => x.r.MessageId)
-                .Select(g => new { MessageId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.MessageId, x => x.Count, cancellationToken);
+                .Select(r => new { r.MessageId, r.UserId })
+                .ToListAsync(cancellationToken);
+
+            // Filter out sender reads and build both dictionaries from single query result
+            var readCounts = new Dictionary<Guid, int>();
+            var readByUsers = new Dictionary<Guid, List<Guid>>();
+            foreach (var group in allReads.GroupBy(r => r.MessageId))
+            {
+                var senderId = senderMap.TryGetValue(group.Key, out var sid) ? sid : Guid.Empty;
+                var nonSenderReads = group.Where(r => r.UserId != senderId).Select(r => r.UserId).ToList();
+                readCounts[group.Key] = nonSenderReads.Count;
+                readByUsers[group.Key] = nonSenderReads;
+            }
+
+            // Batch load all reactions with user details (single query)
+            var allReactions = await (from reaction in _context.ChannelMessageReactions
+                                     join reactionUser in _context.Set<UserReadModel>() on reaction.UserId equals reactionUser.Id
+                                     where messageIds.Contains(reaction.MessageId)
+                                     select new
+                                     {
+                                         reaction.MessageId,
+                                         reaction.Reaction,
+                                         reaction.UserId,
+                                         reactionUser.FullName,
+                                         reactionUser.AvatarUrl
+                                     }).ToListAsync(cancellationToken);
+
+            // Build reaction counts + full reaction DTOs from single query result
+            var reactionCounts = new Dictionary<Guid, int>();
+            var reactions = new Dictionary<Guid, List<ChannelMessageReactionDto>>();
+            foreach (var msgGroup in allReactions.GroupBy(r => r.MessageId))
+            {
+                reactionCounts[msgGroup.Key] = msgGroup.Count();
+                reactions[msgGroup.Key] = msgGroup
+                    .GroupBy(r => r.Reaction)
+                    .Select(g => new ChannelMessageReactionDto(
+                        g.Key,
+                        g.Count(),
+                        g.Select(x => x.UserId).ToList(),
+                        g.Select(x => x.FullName).ToList(),
+                        g.Select(x => (string?)x.AvatarUrl).ToList()
+                    )).ToList();
+            }
 
             // Load mentions grouped by message
             var mentions = await _context.ChannelMessageMentions
@@ -512,7 +532,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                 })
                 .ToDictionaryAsync(x => x.MessageId, x => x.Mentions, cancellationToken);
 
-            return (reactionCounts, readCounts, mentions);
+            return (reactionCounts, readCounts, mentions, readByUsers, reactions);
         }
 
         /// <summary>
@@ -548,6 +568,8 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             Dictionary<Guid, int> reactionCounts,
             Dictionary<Guid, int> readCounts,
             Dictionary<Guid, List<ChannelMessageMentionDto>> mentions,
+            Dictionary<Guid, List<Guid>> readByUsers,
+            Dictionary<Guid, List<ChannelMessageReactionDto>> reactions,
             int totalMemberCount,
             bool sanitizeContent)
         {
@@ -562,12 +584,12 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                 r.Email,
                 r.FullName,
                 r.AvatarUrl,
-                sanitizeContent && r.IsDeleted ? "This message was deleted" : r.Content, // SECURITY: Sanitize deleted content when applicable
+                sanitizeContent && r.IsDeleted ? "This message was deleted" : r.Content,
                 r.FileId,
                 r.FileName,
                 r.FileContentType,
                 r.FileSizeInBytes,
-                FileUrlHelper.ToUrl(r.FileStoragePath),      // FileUrl
+                FileUrlHelper.ToUrl(r.FileStoragePath),
                 r.FileWidth,
                 r.FileHeight,
                 r.IsEdited,
@@ -578,18 +600,18 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                 r.EditedAtUtc,
                 r.PinnedAtUtc,
                 r.ReplyToMessageId,
-                r.ReplyToIsDeleted ? "This message was deleted" : r.ReplyToContent, // SECURITY: Sanitize deleted reply content
+                r.ReplyToIsDeleted ? "This message was deleted" : r.ReplyToContent,
                 r.ReplyToSenderName,
                 r.ReplyToFileId,
                 r.ReplyToFileName,
                 r.ReplyToFileContentType,
-                FileUrlHelper.ToUrl(r.ReplyToFileStoragePath),      // ReplyToFileUrl
+                FileUrlHelper.ToUrl(r.ReplyToFileStoragePath),
                 r.IsForwarded,
                 readByCount,
                 totalMemberCount,
-                r.ReadBy,
-                r.Reactions,
-                mentions.TryGetValue(r.Id, out var value) ? value : null,
+                readByUsers.TryGetValue(r.Id, out var readBy) ? readBy : null,
+                reactions.TryGetValue(r.Id, out var rxns) ? rxns : null,
+                mentions.TryGetValue(r.Id, out var mnts) ? mnts : null,
                 status
             );
         }
@@ -605,14 +627,14 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             CancellationToken cancellationToken)
         {
             var messageIds = results.Select(r => r.Id).ToList();
-            var (reactionCounts, readCounts, mentions) = await LoadRelatedDataAsync(messageIds, cancellationToken);
+            var (reactionCounts, readCounts, mentions, readByUsers, reactions) = await LoadRelatedDataAsync(messageIds, cancellationToken);
 
             // TotalMemberCount is same for all messages in channel (count once, not N times)
             var totalMemberCount = await _context.ChannelMembers
                 .Where(m => m.ChannelId == channelId)
                 .CountAsync(cancellationToken) - 1; // Exclude sender
 
-            return results.Select(r => MapToDto(r, reactionCounts, readCounts, mentions, totalMemberCount, sanitizeContent)).ToList();
+            return results.Select(r => MapToDto(r, reactionCounts, readCounts, mentions, readByUsers, reactions, totalMemberCount, sanitizeContent)).ToList();
         }
 
         #endregion
