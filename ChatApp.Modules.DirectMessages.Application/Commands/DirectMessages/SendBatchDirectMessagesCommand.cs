@@ -169,6 +169,7 @@ public class SendBatchDirectMessagesCommandHandler : IRequestHandler<SendBatchDi
                 {
                     await _signalRNotificationService.NotifyDirectMessageAsync(
                         request.ConversationId,
+                        request.SenderId,
                         receiverId,
                         messageDto);
                 }

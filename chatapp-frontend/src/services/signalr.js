@@ -7,7 +7,6 @@
 //
 // Bu faylda:
 //   - Server ilə bağlantı qurmaq (startConnection)
-//   - Conversation/Channel qruplarına qoşulmaq (joinConversation, joinChannel)
 //   - Bağlantını almaq (getConnection) — event handler-lər əlavə etmək üçün
 
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
@@ -183,39 +182,3 @@ function notifyConnectionState(state) {
   if (connectionStateCallback) connectionStateCallback(state);
 }
 
-// ─── Group Management ─────────────────────────────────────────────────────────
-// SignalR "groups" — eyni grupda olan bütün clientlər mesajı alır.
-// Biz bir conversation-ı açanda həmin qrupa qoşuruq,
-// başqa birini açanda əvvəlkindən ayrılırıq.
-// .NET server tərəfinde: Groups.AddToGroupAsync(connectionId, groupName)
-
-// Conversation-a qoşul (DM - Direct Message)
-// Server-də: "conversation-{id}" group adı istifadə olunur
-export async function joinConversation(conversationId) {
-  if (connection) {
-    // invoke: server-dəki hub metodunu çağır
-    // "JoinConversation" — server tərəfdəki public method adı
-    await connection.invoke("JoinConversation", conversationId);
-  }
-}
-
-// Conversation-dan ayrıl — başqa chat açılarkən çağırılır
-export async function leaveConversation(conversationId) {
-  if (connection) {
-    await connection.invoke("LeaveConversation", conversationId);
-  }
-}
-
-// Channel-a qoşul (type === 1)
-export async function joinChannel(channelId) {
-  if (connection) {
-    await connection.invoke("JoinChannel", channelId);
-  }
-}
-
-// Channel-dan ayrıl
-export async function leaveChannel(channelId) {
-  if (connection) {
-    await connection.invoke("LeaveChannel", channelId);
-  }
-}

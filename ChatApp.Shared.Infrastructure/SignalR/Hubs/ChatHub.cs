@@ -71,41 +71,25 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
 
         /// <summary>
         /// Client notifies they are typing in a channel
-        /// Uses hybrid pattern: broadcasts to group (for active viewers) AND direct connections (for lazy loading)
+        /// Sends directly to member connections via cache
         /// </summary>
-        public async Task TypingInChannel(Guid channelId,bool isTyping)
+        public async Task TypingInChannel(Guid channelId, bool isTyping)
         {
             var userId = GetUserId();
 
             if (userId == Guid.Empty)
                 return;
 
-            var fullName = GetFullName(); // ClaimTypes.Name now contains FullName
+            var fullName = GetFullName();
 
-            // Get channel members from cache
             var memberUserIds = await _channelMemberCache.GetChannelMemberIdsAsync(channelId);
-
-            // Exclude sender from member list
             var recipientUserIds = memberUserIds.Where(id => id != userId).ToList();
 
-            if (recipientUserIds.Any())
+            if (recipientUserIds.Count > 0)
             {
-                // HYBRID BROADCAST: Send to both group AND direct connections
-                // This allows typing indicators to work even without JOIN (lazy loading)
                 await _signalRNotificationService.NotifyUserTypingInChannelToMembersAsync(
                     channelId,
                     recipientUserIds,
-                    userId,
-                    fullName,
-                    isTyping);
-            }
-            else
-            {
-                // Fallback: If cache is empty, broadcast to group EXCLUDING caller
-                // OthersInGroup — sender-ə göndərmir (sender öz typing-ini görməsin)
-                await Clients.OthersInGroup($"channel_{channelId}").SendAsync(
-                    "UserTypingInChannel",
-                    channelId,
                     userId,
                     fullName,
                     isTyping);
@@ -115,7 +99,7 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
 
         /// <summary>
         /// Client notifies they are typing in a direct conversation
-        /// Uses hybrid pattern: broadcasts to group AND directly to recipient
+        /// Sends directly to recipient's connections
         /// </summary>
         public async Task TypingInConversation(Guid conversationId, Guid recipientUserId, bool isTyping)
         {
@@ -123,8 +107,6 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
 
             if (userId == Guid.Empty) return;
 
-            // HYBRID BROADCAST: Send to both group AND direct connection
-            // This allows typing indicators to work even without JOIN (lazy loading)
             await _signalRNotificationService.NotifyUserTypingInConversationToMembersAsync(
                 conversationId,
                 new List<Guid> { recipientUserId },
@@ -133,59 +115,9 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
         }
 
 
-        /// <summary>
-        /// Join a channel group for real-time updates
-        /// </summary>
-        public async Task JoinChannel(Guid channelId)
-        {
-            var userId = GetUserId();
-
-            if(userId == Guid.Empty) return;
-
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"channel_{channelId}");
-        }
 
 
 
-        /// <summary>
-        /// Leave a channel group
-        /// </summary>
-        public async Task LeaveChannel(Guid channelId)
-        {
-            var userId = GetUserId();
-
-            if(userId == Guid.Empty) return;
-
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"channel_{channelId}");
-        }
-
-
-
-        /// <summary>
-        /// Join a conversation group for real-time updates
-        /// </summary>
-        public async Task JoinConversation(Guid conversationId)
-        {
-            var userId = GetUserId();
-
-            if(userId == Guid.Empty) return;
-
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"conversation_{conversationId}");
-        }
-
-
-        /// <summary>
-        /// Leave a conversation group
-        /// </summary>
-        public async Task LeaveConversation(Guid conversationId)
-        {
-            var userId = GetUserId();
-
-            if (userId == Guid.Empty)
-                return;
-
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"conversation_{conversationId}");
-        }
 
 
 

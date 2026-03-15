@@ -101,6 +101,7 @@
   1. **Dublikat göndərmə yoxla**: Eyni event-i həm group-a, həm birbaşa connection-lara göndərmə. Biri kifayətdir — receiver-in ID-sini bilirsənsə birbaşa connection-larına göndər
   2. **Lazımsız log-ları sil**: `LogDebug` production-da görünmür, yüksək trafik servislərdə (SignalR, messaging) əlavə yükdür. Yalnız `Warning/Error` level saxla
   3. **Kod oxuyarkən "bu doğrudur?" soruşmağı unutma**: Refactor/optimize edərkən yalnız strukturu deyil, hər metodun davranışını da yoxla — dublikat, boş group-a göndərmə, lazımsız parametrlər kimi problemləri axtar
+  4. **Dead code və istifadəsiz group-ları tap**: Refactor edərkən interface/implementation-da olan amma heç yerdən çağırılmayan metodları (`NotifyChannelMessageAsync` kimi), istifadəsiz SignalR group-ları (join/leave olunur amma notification göndərilmir), və qarışıq pattern-ləri (bəzi metodlar group-a, bəziləri direct-ə göndərir) proaktiv tapmalıyam. User soruşmağı gözləməməliyəm.
 
 ### Lesson: function → useCallback çevirərkən TDZ (Temporal Dead Zone) yoxla
 - **Date**: 2026-03-14

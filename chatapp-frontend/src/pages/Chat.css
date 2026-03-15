@@ -53,15 +53,20 @@
 
 .main-layout {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   height: 100vh;
   overflow: hidden;
   background: var(--gray-100);
 }
 
+.main-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
 /* ─── Network Status Banner ─────────────────────────────────────────────── */
 .network-banner {
-  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;

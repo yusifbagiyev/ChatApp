@@ -155,6 +155,7 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
                     // Send real-time notification to receiver
                     await _signalRNotificationService.NotifyDirectMessageAsync(
                         request.ConversationId,
+                        request.SenderId,
                         receiverId,
                         messageDto);
                 }

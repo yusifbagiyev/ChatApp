@@ -18,13 +18,6 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         // ─── Channel Messages ─────────────────────────────────────────────────────
 
-        public async Task NotifyChannelMessageAsync(Guid channelId, object messageDto)
-        {
-            await _hubContext.Clients
-                .Group($"channel_{channelId}")
-                .SendAsync("NewChannelMessage", messageDto);
-        }
-
         public async Task NotifyChannelMessageToMembersAsync(Guid channelId, List<Guid> memberUserIds, object messageDto)
         {
             var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
@@ -104,35 +97,35 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
 
         // ─── Direct Messages ──────────────────────────────────────────────────────
 
-        public async Task NotifyDirectMessageAsync(Guid conversationId, Guid receiverId, object messageDto)
+        public async Task NotifyDirectMessageAsync(Guid conversationId, Guid senderId, Guid receiverId, object messageDto)
         {
-            var receiverConnections = await _connectionManager.GetUserConnectionsAsync(receiverId);
-            if (receiverConnections.Count > 0)
+            var connections = await CollectMemberConnectionsAsync(new List<Guid> { senderId, receiverId });
+            if (connections.Count > 0)
             {
                 await _hubContext.Clients
-                    .Clients(receiverConnections)
+                    .Clients(connections)
                     .SendAsync("NewDirectMessage", messageDto);
             }
         }
 
-        public async Task NotifyDirectMessageEditedAsync(Guid conversationId, Guid receiverId, object messageDto)
+        public async Task NotifyDirectMessageEditedAsync(Guid conversationId, Guid senderId, Guid receiverId, object messageDto)
         {
-            var receiverConnections = await _connectionManager.GetUserConnectionsAsync(receiverId);
-            if (receiverConnections.Count > 0)
+            var connections = await CollectMemberConnectionsAsync(new List<Guid> { senderId, receiverId });
+            if (connections.Count > 0)
             {
                 await _hubContext.Clients
-                    .Clients(receiverConnections)
+                    .Clients(connections)
                     .SendAsync("DirectMessageEdited", messageDto);
             }
         }
 
-        public async Task NotifyDirectMessageDeletedAsync(Guid conversationId, Guid receiverId, object messageDto)
+        public async Task NotifyDirectMessageDeletedAsync(Guid conversationId, Guid senderId, Guid receiverId, object messageDto)
         {
-            var receiverConnections = await _connectionManager.GetUserConnectionsAsync(receiverId);
-            if (receiverConnections.Count > 0)
+            var connections = await CollectMemberConnectionsAsync(new List<Guid> { senderId, receiverId });
+            if (connections.Count > 0)
             {
                 await _hubContext.Clients
-                    .Clients(receiverConnections)
+                    .Clients(connections)
                     .SendAsync("DirectMessageDeleted", messageDto);
             }
         }
@@ -148,24 +141,24 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
             }
         }
 
-        public async Task NotifyDirectMessagePinnedAsync(Guid conversationId, Guid receiverId, object messageDto)
+        public async Task NotifyDirectMessagePinnedAsync(Guid conversationId, Guid senderId, Guid receiverId, object messageDto)
         {
-            var receiverConnections = await _connectionManager.GetUserConnectionsAsync(receiverId);
-            if (receiverConnections.Count > 0)
+            var connections = await CollectMemberConnectionsAsync(new List<Guid> { senderId, receiverId });
+            if (connections.Count > 0)
             {
                 await _hubContext.Clients
-                    .Clients(receiverConnections)
+                    .Clients(connections)
                     .SendAsync("DirectMessagePinned", messageDto);
             }
         }
 
-        public async Task NotifyDirectMessageUnpinnedAsync(Guid conversationId, Guid receiverId, object messageDto)
+        public async Task NotifyDirectMessageUnpinnedAsync(Guid conversationId, Guid senderId, Guid receiverId, object messageDto)
         {
-            var receiverConnections = await _connectionManager.GetUserConnectionsAsync(receiverId);
-            if (receiverConnections.Count > 0)
+            var connections = await CollectMemberConnectionsAsync(new List<Guid> { senderId, receiverId });
+            if (connections.Count > 0)
             {
                 await _hubContext.Clients
-                    .Clients(receiverConnections)
+                    .Clients(connections)
                     .SendAsync("DirectMessageUnpinned", messageDto);
             }
         }
@@ -194,11 +187,15 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
             }
         }
 
-        public async Task NotifyMemberLeftChannelAsync(Guid channelId, Guid leftUserId, string leftUserFullName)
+        public async Task NotifyMemberLeftChannelToMembersAsync(Guid channelId, List<Guid> memberUserIds, Guid leftUserId, string leftUserFullName)
         {
-            await _hubContext.Clients
-                .Group($"channel_{channelId}")
-                .SendAsync("MemberLeftChannel", new { channelId, leftUserId, leftUserFullName });
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
+            if (allConnections.Count > 0)
+            {
+                await _hubContext.Clients
+                    .Clients(allConnections)
+                    .SendAsync("MemberLeftChannel", new { channelId, leftUserId, leftUserFullName });
+            }
         }
 
         // ─── Typing Indicators ────────────────────────────────────────────────────

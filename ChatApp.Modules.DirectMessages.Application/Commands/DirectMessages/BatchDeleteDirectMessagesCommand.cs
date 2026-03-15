@@ -119,6 +119,7 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
 
                     await _signalRNotificationService.NotifyDirectMessageDeletedAsync(
                         message.ConversationId,
+                        message.SenderId,
                         message.ReceiverId,
                         messageDto);
                 }

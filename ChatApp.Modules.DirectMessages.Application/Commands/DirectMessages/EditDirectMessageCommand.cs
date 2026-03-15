@@ -94,6 +94,7 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
                     // Send real-time notification to receiver with edited message
                     await _signalRNotificationService.NotifyDirectMessageEditedAsync(
                         conversationId,
+                        message.SenderId,
                         receiverId,
                         messageDto);
                 }

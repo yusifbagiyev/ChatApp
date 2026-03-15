@@ -77,6 +77,7 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.MessageConditions
                 {
                     await _signalRNotificationService.NotifyDirectMessageUnpinnedAsync(
                         message.ConversationId,
+                        message.SenderId,
                         receiverId,
                         messageDto);
                 }

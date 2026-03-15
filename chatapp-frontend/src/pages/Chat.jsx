@@ -16,12 +16,8 @@ import {
   useCallback,
 } from "react";
 
-// SignalR qrup idarəetməsi — conversation/channel-a qoşulma/ayrılma
+// SignalR bağlantı idarəetməsi
 import {
-  joinConversation,
-  leaveConversation,
-  joinChannel,
-  leaveChannel,
   getConnection, // aktiv SignalR bağlantısını qaytarır
   onConnectionStateChange, // SignalR bağlantı state listener
 } from "../services/signalr";
@@ -875,7 +871,6 @@ function Chat() {
       await apiPost(`/api/channels/${conv.id}/members/leave`);
       setConversations((prev) => prev.filter((c) => c.id !== conv.id));
       if (selectedChat && selectedChat.id === conv.id) {
-        leaveChannel(conv.id);
         setSelectedChat(null);
         setMessages([]);
       }
@@ -893,8 +888,6 @@ function Chat() {
       await apiDelete(endpoint);
       setConversations((prev) => prev.filter((c) => c.id !== conv.id));
       if (selectedChat && selectedChat.id === conv.id) {
-        if (conv.type === 1) leaveChannel(conv.id);
-        else leaveConversation(conv.id);
         setSelectedChat(null);
         setMessages([]);
       }
@@ -976,9 +969,6 @@ function Chat() {
           ),
         );
       }
-      // SignalR qrupundan ayrıl
-      if (selectedChat.type === 0) leaveConversation(selectedChat.id);
-      else if (selectedChat.type === 1) leaveChannel(selectedChat.id);
     }
     setSelectedChat(null);
     setMessages([]);
@@ -1129,15 +1119,6 @@ function Chat() {
 
     // Əvvəlki chatın gözləyən mark-as-read mesajlarını göndər
     flushReadBatch();
-
-    // Əvvəlki chatın SignalR qrupundan ayrıl
-    if (selectedChat) {
-      if (selectedChat.type === 0) {
-        leaveConversation(selectedChat.id);
-      } else if (selectedChat.type === 1) {
-        leaveChannel(selectedChat.id);
-      }
-    }
 
     // Yeni chatın draft-ını yüklə
     const savedDraft = draftsRef.current[chat.id] || "";
@@ -1377,8 +1358,6 @@ function Chat() {
 
       // Yeni chatın SignalR qrupuna qoşul
       if (chat.type === 0) {
-        joinConversation(chat.id);
-
         // DM — digər istifadəçinin online status-unu SignalR hub-dan al
         // conn.invoke("GetOnlineStatus", [...]) — hub metodu çağır
         if (chat.otherUserId) {
@@ -1403,8 +1382,6 @@ function Chat() {
           }
         }
       } else if (chat.type === 1) {
-        joinChannel(chat.id);
-
         // Channel members yüklə — status bar-da "Viewed by X" üçün
         if (!channelMembers[chat.id]) {
           try {
@@ -1684,7 +1661,6 @@ function Chat() {
               : c,
           ),
         );
-        joinConversation(chatId);
       }
 
       const endpoint = getChatEndpoint(chatId, chatType, "/messages");
@@ -1916,8 +1892,6 @@ function Chat() {
               : c,
           ),
         );
-
-        joinConversation(chatId);
       }
 
       const endpoint = getChatEndpoint(chatId, chatType, "/messages");
@@ -2417,6 +2391,8 @@ function Chat() {
               : "Bağlantı kəsildi. Yenidən qoşulur..."}
         </div>
       )}
+      {/* main-body — sidebar + content yan-yana */}
+      <div className="main-body">
       {/* Sidebar — sol dar nav bar (logout button) */}
       <Sidebar onLogout={logout} />
 
@@ -2914,6 +2890,7 @@ function Chat() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

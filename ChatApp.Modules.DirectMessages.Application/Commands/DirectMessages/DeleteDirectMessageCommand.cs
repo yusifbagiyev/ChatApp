@@ -116,6 +116,7 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
 
                     await _signalRNotificationService.NotifyDirectMessageDeletedAsync(
                         conversationId,
+                        senderId,
                         receiverId,
                         messageDto);
 
@@ -145,6 +146,7 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectMessages
                     // SignalR — hardDeleted + əvvəlki mesaj məlumatı (conversation list update üçün)
                     await _signalRNotificationService.NotifyDirectMessageDeletedAsync(
                         conversationId,
+                        senderId,
                         receiverId,
                         new
                         {
