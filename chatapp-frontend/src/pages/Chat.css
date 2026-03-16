@@ -1391,10 +1391,16 @@
   padding: 4px 12px;
   border-radius: 12px;
   pointer-events: none;
+  transition: opacity 0.25s ease;
 }
 
 .floating-date:empty {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.floating-date:not(:empty) {
+  opacity: 1;
 }
 
 /* ===================================

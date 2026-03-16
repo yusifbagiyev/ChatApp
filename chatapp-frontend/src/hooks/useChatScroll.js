@@ -228,8 +228,8 @@ export default function useChatScroll(messagesAreaRef, messages, selectedChat, s
         label = sep.querySelector("span")?.textContent || "";
       } else {
         // İlk görünən separator — floating-date ilə üst-üstə düşürsə label-i sıfırla
-        // el.offsetHeight + 12 = floating-date hündürlüyü + top padding
-        if (label && rect.top < areaTop + el.offsetHeight + 12) {
+        // el.offsetHeight + 24 = floating-date hündürlüyü + top padding + extra margin
+        if (label && rect.top < areaTop + el.offsetHeight + 24) {
           label = "";
         }
         break;
