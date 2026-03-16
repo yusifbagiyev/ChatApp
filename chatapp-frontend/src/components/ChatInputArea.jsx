@@ -125,11 +125,11 @@ function ChatInputArea({
     // Extension + ölçü yoxlaması — icazə verilməyən/böyük faylları filtrələ
     const valid = files.filter((f) => {
       if (!isAllowedFileExtension(f.name)) {
-        showToast(`"${f.name}" — bu fayl tipi dəstəklənmir`, "error");
+        showToast(`"${f.name}" — unsupported file type`, "error");
         return false;
       }
       if (f.size > MAX_FILE_SIZE) {
-        showToast(`"${f.name}" çox böyükdür (${formatFileSize(f.size)}). Maks: ${formatFileSize(MAX_FILE_SIZE)}`, "warning");
+        showToast(`"${f.name}" is too large (${formatFileSize(f.size)}). Max: ${formatFileSize(MAX_FILE_SIZE)}`, "warning");
         return false;
       }
       return true;

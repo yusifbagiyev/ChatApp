@@ -343,7 +343,7 @@ function Chat() {
               setToast((t) => t ? { ...t, hiding: true } : null);
               toastTimerRef.current = setTimeout(() => setToast(null), 300);
             }, 2000);
-            return { type: "connected", message: "Bağlantı bərpa olundu" };
+            return { type: "connected", message: "Connection restored" };
           });
         }
         wasConnectedRef.current = true;
@@ -352,7 +352,7 @@ function Chat() {
         if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
         setToast({
           type: state,
-          message: state === "reconnecting" ? "Bağlantı bərpa olunur..." : "Bağlantı kəsildi. Yenidən qoşulur...",
+          message: state === "reconnecting" ? "Reconnecting..." : "Connection lost. Reconnecting...",
         });
       }
     });
@@ -2043,7 +2043,7 @@ function Chat() {
             : c,
         ),
       );
-      showToast("Mesaj göndərilə bilmədi", "error");
+      showToast("Failed to send message", "error");
     }
   }
 
@@ -2475,7 +2475,7 @@ function Chat() {
       {isOffline && (
         <div className="connection-toast offline">
           <span className="toast-check">⚠</span>
-          İnternet bağlantısı yoxdur
+          No internet connection
         </div>
       )}
       {!isOffline && toast && (
