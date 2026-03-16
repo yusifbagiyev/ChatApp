@@ -67,19 +67,20 @@ export default function useChatScroll(messages, selectedChat, setMessages, allRe
       // loadOlderTriggeredRef yalnız YENİ mesajlar əlavə olunduqda true olur
       // Bu, Chat.jsx-in firstItemIndex-i azaltmasını və scroll listener-in
       // Virtuoso pozisiyanı bərpa edənə qədər yeni fetch başlatmamasını təmin edir
-      let hasNew = false;
+      //
+      // QEYD: loadOlderTriggeredRef updater-in İÇİNDƏ set olunmalıdır.
+      // React 18 batching ilə updater render fazasında çalışır — əgər kənarda
+      // set etsək, hasNew hələ false olur və firstItemIndex heç vaxt azalmaz.
       setMessages((prev) => {
         const existingIds = new Set(prev.map((m) => m.id));
         const unique = olderMessages.filter((m) => !existingIds.has(m.id));
         if (unique.length === 0) return prev;
-        hasNew = true;
+        loadOlderTriggeredRef.current = true;
         const final = allReadPatchRef?.current
           ? unique.map((m) => m.isRead ? m : { ...m, isRead: true })
           : unique;
         return [...prev, ...final];
       });
-
-      if (hasNew) loadOlderTriggeredRef.current = true;
     } catch (err) {
       console.error("Failed to load older messages:", err);
       if (err.message === "Session expired") {
