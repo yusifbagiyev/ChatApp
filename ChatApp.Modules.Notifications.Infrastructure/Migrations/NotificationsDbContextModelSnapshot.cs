@@ -150,6 +150,14 @@ namespace ChatApp.Modules.Notifications.Infrastructure.Migrations
                     b.HasIndex("UserId", "Status")
                         .HasDatabaseName("ix_notifications_user_status");
 
+                    b.HasIndex("UserId", "CreatedAtUtc")
+                        .IsDescending(false, true)
+                        .HasFilter("status != 4")
+                        .HasDatabaseName("ix_notifications_userId_createdAt_unread");
+
+                    b.HasIndex("CreatedAtUtc", "Status")
+                        .HasDatabaseName("ix_notifications_created_status");
+
                     b.ToTable("notifications", (string)null);
                 });
 #pragma warning restore 612, 618

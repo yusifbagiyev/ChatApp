@@ -234,6 +234,9 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "IsActive");
 
+                    b.HasIndex("UserId", "IsActive", "IsHidden")
+                        .HasDatabaseName("ix_dm_members_userId_isActive_isHidden");
+
                     b.ToTable("direct_conversation_members", (string)null);
                 });
 

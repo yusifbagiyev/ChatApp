@@ -185,6 +185,9 @@ namespace ChatApp.Modules.Channels.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_channel_members_channel_user");
 
+                    b.HasIndex("UserId", "IsHidden")
+                        .HasDatabaseName("ix_channel_members_userId_isHidden");
+
                     b.ToTable("channel_members", (string)null);
                 });
 
