@@ -96,7 +96,9 @@
       "Bash(xargs -0 grep -l \"[əüöğışç]\")",
       "WebFetch(domain:virtuoso.dev)",
       "WebFetch(domain:github.com)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(find C:UsersybaghiyevDesktopChatAppchatapp-frontend/src -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.tsx -o -name *.ts -o -name *.css -o -name *.scss \\\\\\))",
+      "Bash(find C:UsersybaghiyevDesktopChatAppchatapp-frontend/src -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.tsx -o -name *.ts -o -name *.css -o -name *.scss \\\\\\) -exec wc -l {} +)"
     ],
     "deny": [],
     "ask": []

@@ -460,6 +460,16 @@ function Chat() {
     return { msgIdToIndex, indexToDateLabel };
   }, [flatItems]);
 
+  // ─── Stabil ref-lər — useCallback dependency-lərini azaltmaq üçün ───────────
+  // flatItemsMetadata və flatItems hər mesaj dəyişikliğində yenidən yaranır.
+  // Callback-larda birbaşa istifadə etsək, callback hər dəfə yenilənir →
+  // renderFlatItem yenilənir → bütün MessageBubble-lar yenidən render olur (flash).
+  // Ref ilə callback stabil qalır, amma həmişə ən son data-ya çatır.
+  const flatItemsRef = useRef(flatItems);
+  flatItemsRef.current = flatItems;
+  const flatItemsMetadataRef = useRef(flatItemsMetadata);
+  flatItemsMetadataRef.current = flatItemsMetadata;
+
   // ─── firstItemIndex — Virtuoso prepend mexanizmi ─────────────────────────────
   // Köhnə mesajlar yüklənəndə flatItems BAŞLANĞICINDA yeni item-lər əlavə olunur.
   // firstItemIndex bu fərq qədər azalır → Virtuoso scroll pozisiyasını avtomatik saxlayır.
@@ -513,7 +523,7 @@ function Chat() {
     pendingHighlightRef.current = null;
 
     setTimeout(() => {
-      const targetIndex = flatItemsMetadata.msgIdToIndex.get(messageId);
+      const targetIndex = flatItemsMetadataRef.current.msgIdToIndex.get(messageId);
       if (targetIndex === undefined) return;
 
       // Virtuoso scrollToIndex DATA ARRAY INDEX istəyir (firstItemIndex ilə əlaqəsi yoxdur)
@@ -534,7 +544,7 @@ function Chat() {
         });
       });
     }, 100);
-  }, [messages, flatItemsMetadata]);
+  }, [messages]);
 
   // Read later separator-a scroll — conversation açılanda separator mərkəzə gəlsin
   useEffect(() => {
@@ -542,12 +552,12 @@ function Chat() {
     pendingScrollToReadLaterRef.current = false;
 
     setTimeout(() => {
-      const idx = flatItems.findIndex((r) => r.type === "readLater");
+      const idx = flatItemsRef.current.findIndex((r) => r.type === "readLater");
       if (idx !== -1) {
         virtuosoRef.current?.scrollToIndex({ index: idx, align: "center", behavior: "auto" });
       }
     }, 100);
-  }, [messages, flatItems]);
+  }, [messages]);
 
   // New messages separator-a scroll — unread mesaj olduqda separator görünsün
   useEffect(() => {
@@ -555,14 +565,14 @@ function Chat() {
     pendingScrollToUnreadRef.current = false;
 
     setTimeout(() => {
-      const idx = flatItems.findIndex((r) => r.type === "newMessages");
+      const idx = flatItemsRef.current.findIndex((r) => r.type === "newMessages");
       if (idx !== -1) {
         virtuosoRef.current?.scrollToIndex({ index: idx, align: "center", behavior: "auto" });
       } else {
         virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" });
       }
     }, 100);
-  }, [messages, flatItems]);
+  }, [messages]);
 
   // ─── Mark-as-read mexanizmi ───
   // initialMsgIdsRef — conversation açılanda yüklənən mesaj ID-ləri
@@ -2194,12 +2204,15 @@ function Chat() {
 
   // handleScrollToMessage — mesaja scroll et (reply reference / pin bar klik)
   // Mesaj senderRuns-da varsa scrollToIndex, yoxdursa around endpoint-dən yüklə
+  // QEYD: flatItemsMetadataRef istifadə olunur (birbaşa flatItemsMetadata yox) —
+  // əks halda hər mesaj dəyişikliğində callback yenilənir → renderFlatItem yenilənir →
+  // bütün MessageBubble-lar yenidən render olur (flash effekti)
   const handleScrollToMessage = useCallback(
     async (messageId) => {
       if (!selectedChat) return;
 
       // senderRuns-da bu mesaj varmı? (virtual list-də render olunmaya bilər amma data-da var)
-      const targetIndex = flatItemsMetadata.msgIdToIndex.get(messageId);
+      const targetIndex = flatItemsMetadataRef.current.msgIdToIndex.get(messageId);
       if (targetIndex !== undefined) {
         // Var — scrollToIndex ilə scroll et + highlight (DATA ARRAY INDEX istifadə olunur)
         virtuosoRef.current?.scrollToIndex({ index: targetIndex, align: "center", behavior: "auto" });
@@ -2242,7 +2255,8 @@ function Chat() {
         console.error("Failed to load messages around target:", err);
       }
     },
-    [selectedChat, flatItemsMetadata, hasMoreRef, hasMoreDownRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedChat],
   );
 
   // handlePinBarClick — PinnedBar-a klik edildikdə
@@ -2490,25 +2504,31 @@ function Chat() {
   // handleRangeChanged — Virtuoso görünən aralıq dəyişdikdə çağırılır
   // 1. Floating date label-ini yenilə (DOM query əvəzinə data lookup)
   // 2. Mark-as-read (IntersectionObserver əvəzinə)
+  // QEYD: flatItemsRef/flatItemsMetadataRef istifadə olunur — callback stabil qalır,
+  // Virtuoso hər render-də yeni callback almır → daxili re-bindlər azalır
   const handleRangeChanged = useCallback(({ startIndex, endIndex }) => {
+    const curFlatItems = flatItemsRef.current;
+    const curMetadata = flatItemsMetadataRef.current;
+    const curFirstItemIndex = firstItemIndexRef.current;
+
     // Floating date
     const el = floatingDateRef.current;
     if (el) {
       // startIndex Virtuoso virtual index-dir (firstItemIndex ofsetli)
       // flatItems array index-ə çevir
-      const dataIndex = startIndex - firstItemIndex;
-      const label = flatItemsMetadata.indexToDateLabel.get(dataIndex) || "";
+      const dataIndex = startIndex - curFirstItemIndex;
+      const label = curMetadata.indexToDateLabel.get(dataIndex) || "";
       // Collision check — əgər ilk görünən item date separator-dursa, floating date gizlət
-      const firstVisibleItem = flatItems[dataIndex];
+      const firstVisibleItem = curFlatItems[dataIndex];
       const finalLabel = (firstVisibleItem?.type === "date") ? "" : label;
       if (el.textContent !== finalLabel) el.textContent = finalLabel;
     }
 
     // Mark-as-read — görünən item-lərdəki unread mesajları topla
-    const startDataIndex = startIndex - firstItemIndex;
-    const endDataIndex = endIndex - firstItemIndex;
-    for (let i = Math.max(0, startDataIndex); i <= Math.min(flatItems.length - 1, endDataIndex); i++) {
-      const item = flatItems[i];
+    const startDataIndex = startIndex - curFirstItemIndex;
+    const endDataIndex = endIndex - curFirstItemIndex;
+    for (let i = Math.max(0, startDataIndex); i <= Math.min(curFlatItems.length - 1, endDataIndex); i++) {
+      const item = curFlatItems[i];
       if (item?.type !== "message") continue;
       const msg = item.message;
       if (!msg.isRead && msg.senderId !== user?.id && !processedMsgIdsRef.current.has(msg.id)) {
@@ -2524,7 +2544,7 @@ function Chat() {
       if (readBatchTimerRef.current) clearTimeout(readBatchTimerRef.current);
       readBatchTimerRef.current = setTimeout(flushReadBatch, 300);
     }
-  }, [flatItems, flatItemsMetadata, firstItemIndex, user?.id, selectedChat]);
+  }, [user?.id, selectedChat]);
 
   // ─── Scroll event listener — startReached/endReached əvəzinə ──────────────
   // Virtuoso-nun startReached/endReached callback-ları az item olduqda etibarsızdır.
@@ -2807,7 +2827,7 @@ function Chat() {
               {/* messages-area — Virtuoso virtual scroll container */}
               <div style={{ position: "relative", flex: 1, display: chatLoading ? "none" : "flex", flexDirection: "column" }}>
                 {/* Loading older — chat header-in altında sabit loading bar */}
-                {loadingOlder && <div className="loading-older" />}
+                <div className={`loading-older${loadingOlder ? " active" : ""}`} />
                 {/* Floating date — Virtuoso-dan kənarda, absolute overlay */}
                 <div className="floating-date" ref={floatingDateRef} />
 
