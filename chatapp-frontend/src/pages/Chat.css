@@ -66,25 +66,75 @@
 }
 
 /* ─── Network Status Banner ─────────────────────────────────────────────── */
-.network-banner {
+/* ─── Connection Status Toast ─────────────────────────────────────────────── */
+.connection-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 6px 16px;
+  gap: 10px;
+  padding: 10px 20px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
   color: #fff;
-  z-index: 100;
-  flex-shrink: 0;
+  z-index: 9999;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+  animation: toast-slide-in 0.3s ease-out forwards;
+  pointer-events: none;
 }
-.network-banner.offline {
-  background: #d32f2f;
+
+.connection-toast.toast-hide {
+  animation: toast-slide-out 0.3s ease-in forwards;
 }
-.network-banner.reconnecting {
-  background: #f57c00;
+
+.connection-toast.offline {
+  background: rgba(211, 47, 47, 0.95);
 }
-.network-banner.disconnected {
-  background: #e65100;
+
+.connection-toast.reconnecting {
+  background: rgba(245, 124, 0, 0.95);
+}
+
+.connection-toast.disconnected {
+  background: rgba(230, 81, 0, 0.95);
+}
+
+.connection-toast.connected {
+  background: rgba(46, 125, 50, 0.95);
+}
+
+/* Spinner — reconnecting zamanı dönən dairə */
+.connection-toast .toast-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: toast-spin 0.8s linear infinite;
+}
+
+/* Check icon — connected olduqda */
+.connection-toast .toast-check {
+  font-size: 15px;
+  line-height: 1;
+}
+
+@keyframes toast-slide-in {
+  from { transform: translateX(-50%) translateY(-100px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+@keyframes toast-slide-out {
+  from { transform: translateX(-50%) translateY(0); opacity: 1; }
+  to { transform: translateX(-50%) translateY(-100px); opacity: 0; }
+}
+
+@keyframes toast-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ===================================

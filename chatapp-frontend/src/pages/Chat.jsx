@@ -147,9 +147,11 @@ function Chat() {
 
   // ─── Network / Connection State ─────────────────────────────────────────────
   // isOffline: navigator.onLine === false (internet bağlantısı yoxdur)
-  // connectionState: SignalR bağlantı vəziyyəti ("connected" | "reconnecting" | "disconnected")
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [connectionState, setConnectionState] = useState("connected");
+  // Toast: yalnız əvvəl connected olub sonra kəsilən halda göstər
+  const wasConnectedRef = useRef(false);
+  const [toast, setToast] = useState(null); // { type, message, hiding }
+  const toastTimerRef = useRef(null);
 
   // chatLoading — conversation seçildikdə mesajlar yüklənənə qədər true
   const [chatLoading, setChatLoading] = useState(false);
@@ -329,13 +331,37 @@ function Chat() {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
-    // SignalR connection state callback
-    onConnectionStateChange((state) => setConnectionState(state));
+    // SignalR connection state callback + toast logic
+    onConnectionStateChange((state) => {
+      if (state === "connected") {
+        // Əgər əvvəl kəsilmişdi — "bərpa olundu" toast göstər
+        if (wasConnectedRef.current) {
+          setToast((prev) => {
+            if (prev === null) return null; // əvvəl toast yox idi — göstərmə
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+            toastTimerRef.current = setTimeout(() => {
+              setToast((t) => t ? { ...t, hiding: true } : null);
+              toastTimerRef.current = setTimeout(() => setToast(null), 300);
+            }, 2000);
+            return { type: "connected", message: "Bağlantı bərpa olundu" };
+          });
+        }
+        wasConnectedRef.current = true;
+      } else if (wasConnectedRef.current && (state === "reconnecting" || state === "disconnected")) {
+        // Yalnız əvvəl connected olub sonra kəsiləndə toast göstər
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        setToast({
+          type: state,
+          message: state === "reconnecting" ? "Bağlantı bərpa olunur..." : "Bağlantı kəsildi. Yenidən qoşulur...",
+        });
+      }
+    });
 
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       onConnectionStateChange(null);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []);
 
@@ -2445,14 +2471,19 @@ function Chat() {
   // --- JSX RENDER ---
   return (
     <div className="main-layout">
-      {/* Network status banner — offline / reconnecting */}
-      {(isOffline || connectionState === "reconnecting" || connectionState === "disconnected") && (
-        <div className={`network-banner ${isOffline ? "offline" : connectionState}`}>
-          {isOffline
-            ? "İnternet bağlantısı yoxdur"
-            : connectionState === "reconnecting"
-              ? "Bağlantı bərpa olunur..."
-              : "Bağlantı kəsildi. Yenidən qoşulur..."}
+      {/* Connection status toast — offline / reconnecting / disconnected */}
+      {isOffline && (
+        <div className="connection-toast offline">
+          <span className="toast-check">⚠</span>
+          İnternet bağlantısı yoxdur
+        </div>
+      )}
+      {!isOffline && toast && (
+        <div className={`connection-toast ${toast.type}${toast.hiding ? " toast-hide" : ""}`}>
+          {toast.type === "connected"
+            ? <span className="toast-check">✓</span>
+            : <span className="toast-spinner" />}
+          {toast.message}
         </div>
       )}
       {/* main-body — sidebar + content yan-yana */}
