@@ -59,12 +59,16 @@ export default function useChatSignalR(
         ) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === message.id)) return prev;
-            // Öz mesajımızın echo-su — optimistic mesajları sil (real data ilə əvəz olunur)
+            // Öz mesajımızın echo-su — optimistic mesajı tap və sil (real data ilə əvəz olunur)
             // Echo-da reply/mention data olmaya bilər — optimistic-dən merge et
+            // FIFO: ən köhnə optimistic-i tap (echo-lar göndərmə sırasına uyğun gəlir)
             let enrichedMsg = message;
+            let matchedOptId = null;
             if (message.senderId === userId) {
-              const optimistic = prev.find((m) => m._optimistic);
+              const optimistics = prev.filter((m) => m._optimistic || (typeof m.id === "string" && m.id.startsWith("temp-")));
+              const optimistic = optimistics.length > 0 ? optimistics[optimistics.length - 1] : null;
               if (optimistic) {
+                matchedOptId = optimistic.id;
                 enrichedMsg = {
                   ...message,
                   replyToContent: message.replyToContent || optimistic.replyToContent || null,
@@ -73,8 +77,9 @@ export default function useChatSignalR(
                 };
               }
             }
-            const cleaned = message.senderId === userId
-              ? prev.filter((m) => !m._optimistic)
+            // Yalnız uyğun gələn optimistic-i sil, qalanlarını saxla
+            const cleaned = matchedOptId
+              ? prev.filter((m) => m.id !== matchedOptId)
               : prev;
             if (message.senderId === userId) {
               setShouldScrollBottom(true);
@@ -165,12 +170,16 @@ export default function useChatSignalR(
         if (current && current.type === 1 && current.id === message.channelId) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === message.id)) return prev;
-            // Öz mesajımızın echo-su — optimistic mesajları sil
+            // Öz mesajımızın echo-su — optimistic mesajı tap və sil
             // Echo-da reply/mention data olmaya bilər — optimistic-dən merge et
+            // FIFO: ən köhnə optimistic-i tap (echo-lar göndərmə sırasına uyğun gəlir)
             let enrichedMsg = message;
+            let matchedOptId = null;
             if (message.senderId === userId) {
-              const optimistic = prev.find((m) => m._optimistic);
+              const optimistics = prev.filter((m) => m._optimistic || (typeof m.id === "string" && m.id.startsWith("temp-")));
+              const optimistic = optimistics.length > 0 ? optimistics[optimistics.length - 1] : null;
               if (optimistic) {
+                matchedOptId = optimistic.id;
                 enrichedMsg = {
                   ...message,
                   replyToContent: message.replyToContent || optimistic.replyToContent || null,
@@ -179,8 +188,9 @@ export default function useChatSignalR(
                 };
               }
             }
-            const cleaned = message.senderId === userId
-              ? prev.filter((m) => !m._optimistic)
+            // Yalnız uyğun gələn optimistic-i sil, qalanlarını saxla
+            const cleaned = matchedOptId
+              ? prev.filter((m) => m.id !== matchedOptId)
               : prev;
             if (message.senderId === userId) {
               setShouldScrollBottom(true);

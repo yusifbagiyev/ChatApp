@@ -1168,11 +1168,17 @@ function Chat() {
     const channelConv = convs.find((c) => c.type === 1 && c.id === m.userId);
     if (channelConv) { handleSelectChat(channelConv); return; }
     const existing = convs.find((c) => c.type === 0 && c.otherUserId === m.userId);
-    if (existing) { handleSelectChat(existing); }
-    else {
-      const deptUser = convs.find((c) => c.type === 2 && (c.otherUserId === m.userId || c.userId === m.userId));
-      if (deptUser) handleSelectChat(deptUser);
-    }
+    if (existing) { handleSelectChat(existing); return; }
+    const deptUser = convs.find((c) => c.type === 2 && (c.otherUserId === m.userId || c.userId === m.userId));
+    if (deptUser) { handleSelectChat(deptUser); return; }
+    // İstifadəçi conversationlist-də yoxdur — virtual DM yarat (type=2 pattern)
+    // İlk mesaj göndəriləndə real conversation yaranacaq
+    handleSelectChat({
+      id: m.userId,
+      type: 2,
+      name: m.userFullName,
+      otherUserId: m.userId,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat]);
 
@@ -1371,9 +1377,11 @@ function Chat() {
     setMessageText(savedDraft);
 
     // ── Cache SAVE — köhnə chatın mesajlarını cache-ə yaz ──
-    if (selectedChat && messages.length > 0) {
+    // Optimistic mesajları cache-ə yazma — pending/uploading mesajlar cache-də qalmamalıdır
+    const cacheableMessages = messages.filter((m) => !m._optimistic);
+    if (selectedChat && cacheableMessages.length > 0) {
       messageCacheRef.current.set(selectedChat.id, {
-        messages,
+        messages: cacheableMessages,
         pinnedMessages,
         favoriteMessages: sidebar.favoriteMessages,
         hasMore: hasMoreRef.current,
@@ -2132,6 +2140,9 @@ function Chat() {
     const currentReply = replyTo;
     setReplyTo(null);
 
+    // Mentions-ı hazırla (activeMentionsRef sıfırlanır, ona görə API göndərmədən əvvəl saxla)
+    const mentionsForSend = mention.prepareMentionsForSend(text, selectedChat.type);
+
     // ── Optimistic UI: mesajı dərhal göstər, status=Pending ──
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const now = new Date().toISOString();
@@ -2151,6 +2162,7 @@ function Chat() {
       replyToMessageId: currentReply ? currentReply.id : null,
       replyToContent: currentReply ? currentReply.content : null,
       replyToSenderName: currentReply ? currentReply.senderFullName : null,
+      mentions: mentionsForSend, // Mention highlight dərhal görünsün
       _optimistic: true, // Flag — SignalR echo gəldikdə silmək üçün
     };
 
@@ -2216,18 +2228,17 @@ function Chat() {
       const endpoint = getChatEndpoint(chatId, chatType, "/messages");
       if (!endpoint) return;
 
-      const mentionsToSend = mention.prepareMentionsForSend(text, chatType);
-
-      // POST — mesaj göndər
+      // POST — mesaj göndər (mentionsForSend yuxarıda hazırlanıb)
       await apiPost(endpoint, {
         content: text,
         replyToMessageId: currentReply ? currentReply.id : null,
-        ...(mentionsToSend.length > 0 ? { mentions: mentionsToSend } : {}),
+        ...(mentionsForSend.length > 0 ? { mentions: mentionsForSend } : {}),
       });
 
-      // ── API uğurlu → optimistic mesajın statusunu Sent (1) et ──
+      // ── API uğurlu → optimistic mesajın statusunu Sent (1) et + _optimistic sil ──
+      // _optimistic silinir ki, react/more butonları dərhal görünsün (SignalR echo gözləmədən)
       setMessages((prev) =>
-        prev.map((m) => (m.id === tempId ? { ...m, status: 1 } : m)),
+        prev.map((m) => (m.id === tempId ? { ...m, status: 1, _optimistic: false } : m)),
       );
 
       // ConversationList-də statusu Sent et

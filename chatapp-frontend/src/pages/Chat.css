@@ -5834,7 +5834,7 @@
     transparent 3px, transparent 4px
   );
   background-position: bottom;
-  background-size: 100% 0.5px;
+  background-size: 100% 1px;
   background-repeat: no-repeat;
 }
 
@@ -5844,7 +5844,7 @@
     #000 0, #000 3px,
     transparent 3px, transparent 4px
   );
-  background-size: 100% 0.5px;
+  background-size: 100% 1px;
 }
 
 /* ─── Message Links — klikləyilən URL-lar ─── */
