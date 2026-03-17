@@ -163,9 +163,8 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMessages
                         broadcastDto.ReadByCount,
                         broadcastDto.TotalMemberCount);
 
-                    // Get all member user IDs (excluding the sender)
+                    // Get all member user IDs (sender daxil — multi-device sync üçün)
                     var memberUserIds = members
-                        .Where(m => m.UserId != request.SenderId)
                         .Select(m => m.UserId)
                         .ToList();
 
