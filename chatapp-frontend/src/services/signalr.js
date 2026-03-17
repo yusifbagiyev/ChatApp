@@ -71,70 +71,72 @@ export async function startConnection() {
   // Yeni bağlantı başlayır — stopRequested sıfırla
   stopRequested = false;
 
-  // IIFE (Immediately Invoked Async Function): async funksiyonu dərhal çağır
-  // Bu pattern race condition-u önləyir — yalnız 1 bağlantı yaranır
   connectionPromise = (async () => {
-    // 1. HubConnection obyekti qur
-    // HubConnectionBuilder — builder pattern (.NET-də WebApplicationBuilder kimi)
     const conn = new HubConnectionBuilder()
       .withUrl(HUB_URL, {
-        // accessTokenFactory: Hər reconnect zamanı TƏZƏ token alır.
-        // Köhnə variant: () => token (statik, expire olurdu)
-        // Yeni variant: () => getSignalRToken() (dinamik, hər dəfə fresh token)
         accessTokenFactory: () => getSignalRToken(),
       })
       // withAutomaticReconnect: şəbəkə kəsildikdə avtomatik yenidən qoşul
-      // Array: [0ms, 1s, 2s, 5s, 10s, 30s] — hər cəhd arasındakı gözləmə müddəti
-      .withAutomaticReconnect([0, 1000, 2000, 5000, 10000, 30000])
-      // LogLevel.Warning: yalnız xəbərdarlıq + error-ları console-a yaz
+      // Uzun retry siyahısı — backend restart-a kifayət qədər vaxt verir
+      .withAutomaticReconnect([0, 1000, 2000, 5000, 5000, 10000, 10000, 30000, 30000, 60000])
       .configureLogging(LogLevel.Warning)
-      .build(); // HubConnection obyekti yarat
+      .build();
 
-    // 2. Lifecycle event-ləri qur
-    // onreconnecting: şəbəkə kəsildikdə — connection null-a set et
     conn.onreconnecting(() => {
       connection = null;
       notifyConnectionState("reconnecting");
     });
 
-    // onreconnected: yenidən qoşulduqda — yeni bağlantını set et
     conn.onreconnected(() => {
       connection = conn;
       notifyConnectionState("connected");
     });
 
-    // onclose: bağlantı tamamilə bağlandıqda (bütün reconnect cəhdləri uğursuz)
-    // Əgər logout deyilsə → 5 saniyə sonra sıfırdan yenidən bağlan
+    // onclose: bütün reconnect cəhdləri uğursuz → sonsuz retry loop (5s interval)
     conn.onclose(() => {
       connection = null;
       connectionPromise = null;
-      notifyConnectionState("disconnected");
+      notifyConnectionState("reconnecting");
 
       if (!stopRequested) {
-        console.warn("SignalR: connection lost. Retrying in 5s...");
-        if (retryTimerId) clearTimeout(retryTimerId);
-        retryTimerId = setTimeout(() => {
-          retryTimerId = null;
-          // Retry-dan əvvəl yenidən yoxla — bu müddətdə logout ola bilər
-          if (stopRequested) return;
-          startConnection().catch((err) =>
-            console.error("SignalR: reconnect from scratch failed:", err),
-          );
-        }, 5000);
+        scheduleRetry();
       }
     });
 
-    // 3. Bağlantını başlat (WebSocket el sıxışması)
     await conn.start();
     notifyConnectionState("connected");
 
-    // 4. Singleton-u set et
     connection = conn;
-    connectionPromise = null; // Promise bitdi, növbəti çağırışlar birbaşa connection-u alsın
+    connectionPromise = null;
     return conn;
-  })();
+  })().catch((err) => {
+    // startConnection fail oldu — connectionPromise-i sıfırla ki, retry mümkün olsun
+    console.error("SignalR: initial connection failed:", err);
+    connection = null;
+    connectionPromise = null;
+    notifyConnectionState("reconnecting");
+
+    if (!stopRequested) {
+      scheduleRetry();
+    }
+    throw err;
+  });
 
   return connectionPromise;
+}
+
+// ─── scheduleRetry ────────────────────────────────────────────────────────────
+// Sonsuz retry loop — hər 5 saniyədən bir yenidən bağlanmağa cəhd edir
+// Backend restart olduqda bu loop backend geri gələnə qədər davam edir
+function scheduleRetry() {
+  if (retryTimerId) clearTimeout(retryTimerId);
+  retryTimerId = setTimeout(() => {
+    retryTimerId = null;
+    if (stopRequested) return;
+    startConnection().catch(() => {
+      // startConnection öz catch-ində scheduleRetry çağırır — əlavə iş lazım deyil
+    });
+  }, 5000);
 }
 
 // ─── stopConnection ───────────────────────────────────────────────────────────
