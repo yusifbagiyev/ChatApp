@@ -476,7 +476,7 @@ function Chat() {
 
     // Upload mesajları ən yeni — DESC sırada əvvələ əlavə et
     return [...uploadMsgs, ...messages];
-  }, [messages, uploadManager.uploadTasks, selectedChat?.id, user]);
+  }, [messages, uploadManager, selectedChat?.id, user]);
 
   // grouped — mesajları tarix separator-ları ilə qruplaşdır
   // useMemo — messages dəyişmədikdə bu hesablamanı yenidən etmə
@@ -903,7 +903,7 @@ function Chat() {
 
   // loadPinnedMessages — seçilmiş chatın pinlənmiş mesajlarını yüklə
   // Yalnız handleSelectChat-dan sonra çağırılır
-  async function loadPinnedMessages(chat) {
+  const loadPinnedMessages = useCallback(async (chat) => {
     try {
       const endpoint = getChatEndpoint(chat.id, chat.type, "/messages/pinned");
       if (!endpoint) return;
@@ -917,7 +917,7 @@ function Chat() {
       console.error("Failed to load pinned messages:", err);
       setPinnedMessages([]);
     }
-  }
+  }, []);
 
   // loadFavoriteMessages → useSidebarPanels hook-una çıxarılıb
 
@@ -1843,7 +1843,7 @@ function Chat() {
         showToast("Pin əməliyyatı uğursuz oldu", "error");
       }
     },
-    [selectedChat],
+    [selectedChat, showToast, loadPinnedMessages],
   );
 
   // handleFavoriteMessage, handleRemoveFavorite → useSidebarPanels hook-una çıxarılıb
