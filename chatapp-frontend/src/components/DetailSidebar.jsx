@@ -6,7 +6,7 @@ import { memo } from "react";
 /* eslint-disable react-hooks/refs */
 
 import { getInitials, getAvatarColor, getMessagePreview, highlightMatches, formatFileSize, formatSectionDate, formatRelativeDate } from "../utils/chatUtils";
-import { downloadFileByUrl } from "../services/api";
+import { downloadFileByUrl, getFileUrl } from "../services/api";
 
 // highlightMatches helper — parts array-dan JSX render edir
 const renderHighlight = (text, query) => {
@@ -120,8 +120,10 @@ function DetailSidebar({
                 </svg>
               </div>
             ) : (
-              <div className="ds-avatar" style={{ background: getAvatarColor(selectedChat.name) }}>
-                {getInitials(selectedChat.name)}
+              <div className="ds-avatar" style={{ background: selectedChat.avatarUrl ? "transparent" : getAvatarColor(selectedChat.name) }}>
+                {selectedChat.avatarUrl ? (
+                  <img src={getFileUrl(selectedChat.avatarUrl)} alt={selectedChat.name} className="ds-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(selectedChat.name); e.target.parentNode.textContent = getInitials(selectedChat.name); }} />
+                ) : getInitials(selectedChat.name)}
               </div>
             )}
             <div className="ds-name">{selectedChat.name}</div>
@@ -134,10 +136,12 @@ function DetailSidebar({
                       <div
                         key={uid}
                         className="ds-members-avatar"
-                        style={{ background: getAvatarColor(m.fullName) }}
+                        style={{ background: m.avatarUrl ? "transparent" : getAvatarColor(m.fullName) }}
                         title={m.fullName}
                       >
-                        {getInitials(m.fullName)}
+                        {m.avatarUrl ? (
+                          <img src={getFileUrl(m.avatarUrl)} alt={m.fullName} className="ds-members-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(m.fullName); e.target.parentNode.textContent = getInitials(m.fullName); }} />
+                        ) : getInitials(m.fullName)}
                       </div>
                     ))}
                     {Object.keys(channelMembers[selectedChat.id]).length > 4 && (

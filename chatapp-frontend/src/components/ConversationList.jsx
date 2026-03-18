@@ -8,7 +8,7 @@ import { getInitials, getAvatarColor, formatTime } from "../utils/chatUtils";
 import { renderTextWithEmojis } from "../utils/emojiConstants";  // Emoji → Apple img çevirici
 
 // API servis — backend-ə HTTP GET request göndərmək üçün
-import { apiGet } from "../services/api";
+import { apiGet, getFileUrl } from "../services/api";
 
 // ─── renderPreviewEmojis — preview mətndəki Unicode emojiləri Apple CDN img-ə çevirir ───
 function renderPreviewEmojis(text) {
@@ -61,9 +61,11 @@ const ConversationItem = memo(function ConversationItem({
     previewPrefix = (
       <span
         className="preview-sender-avatar"
-        style={{ background: getAvatarColor(conv.lastMessageSenderFullName) }}
+        style={{ background: conv.lastMessageSenderAvatarUrl ? "transparent" : getAvatarColor(conv.lastMessageSenderFullName) }}
       >
-        {getInitials(conv.lastMessageSenderFullName)}
+        {conv.lastMessageSenderAvatarUrl ? (
+          <img src={getFileUrl(conv.lastMessageSenderAvatarUrl)} alt="" className="preview-sender-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(conv.lastMessageSenderFullName); e.target.parentNode.textContent = getInitials(conv.lastMessageSenderFullName); }} />
+        ) : getInitials(conv.lastMessageSenderFullName)}
       </span>
     );
     previewContent = conv.lastMessage;
@@ -80,12 +82,19 @@ const ConversationItem = memo(function ConversationItem({
       <div className="conversation-avatar-wrapper">
         <div
           className="conversation-avatar"
-          style={{ background: conv.isNotes ? "#2FC6F6" : getAvatarColor(conv.name) }}
+          style={{ background: conv.isNotes ? "#2FC6F6" : conv.avatarUrl ? "transparent" : getAvatarColor(conv.name) }}
         >
           {conv.isNotes ? (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2">
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>
+          ) : conv.avatarUrl ? (
+            <img
+              src={getFileUrl(conv.avatarUrl)}
+              alt={conv.name}
+              className="conversation-avatar-img"
+              onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(conv.name); e.target.parentNode.textContent = getInitials(conv.name); }}
+            />
           ) : (
             getInitials(conv.name)
           )}

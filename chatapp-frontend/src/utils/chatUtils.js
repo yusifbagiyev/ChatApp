@@ -18,23 +18,48 @@ export const MAX_BATCH_FILES = 20; // Backend batch limit (max 20 mesaj bir requ
 // İcazə verilən fayl extension-ları — backend FileTypeHelper.ContentTypeMapping ilə sinxron
 export const ALLOWED_FILE_EXTENSIONS = new Set([
   // Images
-  ".jpg", ".jpeg", ".png", ".webp", ".svg", ".bmp",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".svg",
+  ".bmp",
   // Documents
-  ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv",
+  ".pdf",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".ppt",
+  ".pptx",
+  ".txt",
+  ".csv",
   // Videos
-  ".mp4", ".mpeg", ".mov", ".avi", ".webm",
+  ".mp4",
+  ".mpeg",
+  ".mov",
+  ".avi",
+  ".webm",
   // Audio
-  ".mp3", ".wav", ".ogg", ".weba",
+  ".mp3",
+  ".wav",
+  ".ogg",
+  ".weba",
   // Archives
-  ".zip", ".rar", ".7z", ".tar", ".gz",
+  ".zip",
+  ".rar",
+  ".7z",
+  ".tar",
+  ".gz",
 ]);
 
 // Fayl extension-ının icazə verilən siyahıda olub-olmadığını yoxla
 export function isAllowedFileExtension(fileName) {
   if (!fileName) return false;
-  const ext = fileName.lastIndexOf(".") !== -1
-    ? fileName.slice(fileName.lastIndexOf(".")).toLowerCase()
-    : "";
+  const ext =
+    fileName.lastIndexOf(".") !== -1
+      ? fileName.slice(fileName.lastIndexOf(".")).toLowerCase()
+      : "";
   return ALLOWED_FILE_EXTENSIONS.has(ext);
 }
 
@@ -176,7 +201,10 @@ export function getLastSeenText(dateString) {
 // "Monday, March 14, 2026" — həmişə eyni format, today/yesterday yoxdur
 export function formatSectionDate(dateString) {
   return new Date(dateString).toLocaleDateString("en-US", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 
@@ -189,12 +217,17 @@ export function formatRelativeDate(dateString) {
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
   const isYesterday = d.toDateString() === yesterday.toDateString();
-  if (isToday) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (isToday)
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   if (isYesterday) return "yesterday";
   if (d.getFullYear() === now.getFullYear()) {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 // ─── formatDateSeparator ──────────────────────────────────────────────────────
@@ -339,7 +372,7 @@ export function parseMentions(content, mentions) {
   const patterns = mentions.map((m) => ({
     pattern: m.isAllMention
       ? "All members"
-      : (m.userFullName || m.mentionedUserFullName),
+      : m.userFullName || m.mentionedUserFullName,
     userId: m.userId || m.mentionedUserId,
     userFullName: m.userFullName || m.mentionedUserFullName,
     isAll: !!m.isAllMention,
@@ -392,7 +425,10 @@ export function mergeMessageWithPrev(msg, prev) {
   if (prev.status !== undefined && prev.status > msg.status) {
     merged = { ...merged, status: prev.status, isRead: prev.status >= 3 };
   }
-  if (prev.readByCount !== undefined && prev.readByCount > (msg.readByCount || 0)) {
+  if (
+    prev.readByCount !== undefined &&
+    prev.readByCount > (msg.readByCount || 0)
+  ) {
     merged = { ...merged, readByCount: prev.readByCount, readBy: prev.readBy };
   }
   return merged;
@@ -401,13 +437,21 @@ export function mergeMessageWithPrev(msg, prev) {
 // ─── computeOptimisticReactions ──────────────────────────────────────────────
 // Reaction toggle-u lokal hesablayır (API çağırışından əvvəl UI-da göstərmək üçün).
 // Server cavabı gəldikdə authoritative data ilə əvəz olunacaq.
-export function computeOptimisticReactions(reactions, emoji, userId, userFullName) {
+export function computeOptimisticReactions(
+  reactions,
+  emoji,
+  userId,
+  userFullName,
+) {
   const prev = reactions || [];
   const idx = prev.findIndex((r) => r.emoji === emoji);
 
   if (idx === -1) {
     // Yeni emoji — əlavə et
-    return [...prev, { emoji, count: 1, userIds: [userId], userFullNames: [userFullName] }];
+    return [
+      ...prev,
+      { emoji, count: 1, userIds: [userId], userFullNames: [userFullName] },
+    ];
   }
 
   const existing = prev[idx];
@@ -425,7 +469,9 @@ export function computeOptimisticReactions(reactions, emoji, userId, userFullNam
             ...r,
             count: r.count - 1,
             userIds: r.userIds.filter((id) => id !== userId),
-            userFullNames: (r.userFullNames || []).filter((_, j) => j !== userIdx),
+            userFullNames: (r.userFullNames || []).filter(
+              (_, j) => j !== userIdx,
+            ),
           }
         : r,
     );

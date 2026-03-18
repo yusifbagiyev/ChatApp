@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, memo } from "react";
-import { apiGet } from "../services/api";
+import { apiGet, getFileUrl } from "../services/api";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
 
 function ForwardPanel({ conversations, onForward, onClose }) {
@@ -151,12 +151,14 @@ function ForwardPanel({ conversations, onForward, onClose }) {
                 >
                   <div
                     className="forward-item-avatar"
-                    style={{ background: item.isNotes ? "#2FC6F6" : getAvatarColor(item.name) }}
+                    style={{ background: item.isNotes ? "#2FC6F6" : item.avatarUrl ? "transparent" : getAvatarColor(item.name) }}
                   >
                     {item.isNotes ? (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2">
                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                       </svg>
+                    ) : item.avatarUrl ? (
+                      <img src={getFileUrl(item.avatarUrl)} alt={item.name} className="forward-item-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(item.name); e.target.parentNode.textContent = getInitials(item.name); }} />
                     ) : (
                       getInitials(item.name)
                     )}

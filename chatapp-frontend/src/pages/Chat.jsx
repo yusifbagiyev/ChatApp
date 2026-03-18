@@ -36,7 +36,7 @@ import { AuthContext } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
 // API servis — HTTP metodları (GET, POST, PUT, DELETE)
-import { apiGet, apiPost, apiPut, apiDelete } from "../services/api";
+import { apiGet, apiPost, apiPut, apiDelete, getFileUrl } from "../services/api";
 
 // UI komponentlər — hər biri ayrı bir visual blok
 import Sidebar from "../components/Sidebar"; // sol nav bar
@@ -405,7 +405,7 @@ function Chat() {
     window.addEventListener("offline", handleOffline);
 
     // SignalR connection state callback + toast logic
-    onConnectionStateChange((state) => {
+    const unsubscribe = onConnectionStateChange((state) => {
       if (state === "connected") {
         if (wasConnectedRef.current) {
           // Əvvəl connected idi, kəsildi, indi yenidən qoşuldu —
@@ -432,7 +432,7 @@ function Chat() {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      onConnectionStateChange(null);
+      unsubscribe();
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []);
@@ -544,6 +544,7 @@ function Chat() {
           senderId,
           isOwn: senderId === user?.id,
           senderFullName: msg.senderFullName,
+          senderAvatarUrl: msg.senderAvatarUrl,
           messages: [msg],
         };
       }
@@ -561,13 +562,14 @@ function Chat() {
         items.push(run);
         continue;
       }
-      const { messages: runMsgs, isOwn, senderFullName, senderId } = run;
+      const { messages: runMsgs, isOwn, senderFullName, senderAvatarUrl, senderId } = run;
       for (let i = 0; i < runMsgs.length; i++) {
         items.push({
           type: "message",
           message: runMsgs[i],
           isOwn,
           senderFullName,
+          senderAvatarUrl,
           senderId,
           isFirstInGroup: i === 0,
           isLastInGroup: i === runMsgs.length - 1,
@@ -3250,6 +3252,7 @@ function Chat() {
                         message: msg,
                         isOwn,
                         senderFullName,
+                        senderAvatarUrl,
                         isFirstInGroup,
                         isLastInGroup,
                       } = item;
@@ -3302,10 +3305,12 @@ function Chat() {
                               <div
                                 className="sender-group-avatar"
                                 style={{
-                                  background: getAvatarColor(senderFullName),
+                                  background: senderAvatarUrl ? "transparent" : getAvatarColor(senderFullName),
                                 }}
                               >
-                                {getInitials(senderFullName)}
+                                {senderAvatarUrl ? (
+                                  <img src={getFileUrl(senderAvatarUrl)} alt={senderFullName} className="sender-group-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(senderFullName); e.target.parentNode.textContent = getInitials(senderFullName); }} />
+                                ) : getInitials(senderFullName)}
                               </div>
                             ) : (
                               <div className="sender-group-avatar-space" />

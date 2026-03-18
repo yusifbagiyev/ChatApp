@@ -1,6 +1,7 @@
 import { memo } from "react";
 // Utility funksiyaları import et
 import { getInitials, getAvatarColor, getLastSeenText } from "../utils/chatUtils";
+import { getFileUrl } from "../services/api";
 
 // ChatHeader komponenti — chat panelinin yuxarı başlığı
 // Props:
@@ -20,12 +21,19 @@ function ChatHeader({ selectedChat, onlineUsers, onOpenAddMember, addMemberOpen,
         {/* Avatar — Notes üçün bookmark icon, digərləri üçün initials */}
         <div
           className="chat-header-avatar"
-          style={{ background: selectedChat.isNotes ? "#2FC6F6" : getAvatarColor(selectedChat.name) }}
+          style={{ background: selectedChat.isNotes ? "#2FC6F6" : selectedChat.avatarUrl ? "transparent" : getAvatarColor(selectedChat.name) }}
         >
           {selectedChat.isNotes ? (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2">
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>
+          ) : selectedChat.avatarUrl ? (
+            <img
+              src={getFileUrl(selectedChat.avatarUrl)}
+              alt={selectedChat.name}
+              className="chat-header-avatar-img"
+              onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(selectedChat.name); e.target.parentNode.textContent = getInitials(selectedChat.name); }}
+            />
           ) : (
             getInitials(selectedChat.name)
           )}

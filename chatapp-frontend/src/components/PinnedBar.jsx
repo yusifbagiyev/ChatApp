@@ -1,5 +1,6 @@
 // Utility funksiyaları import et
 import { getInitials, getAvatarColor, getMessagePreview } from "../utils/chatUtils";
+import { getFileUrl } from "../services/api";
 
 // PinnedBar komponenti — chatın üstündə compact pinlənmiş mesaj barı
 // Bir dəfədə bir pinlənmiş mesaj göstərir, klikləndikdə həmin mesaja scroll edir
@@ -121,9 +122,11 @@ function PinnedExpanded({
             {/* Avatar */}
             <div
               className="pinned-expanded-avatar"
-              style={{ background: getAvatarColor(msg.senderFullName) }}
+              style={{ background: msg.senderAvatarUrl ? "transparent" : getAvatarColor(msg.senderFullName) }}
             >
-              {getInitials(msg.senderFullName)}
+              {msg.senderAvatarUrl ? (
+                <img src={getFileUrl(msg.senderAvatarUrl)} alt={msg.senderFullName} className="pinned-expanded-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(msg.senderFullName); e.target.parentNode.textContent = getInitials(msg.senderFullName); }} />
+              ) : getInitials(msg.senderFullName)}
             </div>
 
             {/* Mesaj məlumatı */}

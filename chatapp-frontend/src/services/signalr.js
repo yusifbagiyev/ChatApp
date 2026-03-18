@@ -28,8 +28,12 @@ let stopRequested = false;
 // retryTimerId: onclose retry setTimeout ID-si — cleanup üçün
 let retryTimerId = null;
 
+// retryCount: sonsuz retry-nin qarşısını almaq üçün sayğac
+let retryCount = 0;
+const MAX_RETRY_COUNT = 30; // Maksimum 30 cəhd (~2.5 dəq)
+
 // ─── Tab bağlananda bağlantını təmiz bağla ──────────────────────────────────
-window.addEventListener("beforeunload", () => {
+function handleBeforeUnload() {
   stopRequested = true;
   if (retryTimerId) {
     clearTimeout(retryTimerId);
@@ -38,12 +42,12 @@ window.addEventListener("beforeunload", () => {
   if (connection) {
     connection.stop();
   }
-});
+}
+window.addEventListener("beforeunload", handleBeforeUnload);
 
 // ─── Internet geri gələndə dərhal reconnect et ──────────────────────────────
 // Browser "online" event-i: WiFi/ethernet bərpa olunduqda fire olur
-// scheduleRetry 5s gözləyir — bu event dərhal yenidən cəhd edir
-window.addEventListener("online", () => {
+function handleOnline() {
   if (stopRequested) return;
   if (connection) return; // artıq bağlıdır
   // Mövcud retry timer-i ləğv et — dərhal cəhd edəcəyik
@@ -51,8 +55,10 @@ window.addEventListener("online", () => {
     clearTimeout(retryTimerId);
     retryTimerId = null;
   }
+  retryCount = 0; // İnternet geri gəldi — sayğacı sıfırla
   startConnection().catch(() => {});
-});
+}
+window.addEventListener("online", handleOnline);
 
 // ─── getSignalRToken ──────────────────────────────────────────────────────────
 // SignalR JWT token alır. SignalR WebSocket-də HTTP cookie işlətmir,
@@ -116,6 +122,7 @@ export async function startConnection() {
     });
 
     await conn.start();
+    retryCount = 0; // Uğurlu bağlantı — sayğacı sıfırla
     notifyConnectionState("connected");
 
     connection = conn;
@@ -138,16 +145,18 @@ export async function startConnection() {
 }
 
 // ─── scheduleRetry ────────────────────────────────────────────────────────────
-// Sonsuz retry loop — hər 5 saniyədən bir yenidən bağlanmağa cəhd edir
-// Backend restart olduqda bu loop backend geri gələnə qədər davam edir
+// Retry loop — hər 5 saniyədən bir yenidən bağlanmağa cəhd edir (max 30 cəhd)
 function scheduleRetry() {
   if (retryTimerId) clearTimeout(retryTimerId);
+  retryCount++;
+  if (retryCount > MAX_RETRY_COUNT) {
+    notifyConnectionState("disconnected");
+    return;
+  }
   retryTimerId = setTimeout(() => {
     retryTimerId = null;
     if (stopRequested) return;
-    startConnection().catch(() => {
-      // startConnection öz catch-ində scheduleRetry çağırır — əlavə iş lazım deyil
-    });
+    startConnection().catch(() => {});
   }, 5000);
 }
 
@@ -183,16 +192,25 @@ export function getConnection() {
   return connection;
 }
 
-// ─── Connection State Listener ──────────────────────────────────────────────
-// Chat.jsx-dən SignalR bağlantı vəziyyətini izləmək üçün callback register et
+// ─── Connection State Listeners ─────────────────────────────────────────────
 // callback(state): "connected" | "reconnecting" | "disconnected"
-let connectionStateCallback = null;
+const connectionStateCallbacks = new Set();
 
 export function onConnectionStateChange(callback) {
-  connectionStateCallback = callback;
+  connectionStateCallbacks.add(callback);
+  // Unsubscribe funksiyası qaytar — cleanup üçün
+  return () => connectionStateCallbacks.delete(callback);
 }
 
 function notifyConnectionState(state) {
-  if (connectionStateCallback) connectionStateCallback(state);
+  for (const cb of connectionStateCallbacks) cb(state);
+}
+
+// ─── cleanup — module-level event listener-ləri silir ────────────────────────
+// SPA unmount / test cleanup üçün
+export function cleanup() {
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+  window.removeEventListener("online", handleOnline);
+  connectionStateCallbacks.clear();
 }
 

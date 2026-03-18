@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
-import { apiGet, apiPost, apiPut, apiDelete } from "../services/api";
+import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from "../services/api";
 
 // ─── Hierarchy helpers ──────────────────────────────────────────────────────
 
@@ -302,7 +302,7 @@ function ChannelPanel({
   const [avatarPreview, setAvatarPreview] = useState(
     editMode && channelData?.avatarUrl ? channelData.avatarUrl : null,
   ); // data URL string və ya edit mode-da mövcud avatar URL
-  const [_avatarFile, setAvatarFile] = useState(null); // File object — sonra backendə göndəriləcək
+  const [avatarFile, setAvatarFile] = useState(null); // File object — backendə göndəriləcək
   const fileInputRef = useRef(null);
 
   const handleAvatarClick = () => {
@@ -472,6 +472,22 @@ function ChannelPanel({
         memberIds: [...memberIds],
       });
 
+      // Avatar seçilibsə — upload et və channel-ı yenilə
+      const channelId = result?.id;
+      if (avatarFile && channelId) {
+        try {
+          const fd = new FormData();
+          fd.append("File", avatarFile);
+          const uploadResult = await apiUpload(`/api/files/upload/channel-avatar/${channelId}`, fd);
+          if (uploadResult?.downloadUrl) {
+            await apiPut(`/api/channels/${channelId}`, { avatarUrl: uploadResult.downloadUrl });
+            result.avatarUrl = uploadResult.downloadUrl;
+          }
+        } catch {
+          // Channel yaradılıb, avatar uğursuz olsa da davam et
+        }
+      }
+
       // Backend channel DTO qaytarır — onChannelCreated callback ilə Chat.jsx-ə ötür
       if (onChannelCreated) onChannelCreated(result);
     } catch (err) {
@@ -488,12 +504,26 @@ function ChannelPanel({
     setCreateError(null);
 
     try {
-      // 1. Channel məlumatlarını yenilə
+      // 1. Avatar upload (əgər dəyişibsə)
+      let newAvatarUrl = null;
+      if (avatarFile) {
+        try {
+          const fd = new FormData();
+          fd.append("File", avatarFile);
+          const uploadResult = await apiUpload(`/api/files/upload/channel-avatar/${channelData.id}`, fd);
+          if (uploadResult?.downloadUrl) newAvatarUrl = uploadResult.downloadUrl;
+        } catch {
+          // Avatar upload uğursuz — digər dəyişikliklər davam edir
+        }
+      }
+
+      // 2. Channel məlumatlarını yenilə
       const typeEnum = channelType === "public" ? 1 : 2;
       await apiPut(`/api/channels/${channelData.id}`, {
         name: channelName.trim(),
         description: description.trim() || null,
         type: typeEnum,
+        ...(newAvatarUrl ? { avatarUrl: newAvatarUrl } : {}),
       });
 
       // 2. Member diff hesabla
@@ -544,7 +574,7 @@ function ChannelPanel({
         onChannelUpdated({
           id: channelData.id,
           name: channelName.trim(),
-          avatarUrl: channelData.avatarUrl,
+          avatarUrl: newAvatarUrl || channelData.avatarUrl,
         });
       }
     } catch (err) {

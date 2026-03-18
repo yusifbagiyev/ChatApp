@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
+import { getFileUrl } from "../services/api";
 
 // MentionPanel — @ mention dropdown paneli
 // ChatInputArea daxilində render olunur (emoji panel kimi)
@@ -62,8 +63,10 @@ function MentionPanel({ items, selectedIndex, onSelect, isLoading, panelRef }) {
             ) : (
               /* User mention */
               <>
-                <div className="mention-avatar" style={{ background: getAvatarColor(item.fullName) }}>
-                  {getInitials(item.fullName)}
+                <div className="mention-avatar" style={{ background: item.avatarUrl ? "transparent" : getAvatarColor(item.fullName) }}>
+                  {item.avatarUrl ? (
+                    <img src={getFileUrl(item.avatarUrl)} alt={item.fullName} className="mention-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(item.fullName); e.target.parentNode.textContent = getInitials(item.fullName); }} />
+                  ) : getInitials(item.fullName)}
                 </div>
                 <div className="mention-info">
                   <span className="mention-name">{item.fullName}</span>

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, memo } from "react";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
+import { getFileUrl } from "../services/api";
 
 const READERS_PAGE_SIZE = 20;
 
@@ -63,9 +64,11 @@ function ReadersPanel({ readByIds, channelMembers, onClose }) {
             <div key={reader.id} className="readers-panel-item">
               <div
                 className="readers-panel-avatar"
-                style={{ background: getAvatarColor(reader.fullName) }}
+                style={{ background: reader.avatarUrl ? "transparent" : getAvatarColor(reader.fullName) }}
               >
-                {getInitials(reader.fullName)}
+                {reader.avatarUrl ? (
+                  <img src={getFileUrl(reader.avatarUrl)} alt={reader.fullName} className="readers-panel-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(reader.fullName); e.target.parentNode.textContent = getInitials(reader.fullName); }} />
+                ) : getInitials(reader.fullName)}
               </div>
               <span className="readers-panel-name">{reader.fullName}</span>
             </div>
