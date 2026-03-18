@@ -59,7 +59,7 @@ export default function useChatSignalR(
         ) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === message.id)) return prev;
-            // Öz mesajımızın echo-su — optimistic mesajı tap və sil (real data ilə əvəz olunur)
+            // Öz mesajımızın echo-su — optimistic mesajı tap və əvəz et
             // Echo-da reply/mention data olmaya bilər — optimistic-dən merge et
             // FIFO: ən köhnə optimistic-i tap (echo-lar göndərmə sırasına uyğun gəlir)
             let enrichedMsg = message;
@@ -74,22 +74,22 @@ export default function useChatSignalR(
                   replyToContent: message.replyToContent || optimistic.replyToContent || null,
                   replyToSenderName: message.replyToSenderName || optimistic.replyToSenderName || null,
                   mentions: message.mentions?.length > 0 ? message.mentions : (optimistic.mentions || []),
+                  // _stableKey kopyala — Virtuoso key dəyişməsin, remount olmasın → flash yox
+                  _stableKey: optimistic._stableKey || optimistic.id,
                 };
               }
             }
-            // Yalnız uyğun gələn optimistic-i sil, qalanlarını saxla
-            const cleaned = matchedOptId
-              ? prev.filter((m) => m.id !== matchedOptId)
-              : prev;
             // Öz echo-muzda: optimistic → real əvəzləmə, mesaj sayı eyni qalır.
             // followOutput artıq aşağıda saxlayır, programmatic scroll lazım deyil.
-            // Yalnız istifadəçi yuxarıdadırsa (scroll-down buton görünür) scroll et.
             if (message.senderId === userId && showScrollDownRef?.current) {
               setShouldScrollBottom(true);
             }
-            // Başqasının mesajı — skipAutoScroll yoxdur
-            // Auto-scroll effect "near bottom" yoxlaması ilə scroll edəcək (< 80px)
-            return [enrichedMsg, ...cleaned];
+            // Optimistic varsa in-place əvəz et (key dəyişmir → remount yox),
+            // yoxdursa başa əlavə et (başqasının mesajı və ya optimistic tapılmadı)
+            if (matchedOptId) {
+              return prev.map((m) => m.id === matchedOptId ? enrichedMsg : m);
+            }
+            return [enrichedMsg, ...prev];
           });
         }
         return current;
@@ -173,7 +173,7 @@ export default function useChatSignalR(
         if (current && current.type === 1 && current.id === message.channelId) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === message.id)) return prev;
-            // Öz mesajımızın echo-su — optimistic mesajı tap və sil
+            // Öz mesajımızın echo-su — optimistic mesajı tap və əvəz et
             // Echo-da reply/mention data olmaya bilər — optimistic-dən merge et
             // FIFO: ən köhnə optimistic-i tap (echo-lar göndərmə sırasına uyğun gəlir)
             let enrichedMsg = message;
@@ -188,20 +188,21 @@ export default function useChatSignalR(
                   replyToContent: message.replyToContent || optimistic.replyToContent || null,
                   replyToSenderName: message.replyToSenderName || optimistic.replyToSenderName || null,
                   mentions: message.mentions?.length > 0 ? message.mentions : (optimistic.mentions || []),
+                  _stableKey: optimistic._stableKey || optimistic.id,
                 };
               }
             }
-            // Yalnız uyğun gələn optimistic-i sil, qalanlarını saxla
-            const cleaned = matchedOptId
-              ? prev.filter((m) => m.id !== matchedOptId)
-              : prev;
             // Öz echo-muzda: optimistic → real əvəzləmə, mesaj sayı eyni qalır.
             // followOutput artıq aşağıda saxlayır, programmatic scroll lazım deyil.
-            // Yalnız istifadəçi yuxarıdadırsa (scroll-down buton görünür) scroll et.
             if (message.senderId === userId && showScrollDownRef?.current) {
               setShouldScrollBottom(true);
             }
-            return [enrichedMsg, ...cleaned];
+            // Optimistic varsa in-place əvəz et (key dəyişmir → remount yox),
+            // yoxdursa başa əlavə et
+            if (matchedOptId) {
+              return prev.map((m) => m.id === matchedOptId ? enrichedMsg : m);
+            }
+            return [enrichedMsg, ...prev];
           });
         }
         return current;

@@ -2178,6 +2178,7 @@ function Chat() {
       replyToSenderName: currentReply ? currentReply.senderFullName : null,
       mentions: mentionsForSend, // Mention highlight dərhal görünsün
       _optimistic: true, // Flag — SignalR echo gəldikdə silmək üçün
+      _stableKey: tempId, // Virtuoso key — echo gəldikdə key dəyişməsin, remount olmasın
     };
 
     // Mesajı dərhal UI-da göstər (newest-first: əvvələ əlavə et)
@@ -3113,7 +3114,7 @@ function Chat() {
                     initialTopMostItemIndex={{ index: "LAST", align: "end" }}
                     itemContent={renderFlatItem}
                     computeItemKey={(_, item) =>
-                      item.type === "message" ? `msg-${item.message.id}`
+                      item.type === "message" ? `msg-${item.message._stableKey || item.message.id}`
                       : item.type === "date" ? `date-${item.label}`
                       : `${item.type}-${item.label || item.messageId || ""}`
                     }
