@@ -47,16 +47,16 @@
   --transition-slow: 300ms ease;
 
   /* Z-index Scale — aydın iyerarxiya */
-  --z-base: 1;              /* komponent daxili stacking */
-  --z-float: 5;             /* floating-date, bubble buttons */
-  --z-dropdown: 10;         /* filter-dropdown, pinned-expanded, scroll-btn */
-  --z-sidebar: 100;         /* sidebar, panel overlays */
-  --z-popup: 200;           /* emoji-panel, mention-panel, file-preview */
-  --z-image-viewer: 300;    /* lightbox */
-  --z-modal: 1000;          /* modal overlays — confirm, readers, forward */
-  --z-popover: 5000;        /* action-menu, reaction-picker */
-  --z-connection: 9000;     /* connection status toast */
-  --z-toast: 99999;         /* toast notification */
+  --z-base: 1; /* komponent daxili stacking */
+  --z-float: 5; /* floating-date, bubble buttons */
+  --z-dropdown: 10; /* filter-dropdown, pinned-expanded, scroll-btn */
+  --z-sidebar: 100; /* sidebar, panel overlays */
+  --z-popup: 200; /* emoji-panel, mention-panel, file-preview */
+  --z-image-viewer: 300; /* lightbox */
+  --z-modal: 1000; /* modal overlays — confirm, readers, forward */
+  --z-popover: 5000; /* action-menu, reaction-picker */
+  --z-connection: 9000; /* connection status toast */
+  --z-toast: 99999; /* toast notification */
 }
 
 /* ===================================
@@ -64,34 +64,70 @@
    =================================== */
 
 @keyframes overlayFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes modalScaleIn {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes dropdownIn {
-  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes messageFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes badgePop {
-  0% { transform: scale(0); }
-  60% { transform: scale(1.15); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes slideDown {
-  from { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
-  to { opacity: 1; max-height: 80px; }
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 80px;
+  }
 }
 
 /* ===================================
@@ -172,17 +208,31 @@
 }
 
 @keyframes toast-slide-in {
-  from { transform: translateX(-50%) translateY(-100px); opacity: 0; }
-  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+  from {
+    transform: translateX(-50%) translateY(-100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes toast-slide-out {
-  from { transform: translateX(-50%) translateY(0); opacity: 1; }
-  to { transform: translateX(-50%) translateY(-100px); opacity: 0; }
+  from {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-50%) translateY(-100px);
+    opacity: 0;
+  }
 }
 
 @keyframes toast-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ===================================
@@ -236,7 +286,10 @@
   border-radius: var(--radius-md);
   color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
-  transition: color var(--transition-base), background var(--transition-base), transform 0.15s ease;
+  transition:
+    color var(--transition-base),
+    background var(--transition-base),
+    transform 0.15s ease;
   font-family: inherit;
   position: relative;
 }
@@ -371,7 +424,10 @@
   font-size: 13px;
   color: var(--gray-900);
   outline: none;
-  transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
+  transition:
+    border-color var(--transition-base),
+    background var(--transition-base),
+    box-shadow var(--transition-base);
   font-family: inherit;
 }
 
@@ -406,7 +462,10 @@
   color: var(--gray-500);
   padding: 0;
   animation: badgePop 0.2s ease-out;
-  transition: background var(--transition-fast), color var(--transition-fast), transform 0.15s ease;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    transform 0.15s ease;
 }
 
 .search-clear-btn:active {
@@ -627,7 +686,9 @@
   margin: 0 4px;
   height: 70px;
   cursor: pointer;
-  transition: background var(--transition-fast), transform 0.15s ease;
+  transition:
+    background var(--transition-fast),
+    transform 0.15s ease;
   border-radius: var(--radius-md);
   position: relative;
 }
@@ -1017,7 +1078,7 @@
      2) linear — sağa #96c6e9, aşağı #84A7ED, sağ-aşağı tündləşir */
   background:
     radial-gradient(ellipse at 32% 32%, #d6f2ea 0%, transparent 55%),
-    linear-gradient(150deg, #bee2de 0%, #96c6e9 55%, #84A7ED 100%);
+    linear-gradient(150deg, #bee2de 0%, #96c6e9 55%, #84a7ed 100%);
   position: relative;
 }
 
@@ -1111,8 +1172,15 @@
 }
 
 @keyframes onlinePulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
 }
 
 .chat-header-actions {
@@ -1163,7 +1231,9 @@
   min-height: 50px;
   gap: 10px;
   cursor: pointer;
-  transition: background var(--transition-fast), min-height var(--transition-base);
+  transition:
+    background var(--transition-fast),
+    min-height var(--transition-base);
   overflow: hidden;
   position: relative;
   z-index: 2;
@@ -1184,7 +1254,7 @@
 .pinned-bar-title {
   font-size: 12px;
   font-weight: 600;
-  color: #67A4D5;
+  color: #67a4d5;
 }
 
 .pinned-bar-preview {
@@ -1196,7 +1266,7 @@
 }
 
 .pinned-bar-preview strong {
-  color: #989BA9;
+  color: #989ba9;
   font-weight: 600;
 }
 
@@ -1428,7 +1498,7 @@
   align-items: center;
   justify-content: center;
   gap: 20px;
-  color: #FFFFFF;
+  color: #ffffff;
   font-size: 18px;
   font-weight: 500;
   letter-spacing: 0.4px;
@@ -1438,13 +1508,15 @@
   width: 56px;
   height: 56px;
   border: 3.5px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #FFFFFF;
+  border-top-color: #ffffff;
   border-radius: 50%;
   animation: chatLoadingSpin 0.8s linear infinite;
 }
 
 @keyframes chatLoadingSpin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Mesajlar yüklənərkən messages-area-nı gizlə */
@@ -1590,8 +1662,14 @@
 
 /* Ağ dairəvi buton — 1 viewport yuxarı scroll olunduqda görünür */
 @keyframes scrollBtnFadeIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.9); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .scroll-to-bottom-btn {
@@ -1609,9 +1687,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
   z-index: 10;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
   color: #7b8794;
   padding: 0;
   animation: scrollBtnFadeIn 0.2s ease-out forwards;
@@ -1619,7 +1702,9 @@
 
 .scroll-to-bottom-btn:hover {
   background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.14),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
   transform: translateY(-1px);
   color: #55606b;
 }
@@ -1632,13 +1717,17 @@
 /* Unread mesaj olduqda — yüngül göy tonu */
 .scroll-to-bottom-btn.has-unread {
   background: rgba(240, 250, 255, 0.9);
-  box-shadow: 0 2px 12px rgba(0, 172, 227, 0.15), 0 0 0 1px rgba(0, 172, 227, 0.12);
+  box-shadow:
+    0 2px 12px rgba(0, 172, 227, 0.15),
+    0 0 0 1px rgba(0, 172, 227, 0.12);
   color: #7b8794;
 }
 
 .scroll-to-bottom-btn.has-unread:hover {
   background: rgba(235, 248, 255, 0.95);
-  box-shadow: 0 4px 16px rgba(0, 172, 227, 0.2), 0 0 0 1px rgba(0, 172, 227, 0.18);
+  box-shadow:
+    0 4px 16px rgba(0, 172, 227, 0.2),
+    0 0 0 1px rgba(0, 172, 227, 0.18);
 }
 
 /* Unread count badge — butonun yuxarı sağ küncündə */
@@ -1649,7 +1738,7 @@
   min-width: 18px;
   height: 18px;
   border-radius: 9px;
-  background: #24B0DC;
+  background: #24b0dc;
   color: var(--white);
   font-size: 11px;
   font-weight: 600;
@@ -1671,7 +1760,7 @@
   width: 100%;
   margin: 8px 0;
   padding: 8px 0;
-  background: #F0F8F7;
+  background: #f0f8f7;
 }
 
 .read-later-separator span {
@@ -1688,7 +1777,7 @@
   width: 100%;
   margin: 8px 0;
   padding: 8px 0;
-  background: #F0F8F7;
+  background: #f0f8f7;
 }
 
 .new-messages-separator span {
@@ -1807,12 +1896,13 @@
 
 /* Qarşı tərəfin şəkil+mətn bubble — şəkil kənarları #F0F6EE, mətn hissəsi #FFFFFF */
 .message-bubble:not(.own):has(.bubble-file-image:not(.image-only)) {
-  background: #FFFFFF;
+  background: #ffffff;
   overflow: hidden;
 }
 
-.message-bubble:not(.own):has(.bubble-file-image:not(.image-only)) .bubble-file-image {
-  background: #F0F6EE;
+.message-bubble:not(.own):has(.bubble-file-image:not(.image-only))
+  .bubble-file-image {
+  background: #f0f6ee;
 }
 
 /* Şəkil+mətn — inline aspect-ratio override: konteyner tam eni tutmalıdır, daralmaz */
@@ -1822,8 +1912,9 @@
 }
 
 /* Öz mesajda şəkil+mətn — şəkil kənarları F0F6EE */
-.message-bubble.own:has(.bubble-file-image:not(.image-only)) .bubble-file-image {
-  background: #F0F6EE;
+.message-bubble.own:has(.bubble-file-image:not(.image-only))
+  .bubble-file-image {
+  background: #f0f6ee;
 }
 
 /* Öz mesajda shimmer — yaşıl tonda */
@@ -1948,7 +2039,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 
 /* ===================================
    MESSAGE HIGHLIGHT (scroll-to)
@@ -2079,7 +2169,7 @@
 .bubble-react-wrap .bubble-action-btn {
   width: 22px;
   height: 22px;
-  background: #EAF2F1;
+  background: #eaf2f1;
   color: #b5bbbf;
 }
 .bubble-react-wrap .bubble-action-btn svg {
@@ -2089,7 +2179,7 @@
 
 /* More butonu — açıq boz arxa fon */
 .bubble-more-wrap .bubble-action-btn {
-  background: #EAF2F1;
+  background: #eaf2f1;
   color: var(--gray-500);
 }
 
@@ -2142,7 +2232,7 @@
 }
 
 .action-menu-item:hover {
-  background: #F7F7F7;
+  background: #f7f7f7;
 }
 
 .action-menu-item svg {
@@ -2224,7 +2314,6 @@
   background: rgba(0, 0, 0, 0.15);
 }
 
-
 /* Twemoji şəkillər — canlı, rəngli emoji (text əvəzinə SVG) */
 .twemoji {
   width: 1em;
@@ -2262,9 +2351,15 @@
 
 /* Hover animasiya — yüngül böyümə + yuxarı qalxma */
 @keyframes emoji-pop {
-  0%   { transform: scale(1) translateY(0); }
-  50%  { transform: scale(1.3) translateY(-4px); }
-  100% { transform: scale(1.2) translateY(-2px); }
+  0% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.3) translateY(-4px);
+  }
+  100% {
+    transform: scale(1.2) translateY(-2px);
+  }
 }
 
 .reaction-emoji-btn .twemoji {
@@ -2436,13 +2531,13 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #FFFFFF;
+  background: #ffffff;
   animation: typingBounce 1.2s infinite ease-in-out;
 }
 
 .status-bar-typing {
   font-size: 13px;
-  color: #FFFFFF;
+  color: #ffffff;
   font-weight: 450;
   font-style: italic;
 }
@@ -2455,7 +2550,7 @@
 
 .status-bar-tick polyline {
   fill: none;
-  stroke: #FFFFFF;
+  stroke: #ffffff;
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -2463,14 +2558,14 @@
 
 .status-bar-viewed {
   font-size: 12px;
-  color: #FFFFFF;
+  color: #ffffff;
   font-weight: 400;
 }
 
 .status-bar-more-btn {
   border: none;
   background: none;
-  color: #FFFFFF;
+  color: #ffffff;
   font-size: 12px;
   font-weight: 450;
   text-decoration: underline;
@@ -2694,7 +2789,6 @@
   text-overflow: ellipsis;
 }
 
-
 .reply-preview-close {
   flex-shrink: 0;
   width: 28px;
@@ -2865,7 +2959,7 @@
   background: transparent;
 }
 
-/* Emoji wrap — inline-block + relative ki, image onu tam doldursun */
+/* Emoji wrap — inline-block + relative, eni native emoji ilə eyni qalır (textarea sync) */
 .mirror-emoji-wrap {
   position: relative;
   display: inline-block;
@@ -2877,7 +2971,7 @@
   visibility: hidden;
 }
 
-/* Apple CDN emoji şəkli — wrapper-in tam sahəsini doldurur */
+/* Apple CDN emoji şəkli — wrapper-in tam sahəsini doldurur (textarea sync üçün) */
 .mirror-emoji-img {
   position: absolute;
   inset: 0;
@@ -2904,11 +2998,10 @@
   line-height: 1.4;
   resize: none;
   box-sizing: border-box; /* padding daxil — scrollHeight/offsetHeight eyni bazada hesablanır */
-  /* 1 sətir = ceil(15 * 1.4) + 6 + 44 = 71px — stabil baza, rows=1-dən asılı deyil */
   min-height: 71px;
   max-height: 300px;
   overflow-y: hidden; /* Default gizli — content 1 sətri aşdıqda JS overflow:auto edir */
-  height: 71px;
+  height: auto;
   z-index: 1;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -2952,7 +3045,6 @@
   background: rgba(0, 172, 227, 0.3);
   color: transparent;
 }
-
 
 .send-btn {
   width: 34px;
@@ -4223,10 +4315,6 @@
   padding-left: 28px;
 }
 
-.add-member-company {
-  /* Company wrapper — heç bir stil lazım deyil */
-}
-
 /* ===================================
    DETAIL SIDEBAR — Bitrix24 Style
    =================================== */
@@ -5058,7 +5146,7 @@
   gap: 10px;
   padding: 10px 16px;
   margin: 0 12px;
-  background: #F5F7F8;
+  background: #f5f7f8;
   border-radius: 10px;
   cursor: pointer;
   position: relative;
@@ -5069,7 +5157,7 @@
   height: 44px;
   min-width: 44px;
   border-radius: 10px;
-  background: #E8F4F8;
+  background: #e8f4f8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5103,7 +5191,7 @@
 }
 
 .ds-link-url mark {
-  background: #FFE066;
+  background: #ffe066;
   color: inherit;
   padding: 1px 2px;
   border-radius: 2px;
@@ -5319,7 +5407,9 @@
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast);
   text-align: center;
 }
 
@@ -5509,7 +5599,9 @@
   max-height: 80vh;
   background: var(--white);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -5517,8 +5609,14 @@
 }
 
 @keyframes ds-am-fade-in {
-  from { opacity: 0; transform: translateY(-50%) scale(0.96); }
-  to { opacity: 1; transform: translateY(-50%) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
 }
 
 .ds-am-header {
@@ -5963,7 +6061,9 @@
 }
 
 @keyframes mentionDotPulse {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     opacity: 0.3;
     transform: scale(0.8);
   }
@@ -5995,15 +6095,17 @@
 
 /* Mention highlight — mesaj içində */
 .mention-highlight {
-  color: #3B44C3;
+  color: #3b44c3;
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
   padding-bottom: 1px;
   background-image: repeating-linear-gradient(
     to right,
-    #000 0, #000 3px,
-    transparent 3px, transparent 4px
+    #000 0,
+    #000 3px,
+    transparent 3px,
+    transparent 4px
   );
   background-position: bottom;
   background-size: 100% 1px;
@@ -6013,15 +6115,17 @@
 .mention-highlight:hover {
   background-image: repeating-linear-gradient(
     to right,
-    #000 0, #000 3px,
-    transparent 3px, transparent 4px
+    #000 0,
+    #000 3px,
+    transparent 3px,
+    transparent 4px
   );
   background-size: 100% 1px;
 }
 
 /* ─── Message Links — klikləyilən URL-lar ─── */
 .message-link {
-  color: #2B6CB0;
+  color: #2b6cb0;
   text-decoration: none;
   word-break: break-all;
 }
@@ -6362,7 +6466,7 @@
   overflow: hidden;
   border-radius: 12px 12px 0 0;
   cursor: pointer;
-  background: #F0F6EE;
+  background: #f0f6ee;
   position: relative; /* shimmer/error overlay üçün */
   display: flex;
   justify-content: center;
@@ -6382,8 +6486,12 @@
 }
 
 @keyframes imgShimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* ─── Şəkil fade-in — yüklənəndə smooth transition ─── */
@@ -6457,7 +6565,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
 }
 
 .upload-cancel-btn:hover {
@@ -6641,8 +6751,6 @@
   stroke: rgba(255, 255, 255, 0.9) !important;
 }
 
-
-
 /* Fayl kartı — Bitrix24 style: icon + ad + ölçü + download */
 .bubble-file-card {
   display: flex;
@@ -6760,8 +6868,12 @@
 }
 
 @keyframes ivFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ─── Top bar ─── */
@@ -6913,7 +7025,9 @@
   cursor: pointer;
   border: 2px solid transparent;
   opacity: 0.6;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition:
+    opacity 0.15s,
+    border-color 0.15s;
 }
 
 .iv-thumb:hover {

@@ -2096,10 +2096,10 @@ function Chat() {
       );
     }
 
-    // Textarea + mirror hündürlüyünü saxlanılmış ölçüyə qaytar (və ya default 71px)
+    // Textarea + mirror hündürlüyünü saxlanılmış ölçüyə qaytar (və ya default auto)
     // Overflow hidden — boş textarea-da scroll lazım deyil
     const savedH = localStorage.getItem("chatInputHeight");
-    const resetH = savedH ? savedH + "px" : "71px";
+    const resetH = savedH ? savedH + "px" : "auto";
     if (inputRef.current) {
       inputRef.current.style.height = resetH;
       inputRef.current.style.overflow = "hidden";

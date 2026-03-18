@@ -335,10 +335,7 @@ function ChatInputArea({
                 const caret = e.target.selectionStart;
                 if (onTextChange) onTextChange(val, caret);
                 else setMessageText(val);
-                // Textarea boşaldıqda manual resize sıfırlansın (mesaj göndərildikdən sonra)
-                if (manualResizeRef.current && val.length === 0) {
-                  manualResizeRef.current = false;
-                }
+                // Manual resize saxlanılır — yalnız mesaj göndərildikdə sıfırlanır (Chat.jsx-dən)
                 // Auto-resize + overflow idarəsi
                 const ta = e.target;
                 if (manualResizeRef.current) {
@@ -352,22 +349,12 @@ function ChatInputArea({
                   }
                 } else {
                   const prevH = ta.offsetHeight;
-                  // Content aşır → expand et
-                  if (ta.scrollHeight > ta.offsetHeight) {
-                    const h = Math.min(ta.scrollHeight, 300);
-                    ta.style.height = h + "px";
-                    if (mirrorRef.current) mirrorRef.current.style.height = h + "px";
-                    if (h !== prevH) onInputResize?.();
-                  }
-                  // Content kiçilib (məs. silmə) → shrink lazımdırsa ölç
-                  // height=0 ilə scrollHeight-ı ölçürük (height=auto fərqli nəticə verir)
-                  else if (val.length === 0 || ta.scrollHeight < ta.offsetHeight) {
-                    ta.style.height = "0";
-                    const natural = Math.min(ta.scrollHeight, 300);
-                    ta.style.height = natural + "px";
-                    if (mirrorRef.current) mirrorRef.current.style.height = natural + "px";
-                    if (natural !== prevH) onInputResize?.();
-                  }
+                  // height=0 ilə real scrollHeight ölç, sonra tətbiq et
+                  ta.style.height = "0";
+                  const natural = Math.max(71, Math.min(ta.scrollHeight, 300));
+                  ta.style.height = natural + "px";
+                  if (mirrorRef.current) mirrorRef.current.style.height = natural + "px";
+                  if (natural !== prevH) onInputResize?.();
                 }
                 // Overflow: content max-height-a çatıbsa scroll lazımdır, yoxsa gizlət
                 const needsScroll = ta.scrollHeight > 300;
@@ -467,8 +454,8 @@ function ChatInputArea({
               // Auto-resize trigger — requestAnimationFrame ilə DOM yenilənməsini gözlə
               requestAnimationFrame(() => {
                 if (!manualResizeRef.current) {
-                  textarea.style.height = "auto";
-                  const h = Math.min(textarea.scrollHeight, 300);
+                  textarea.style.height = "0";
+                  const h = Math.max(71, Math.min(textarea.scrollHeight, 300));
                   textarea.style.height = h + "px";
                   if (mirrorRef.current) mirrorRef.current.style.height = h + "px";
                 }
