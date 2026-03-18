@@ -590,24 +590,30 @@ function Chat() {
   // Virtuoso child komponent olduğu üçün öz useLayoutEffect-i BİZDƏN ƏVVƏL çalışır →
   // biz yalnız residual error-u düzəldirik, conflict yoxdur.
   useLayoutEffect(() => {
+    const area = messagesAreaRef.current;
     const anchor = prependAnchorRef.current;
-    if (!anchor) return;
+    if (!anchor) {
+      // Anchor yoxdur amma prepending class qalıb → təmizlə
+      area?.classList.remove("prepending");
+      return;
+    }
     prependAnchorRef.current = null;
 
-    const area = messagesAreaRef.current;
     if (!area) return;
 
     const el = area.querySelector(`[data-bubble-id="${anchor.id}"]`);
-    if (!el) return;
+    if (el) {
+      const containerTop = area.getBoundingClientRect().top;
+      const currentRelativeTop = el.getBoundingClientRect().top - containerTop;
+      const diff = currentRelativeTop - anchor.relativeTop;
 
-    const containerTop = area.getBoundingClientRect().top;
-    const currentRelativeTop = el.getBoundingClientRect().top - containerTop;
-    const diff = currentRelativeTop - anchor.relativeTop;
-
-    // 1px-dən böyük fərq varsa — düzəlt (sub-pixel fərqləri ignore et)
-    if (Math.abs(diff) > 1) {
-      area.scrollTop += diff;
+      // 1px-dən böyük fərq varsa — düzəlt (sub-pixel fərqləri ignore et)
+      if (Math.abs(diff) > 1) {
+        area.scrollTop += diff;
+      }
     }
+    // Prepend flash suppress — scroll correction bitdi, messages area-nı göstər
+    area.classList.remove("prepending");
   }); // dependency yoxdur — hər render-də yoxlayır, anchor varsa düzəldir
 
   // ─── Virtuoso scroll effektləri ───
@@ -633,29 +639,30 @@ function Chat() {
       virtuosoRef.current?.scrollTo({ top: 999999 });
     };
 
-    // 300ms sonra user-scroll listener bağla — öz scroll-larımız bitsin,
-    // bundan sonra istifadəçi scroll edərsə cancel flag set olur
+    // 150ms sonra user-scroll listener bağla — öz scroll-larımız bitsin,
+    // bundan sonra istifadəçi scroll edərsə cancel flag + suppress söndür
     const area = messagesAreaRef.current;
-    const onUserScroll = () => { scrollBottomCancelRef.current = true; };
+    const onUserScroll = () => {
+      scrollBottomCancelRef.current = true;
+      programmaticScrollRef.current = false;
+    };
     setTimeout(() => {
       area?.addEventListener("scroll", onUserScroll, { once: true, passive: true });
-    }, 300);
+    }, 150);
 
-    // Faza 1: rAF loop — Virtuoso layout hesablamalarını gözlə (15 frame ≈ 250ms)
+    // rAF loop — Virtuoso layout hesablamalarını gözlə (8 frame ≈ 130ms)
     let attempts = 0;
     const tryScroll = () => {
       doScroll();
-      if (++attempts < 15) requestAnimationFrame(tryScroll);
+      if (++attempts < 8) requestAnimationFrame(tryScroll);
     };
     requestAnimationFrame(tryScroll);
 
-    // Faza 2: gecikmə ilə final scroll — şəkillər/lazy content/upload mesajları yüklənə bilər
-    setTimeout(doScroll, 400);
-    setTimeout(doScroll, 800);
-    setTimeout(doScroll, 1500); // Upload mesajları useMemo-dan gec gələ bilər
+    // Tək timeout fallback — şəkillər/lazy content yüklənə bilər
+    setTimeout(doScroll, 350);
 
-    // Programmatic scroll bitdi — scrollbar suppress-i söndür
-    setTimeout(() => { programmaticScrollRef.current = false; }, 2000);
+    // Programmatic scroll bitdi — scrollbar suppress-i söndür (cancel olmadısa)
+    setTimeout(() => { programmaticScrollRef.current = false; }, 600);
   }, [shouldScrollBottom]);
 
   // getAround / highlight — mesajlar yüklənəndən sonra hədəfə scroll + highlight
@@ -837,6 +844,7 @@ function Chat() {
     // Butonu dərhal gizlət — aşağı scroll zamanı yenidən görünməsin
     setShowScrollDown(false);
     showScrollDownRef.current = false;
+    scrollBottomCancelRef.current = false; // Əvvəlki cancel-i sıfırla
     programmaticScrollRef.current = true; // Scrollbar suppress
     try {
       const endpoint = getChatEndpoint(selectedChat.id, selectedChat.type, "/messages");
@@ -860,18 +868,31 @@ function Chat() {
     hasNewUnreadRef.current = false;
     firstUnreadMsgIdRef.current = null;
     // Data yeniləndikdən sonra Virtuoso-ya ən sona scroll et
-    // rAF loop + timeout fallback — Virtuoso daxili layout hesablamalarını bitirməyə vaxt lazımdır
-    const doScroll = () => virtuosoRef.current?.scrollTo({ top: 999999 });
+    // Cancel-aware doScroll — istifadəçi scroll etdikdə bütün gözləyən scroll-lar ləğv olur
+    const doScroll = () => {
+      if (scrollBottomCancelRef.current) return;
+      virtuosoRef.current?.scrollTo({ top: 999999 });
+    };
+    // rAF loop — Virtuoso layout hesablamalarını gözlə (8 frame ≈ 130ms)
     let attempts = 0;
     const tryScroll = () => {
       doScroll();
-      if (++attempts < 15) requestAnimationFrame(tryScroll);
+      if (++attempts < 8) requestAnimationFrame(tryScroll);
     };
     requestAnimationFrame(tryScroll);
-    // Timeout fallback — şəkillər/lazy content yüklənə bilər
-    setTimeout(doScroll, 400);
-    setTimeout(doScroll, 800);
-    setTimeout(() => { programmaticScrollRef.current = false; }, 1500); // Scrollbar suppress bitdi
+    // Tək timeout fallback — şəkillər/lazy content yüklənə bilər
+    setTimeout(doScroll, 350);
+    // 150ms sonra user-scroll listener — istifadəçi scroll edərsə bütün doScroll-lar ləğv olur
+    const area = messagesAreaRef.current;
+    const onUserScroll = () => {
+      scrollBottomCancelRef.current = true;
+      programmaticScrollRef.current = false;
+    };
+    setTimeout(() => {
+      area?.addEventListener("scroll", onUserScroll, { once: true, passive: true });
+    }, 150);
+    // Programmatic scroll bitdi — scrollbar suppress-i söndür (cancel olmadısa)
+    setTimeout(() => { programmaticScrollRef.current = false; }, 600);
   }
 
   // IntersectionObserver SİLİNDİ — Virtuoso rangeChanged callback ilə əvəz olundu (aşağıda)
@@ -2161,7 +2182,12 @@ function Chat() {
 
     // Mesajı dərhal UI-da göstər (newest-first: əvvələ əlavə et)
     setMessages((prev) => [optimisticMsg, ...prev]);
-    setShouldScrollBottom(true);
+    // Yalnız istifadəçi yuxarıda olanda programmatic scroll et.
+    // Aşağıdadırsa Virtuoso followOutput="auto" özü smooth scroll edir.
+    // İkisini eyni anda çağırsaq bir-biriylə "döyüşür" → sıçrayış.
+    if (showScrollDownRef.current) {
+      setShouldScrollBottom(true);
+    }
 
     // Cache invalidasiya — mesaj göndərildikdə cache köhnəlir
     messageCacheRef.current.delete(selectedChat.id);
@@ -2897,6 +2923,7 @@ function Chat() {
           onOpenImageViewer={handleOpenImageViewer}
           onCancelUpload={uploadManager.cancelUpload}
           onRetryUpload={uploadManager.retryUpload}
+          isNewMessage={!initialMsgIdsRef.current.has(msg.id)}
         />
       );
     }
@@ -2938,6 +2965,7 @@ function Chat() {
             onOpenImageViewer={handleOpenImageViewer}
             onCancelUpload={uploadManager.cancelUpload}
             onRetryUpload={uploadManager.retryUpload}
+            isNewMessage={!initialMsgIdsRef.current.has(msg.id)}
           />
         </div>
       </div>

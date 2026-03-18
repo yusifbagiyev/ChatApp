@@ -81,7 +81,10 @@ export default function useChatSignalR(
             const cleaned = matchedOptId
               ? prev.filter((m) => m.id !== matchedOptId)
               : prev;
-            if (message.senderId === userId) {
+            // Öz echo-muzda: optimistic → real əvəzləmə, mesaj sayı eyni qalır.
+            // followOutput artıq aşağıda saxlayır, programmatic scroll lazım deyil.
+            // Yalnız istifadəçi yuxarıdadırsa (scroll-down buton görünür) scroll et.
+            if (message.senderId === userId && showScrollDownRef?.current) {
               setShouldScrollBottom(true);
             }
             // Başqasının mesajı — skipAutoScroll yoxdur
@@ -192,7 +195,10 @@ export default function useChatSignalR(
             const cleaned = matchedOptId
               ? prev.filter((m) => m.id !== matchedOptId)
               : prev;
-            if (message.senderId === userId) {
+            // Öz echo-muzda: optimistic → real əvəzləmə, mesaj sayı eyni qalır.
+            // followOutput artıq aşağıda saxlayır, programmatic scroll lazım deyil.
+            // Yalnız istifadəçi yuxarıdadırsa (scroll-down buton görünür) scroll et.
+            if (message.senderId === userId && showScrollDownRef?.current) {
               setShouldScrollBottom(true);
             }
             return [enrichedMsg, ...cleaned];

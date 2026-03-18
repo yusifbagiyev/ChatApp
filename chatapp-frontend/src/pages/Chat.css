@@ -1456,6 +1456,12 @@
   padding: 0;
 }
 
+/* Prepend flash suppress — köhnə mesajlar yüklənərkən scroll jump-ı gizlət.
+   useLayoutEffect (paint-dən əvvəl) class-ı silir → istifadəçi heç vaxt görmür. */
+.messages-area.prepending {
+  visibility: hidden;
+}
+
 /* ===================================
    MESSAGES AREA
    =================================== */
@@ -1608,7 +1614,7 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   color: #7b8794;
   padding: 0;
-  animation: scrollBtnFadeIn 0.2s ease-out;
+  animation: scrollBtnFadeIn 0.2s ease-out forwards;
 }
 
 .scroll-to-bottom-btn:hover {
@@ -1701,9 +1707,13 @@
   gap: 6px;
   max-width: 75%;
   margin-top: 4px;
-  animation: messageFadeIn 0.2s ease-out;
   position: relative;
   padding-right: 66px;
+}
+
+/* Yalnız yeni gələn mesajlar üçün animasiya — JS tərəfindən class əlavə edilir */
+.message-row.new-message {
+  animation: messageFadeIn 0.2s ease-out;
 }
 
 .message-row.own {
@@ -4225,22 +4235,19 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  animation: detailSidebarGrow 0.3s ease-out;
+  animation: detailSidebarSlideIn 0.25s ease-out;
   overflow: hidden;
 }
 
-@keyframes detailSidebarGrow {
+/* transform + opacity animasiya — layout reflow yaratmır, Virtuoso scroll pozisiyasını pozmur */
+@keyframes detailSidebarSlideIn {
   from {
-    max-width: 0;
-    min-width: 0;
     opacity: 0;
-    border-left-color: transparent;
+    transform: translateX(20px);
   }
   to {
-    max-width: 350px;
-    min-width: 350px;
     opacity: 1;
-    border-left-color: var(--gray-200);
+    transform: translateX(0);
   }
 }
 

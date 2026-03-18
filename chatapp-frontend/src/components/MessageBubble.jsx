@@ -109,6 +109,7 @@ function MessageBubble({
   onOpenImageViewer,
   onCancelUpload,
   onRetryUpload,
+  isNewMessage,
 }) {
   // --- LOKAL STATE ---
 
@@ -419,7 +420,7 @@ function MessageBubble({
     // data-bubble-id={msg.id} — handleScrollToMessage-də querySelector üçün
     // data-unread="true" — IntersectionObserver-ın mark-as-read üçün izlədiyi element
     <div
-      className={`message-row ${isOwn ? "own" : ""} ${showAvatar ? "has-avatar" : ""} ${isSelected ? "selected" : ""}`}
+      className={`message-row ${isOwn ? "own" : ""} ${showAvatar ? "has-avatar" : ""} ${isSelected ? "selected" : ""}${isNewMessage ? " new-message" : ""}`}
       data-bubble-id={msg.id}
       // selectMode aktiv + mesaj silinməyibsə klik → toggle select
       onClick={
