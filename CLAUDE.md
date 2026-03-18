@@ -59,6 +59,11 @@ Identity | Channels | DirectMessages | Files | Notifications | Search | Settings
 - Əgər doğru olmayan bir kod yazdıqdan sonra problemin onda deyil də başqa bir yerdən qaynaqlandığını görərsən, etdiyin lazımsız kod dəyişikliklərini ləğv et ki, lazımsız kod kütləsi yaranmasın.
 - Kodları mümkün qədər optimizasiya et, optimizasiya etdikdən sonra doğruluğuna əmin ol və lazımsız kodları sil.
 
+
+### 7. Agentlərlə iş
+- Agentlər nəticələri düzgün və dəqiq şəkildə təqdim etməlidir.
+- Yanlış nəticə verilən agentlərdən istifadə olunmamalıdır.
+
 ## Task Management
 
 1. **Track Progress**: Mark items complete as you go

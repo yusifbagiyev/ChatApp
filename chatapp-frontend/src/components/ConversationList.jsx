@@ -49,6 +49,8 @@ function ConversationList({
   const [searchResults, setSearchResults] = useState(null);
   // Debounce timer ref — hər keystroke-da əvvəlki timer-i sıfırlamaq üçün
   const searchTimerRef = useRef(null);
+  // AbortController — köhnə search request-ləri cancel etmək üçün (race condition önləmə)
+  const searchAbortRef = useRef(null);
 
   // panelRef — conversation-panel DOM referansı (search mode kənar klik bağlama üçün)
   const panelRef = useRef(null);
@@ -106,27 +108,34 @@ function ConversationList({
 
     // 300ms debounce — istifadəçi yazmağı dayandırdıqdan sonra API çağır
     searchTimerRef.current = setTimeout(async () => {
+      // Əvvəlki request-i cancel et — race condition önləmə
+      if (searchAbortRef.current) searchAbortRef.current.abort();
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+
       try {
-        // Hər iki endpoint-i paralel çağır (users + channels)
-        const [users, channels] = await Promise.all([
+        // Promise.allSettled — biri fail olsa digəri itməsin
+        const results = await Promise.allSettled([
           apiGet(`/api/users/search?q=${encodeURIComponent(searchText)}`),
           apiGet(`/api/channels/search?query=${encodeURIComponent(searchText)}`),
         ]);
+        // Abort olunubsa nəticəni ignore et (yeni axtarış başlayıb)
+        if (controller.signal.aborted) return;
         setSearchResults({
-          users: users || [],
-          channels: channels || [],
+          users: results[0].status === "fulfilled" ? results[0].value || [] : [],
+          channels: results[1].status === "fulfilled" ? results[1].value || [] : [],
         });
       } catch (err) {
+        if (controller.signal.aborted) return;
         console.error("Search failed:", err);
         setSearchResults({ users: [], channels: [] });
       }
     }, 300);
 
-    // Cleanup — komponent unmount olduqda və ya dependency dəyişdikdə timer-i sil
+    // Cleanup — komponent unmount / dependency dəyişdikdə timer + request cancel et
     return () => {
-      if (searchTimerRef.current) {
-        clearTimeout(searchTimerRef.current);
-      }
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+      if (searchAbortRef.current) searchAbortRef.current.abort();
     };
   }, [searchText, searchMode]);
 

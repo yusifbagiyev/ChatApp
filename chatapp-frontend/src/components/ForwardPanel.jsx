@@ -7,12 +7,14 @@ function ForwardPanel({ conversations, onForward, onClose }) {
   const [searchResults, setSearchResults] = useState(null);
   const searchInputRef = useRef(null);
   const debounceRef = useRef(null);
+  const searchAbortRef = useRef(null);
 
   // Panel açılanda search input-a focus ver + unmount cleanup
   useEffect(() => {
     searchInputRef.current?.focus();
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (searchAbortRef.current) searchAbortRef.current.abort();
     };
   }, []);
 
@@ -44,17 +46,25 @@ function ForwardPanel({ conversations, onForward, onClose }) {
     }
 
     debounceRef.current = setTimeout(async () => {
+      // Əvvəlki request-i cancel et
+      if (searchAbortRef.current) searchAbortRef.current.abort();
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+
       try {
         const q = encodeURIComponent(value.trim());
-        // Conversations + users paralel axtarış
-        const [convData, users] = await Promise.all([
+        // Promise.allSettled — biri fail olsa digəri itməsin
+        const results = await Promise.allSettled([
           apiGet(`/api/unified-conversations?pageSize=50&search=${q}`),
           apiGet(`/api/users/search?q=${q}`),
         ]);
-        const convItems = convData.items || [];
+        // Abort olunubsa nəticəni ignore et
+        if (controller.signal.aborted) return;
+        const convItems = results[0].status === "fulfilled" ? (results[0].value?.items || []) : [];
+        const users = results[1].status === "fulfilled" ? (results[1].value || []) : [];
         // Mövcud conversation-ı olan user-ləri çıxar (dublikat olmasın)
         const convOtherUserIds = new Set(convItems.map((c) => c.otherUserId).filter(Boolean));
-        const newUsers = (users || [])
+        const newUsers = users
           .filter((u) => !convOtherUserIds.has(u.id))
           .map((u) => ({
             id: u.id,
@@ -65,6 +75,7 @@ function ForwardPanel({ conversations, onForward, onClose }) {
           }));
         setSearchResults([...convItems, ...newUsers]);
       } catch (err) {
+        if (controller.signal.aborted) return;
         console.error("Forward search failed:", err);
         setSearchResults([]);
       }

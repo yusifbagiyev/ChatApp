@@ -255,6 +255,9 @@ function apiUpload(endpoint, formData, onProgress, abortController) {
 
       xhr.onerror = () => reject(new Error("Network error"));
       xhr.onabort = () => reject(new DOMException("Upload aborted", "AbortError"));
+      // 2 dəqiqə timeout — network kəsilərsə upload sonsuza qədər gözləməsin
+      xhr.timeout = 120_000;
+      xhr.ontimeout = () => reject(new Error("Upload timeout"));
       xhr.send(formData);
     });
   }

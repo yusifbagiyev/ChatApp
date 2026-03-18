@@ -339,10 +339,14 @@ function MessageBubble({
             badgePressRef.current = setTimeout(async () => {
               if (reactionTooltipOpen === r.emoji) return;
               setReactionTooltipOpen(r.emoji);
+              // Yalnız userFullNames hələ yüklənməyibsə API call et (dedup)
               if (!r.userFullNames || r.userFullNames.length === 0) {
                 setReactionDetailsLoading(true);
-                await onLoadReactionDetails(msg.id);
-                setReactionDetailsLoading(false);
+                try {
+                  await onLoadReactionDetails(msg.id);
+                } finally {
+                  setReactionDetailsLoading(false);
+                }
               }
             }, 500);
           }}
