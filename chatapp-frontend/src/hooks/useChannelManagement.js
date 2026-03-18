@@ -114,15 +114,18 @@ export default function useChannelManagement(selectedChat, conversations, channe
   // ─── Add member panel açılanda channel members yenilə ─────────────────────
   useEffect(() => {
     if (!showAddMember || !selectedChat || selectedChat.type !== 1) return;
+    let cancelled = false;
     (async () => {
       try {
         const members = await apiGet(`/api/channels/${selectedChat.id}/members?take=100`);
+        if (cancelled) return;
         setChannelMembers((prev) => ({
           ...prev,
           [selectedChat.id]: members.reduce((map, m) => ({ ...map, [m.userId]: m }), {}),
         }));
       } catch { /* ignore */ }
     })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddMember]);
 
@@ -133,15 +136,17 @@ export default function useChannelManagement(selectedChat, conversations, channe
       setAddMemberSearchResults([]);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         const data = await apiGet(`/api/users/search?q=${encodeURIComponent(query)}`);
+        if (cancelled) return;
         setAddMemberSearchResults(data || []);
       } catch {
-        setAddMemberSearchResults([]);
+        if (!cancelled) setAddMemberSearchResults([]);
       }
     }, 300);
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [addMemberSearch]);
 
   // ─── addMemberUsers memo ───────────────────────────────────────────────────

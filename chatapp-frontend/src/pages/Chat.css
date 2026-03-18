@@ -45,6 +45,18 @@
   --transition-fast: 150ms ease;
   --transition-base: 200ms ease;
   --transition-slow: 300ms ease;
+
+  /* Z-index Scale — aydın iyerarxiya */
+  --z-base: 1;              /* komponent daxili stacking */
+  --z-float: 5;             /* floating-date, bubble buttons */
+  --z-dropdown: 10;         /* filter-dropdown, pinned-expanded, scroll-btn */
+  --z-sidebar: 100;         /* sidebar, panel overlays */
+  --z-popup: 200;           /* emoji-panel, mention-panel, file-preview */
+  --z-image-viewer: 300;    /* lightbox */
+  --z-modal: 1000;          /* modal overlays — confirm, readers, forward */
+  --z-popover: 5000;        /* action-menu, reaction-picker */
+  --z-connection: 9000;     /* connection status toast */
+  --z-toast: 99999;         /* toast notification */
 }
 
 /* ===================================
@@ -116,7 +128,7 @@
   font-size: 13px;
   font-weight: 500;
   color: #fff;
-  z-index: 9999;
+  z-index: var(--z-connection);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(8px);
   animation: toast-slide-in 0.3s ease-out forwards;
@@ -467,7 +479,7 @@
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.15),
     0 2px 6px rgba(0, 0, 0, 0.08);
-  z-index: 1000;
+  z-index: var(--z-modal);
   min-width: 200px;
   overflow: hidden;
   animation: dropdownIn 0.15s ease-out;
@@ -2094,7 +2106,7 @@
   border-radius: 10px;
   padding: 4px 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: 9999;
+  z-index: var(--z-popover);
   min-width: 180px;
   overflow: hidden;
   animation: dropdownIn 0.15s ease-out;
@@ -2150,7 +2162,7 @@
   padding: 6px 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  z-index: 9999;
+  z-index: var(--z-popover);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
@@ -2332,7 +2344,7 @@
   border-radius: 10px;
   padding: 6px 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: 110;
+  z-index: var(--z-sidebar);
   min-width: 180px;
   white-space: nowrap;
 }
@@ -2472,7 +2484,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
   animation: overlayFadeIn 0.2s ease-out;
 }
 
@@ -2974,7 +2986,7 @@
   background: var(--white);
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
-  z-index: 200;
+  z-index: var(--z-popup);
   overflow: hidden;
   animation: emojiPanelIn 0.18s ease-out;
 }
@@ -3039,7 +3051,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
   animation: overlayFadeIn 0.2s ease-out;
 }
 
@@ -3426,7 +3438,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: var(--z-modal);
   animation: overlayFadeIn 0.2s ease-out;
 }
 
@@ -5473,7 +5485,7 @@
 .ds-am-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--z-popup);
 }
 
 .ds-am-popup {
@@ -5790,7 +5802,7 @@
   background: var(--white);
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
-  z-index: 200;
+  z-index: var(--z-popup);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -6043,7 +6055,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: var(--z-modal);
 }
 
 .file-preview-panel {
@@ -6730,7 +6742,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.92);
-  z-index: 300;
+  z-index: var(--z-image-viewer);
   display: flex;
   flex-direction: column;
   animation: ivFadeIn 0.2s ease-out;

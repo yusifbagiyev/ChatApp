@@ -156,6 +156,7 @@ function MessageBubble({
     return () => {
       clearTimeout(pickerTimerRef.current);
       clearTimeout(pickerOpenTimerRef.current);
+      clearTimeout(badgePressRef.current);
     };
   }, []);
 
@@ -318,6 +319,77 @@ function MessageBubble({
     el.style.top = `${top}px`;
     el.style.left = `${left}px`;
   }, [reactionOpen, reactionExpanded, isOwn]);
+
+  // Reaction badges rendering — image-only və normal mesajlar üçün ortaq helper
+  const renderReactionBadges = () =>
+    msg.reactions.map((r) => (
+      <div key={r.emoji} className="reaction-badge-wrapper">
+        <button
+          className="reaction-badge"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (reactionTooltipOpen === r.emoji) {
+              setReactionTooltipOpen(null);
+              return;
+            }
+            onReaction && onReaction(msg, r.emoji);
+          }}
+          onMouseEnter={() => {
+            badgePressRef.current = setTimeout(async () => {
+              if (reactionTooltipOpen === r.emoji) return;
+              setReactionTooltipOpen(r.emoji);
+              if (!r.userFullNames || r.userFullNames.length === 0) {
+                setReactionDetailsLoading(true);
+                await onLoadReactionDetails(msg.id);
+                setReactionDetailsLoading(false);
+              }
+            }, 500);
+          }}
+          onMouseLeave={() => clearTimeout(badgePressRef.current)}
+        >
+          <span className="reaction-badge-emoji">
+            <img
+              src={emojiToUrl(r.emoji)}
+              alt={r.emoji}
+              className="twemoji"
+              draggable="false"
+            />
+          </span>
+          {r.count > 1 && (
+            <span className="reaction-badge-count">{r.count}</span>
+          )}
+        </button>
+        {reactionTooltipOpen === r.emoji && (
+          <div className="reaction-tooltip visible" ref={tooltipRef}>
+            {reactionDetailsLoading ? (
+              <div className="reaction-tooltip-item">
+                <span className="reaction-tooltip-name reaction-tooltip-loading">
+                  Loading...
+                </span>
+              </div>
+            ) : r.userFullNames && r.userFullNames.length > 0 ? (
+              r.userFullNames.map((name, i) => (
+                <div key={i} className="reaction-tooltip-item">
+                  <div
+                    className="reaction-tooltip-avatar"
+                    style={{ background: getAvatarColor(name) }}
+                  >
+                    {getInitials(name)}
+                  </div>
+                  <span className="reaction-tooltip-name">{name}</span>
+                </div>
+              ))
+            ) : (
+              <div className="reaction-tooltip-item">
+                <span className="reaction-tooltip-name">
+                  {r.count} {r.count === 1 ? "person" : "people"} reacted
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    ));
 
   // Image-only: şəkil + mətn yoxdur — xüsusi layout (overlay timestamp, kənar reaction)
   const isImageOnly =
@@ -651,75 +723,7 @@ function MessageBubble({
         {/* Image-only: reaction badges bubble-ın birbaşa uşağı (şəklin altında görsənəcək) */}
         {isImageOnly && msg.reactions && msg.reactions.length > 0 && (
           <div className="reaction-badges reaction-badges-external">
-            {msg.reactions.map((r) => (
-              <div key={r.emoji} className="reaction-badge-wrapper">
-                <button
-                  className="reaction-badge"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (reactionTooltipOpen === r.emoji) {
-                      setReactionTooltipOpen(null);
-                      return;
-                    }
-                    onReaction && onReaction(msg, r.emoji);
-                  }}
-                  onMouseEnter={() => {
-                    badgePressRef.current = setTimeout(async () => {
-                      if (reactionTooltipOpen === r.emoji) return;
-                      setReactionTooltipOpen(r.emoji);
-                      if (!r.userFullNames || r.userFullNames.length === 0) {
-                        setReactionDetailsLoading(true);
-                        await onLoadReactionDetails(msg.id);
-                        setReactionDetailsLoading(false);
-                      }
-                    }, 500);
-                  }}
-                  onMouseLeave={() => clearTimeout(badgePressRef.current)}
-                >
-                  <span className="reaction-badge-emoji">
-                    <img
-                      src={emojiToUrl(r.emoji)}
-                      alt={r.emoji}
-                      className="twemoji"
-                      draggable="false"
-                    />
-                  </span>
-                  {r.count > 1 && (
-                    <span className="reaction-badge-count">{r.count}</span>
-                  )}
-                </button>
-                {reactionTooltipOpen === r.emoji && (
-                  <div className="reaction-tooltip visible" ref={tooltipRef}>
-                    {reactionDetailsLoading ? (
-                      <div className="reaction-tooltip-item">
-                        <span className="reaction-tooltip-name reaction-tooltip-loading">
-                          Loading...
-                        </span>
-                      </div>
-                    ) : r.userFullNames && r.userFullNames.length > 0 ? (
-                      r.userFullNames.map((name, i) => (
-                        <div key={i} className="reaction-tooltip-item">
-                          <div
-                            className="reaction-tooltip-avatar"
-                            style={{ background: getAvatarColor(name) }}
-                          >
-                            {getInitials(name)}
-                          </div>
-                          <span className="reaction-tooltip-name">{name}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="reaction-tooltip-item">
-                        <span className="reaction-tooltip-name">
-                          {r.count} {r.count === 1 ? "person" : "people"}{" "}
-                          reacted
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+            {renderReactionBadges()}
           </div>
         )}
 
@@ -728,77 +732,7 @@ function MessageBubble({
           {/* Reaction badges — sol tərəf (yalnız normal mesajlarda, image-only-da yuxarıda render olunur) */}
           {!isImageOnly && msg.reactions && msg.reactions.length > 0 && (
             <div className="reaction-badges">
-              {msg.reactions.map((r) => (
-                <div key={r.emoji} className="reaction-badge-wrapper">
-                  <button
-                    className="reaction-badge"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (reactionTooltipOpen === r.emoji) {
-                        setReactionTooltipOpen(null);
-                        return;
-                      }
-                      onReaction && onReaction(msg, r.emoji);
-                    }}
-                    onMouseEnter={() => {
-                      badgePressRef.current = setTimeout(async () => {
-                        if (reactionTooltipOpen === r.emoji) return;
-                        setReactionTooltipOpen(r.emoji);
-                        if (!r.userFullNames || r.userFullNames.length === 0) {
-                          setReactionDetailsLoading(true);
-                          await onLoadReactionDetails(msg.id);
-                          setReactionDetailsLoading(false);
-                        }
-                      }, 500);
-                    }}
-                    onMouseLeave={() => clearTimeout(badgePressRef.current)}
-                  >
-                    <span className="reaction-badge-emoji">
-                      <img
-                        src={emojiToUrl(r.emoji)}
-                        alt={r.emoji}
-                        className="twemoji"
-                        draggable="false"
-                      />
-                    </span>
-                    {r.count > 1 && (
-                      <span className="reaction-badge-count">{r.count}</span>
-                    )}
-                  </button>
-                  {reactionTooltipOpen === r.emoji && (
-                    <div className="reaction-tooltip visible" ref={tooltipRef}>
-                      {reactionDetailsLoading ? (
-                        <div className="reaction-tooltip-item">
-                          <span className="reaction-tooltip-name reaction-tooltip-loading">
-                            Loading...
-                          </span>
-                        </div>
-                      ) : r.userFullNames && r.userFullNames.length > 0 ? (
-                        r.userFullNames.map((name, i) => (
-                          <div key={i} className="reaction-tooltip-item">
-                            <div
-                              className="reaction-tooltip-avatar"
-                              style={{ background: getAvatarColor(name) }}
-                            >
-                              {getInitials(name)}
-                            </div>
-                            <span className="reaction-tooltip-name">
-                              {name}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="reaction-tooltip-item">
-                          <span className="reaction-tooltip-name">
-                            {r.count} {r.count === 1 ? "person" : "people"}{" "}
-                            reacted
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {renderReactionBadges()}
             </div>
           )}
 

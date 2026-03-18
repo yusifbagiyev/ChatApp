@@ -36,6 +36,7 @@ export default function useSearchPanel(selectedChat) {
     }
 
     setSearchLoading(true);
+    let cancelled = false;
     searchTimerRef.current = setTimeout(async () => {
       try {
         const scope = selectedChat.type === 1 ? 3 : 4;
@@ -45,18 +46,21 @@ export default function useSearchPanel(selectedChat) {
         const data = await apiGet(
           `/api/search?q=${encodeURIComponent(q)}&scope=${scope}&${idParam}&page=1&pageSize=20`,
         );
+        if (cancelled) return;
         setSearchResultsList(data.results || []);
         setSearchHasMore(data.hasNextPage || false);
         setSearchPage(1);
       } catch (err) {
+        if (cancelled) return;
         console.error("Search failed:", err);
         setSearchResultsList([]);
       } finally {
-        setSearchLoading(false);
+        if (!cancelled) setSearchLoading(false);
       }
     }, 400);
 
     return () => {
+      cancelled = true;
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
   }, [searchQuery, selectedChat]);
