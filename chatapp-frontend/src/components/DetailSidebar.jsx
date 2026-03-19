@@ -37,7 +37,7 @@ function DetailSidebar({
   setMessageText,
 }) {
   return (
-    <div className="detail-sidebar">
+    <div className={`detail-sidebar${sidebar.sidebarClosing ? " closing" : ""}`}>
       {/* Header — X close + About chat + ... more */}
       <div className="ds-header">
         <button className="ds-close" onClick={() => sidebar.closeSidebar()}>
@@ -1121,6 +1121,9 @@ function DetailSidebar({
               });
             })()}
           </div>
+          {channel.actionError && (
+            <div className="ds-am-error">{channel.actionError}</div>
+          )}
         </div>
       )}
 

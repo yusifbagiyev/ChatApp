@@ -29,6 +29,10 @@ export default function useChannelManagement(selectedChat, conversations, channe
   const [addMemberSearchResults, setAddMemberSearchResults] = useState([]);
   const [addMemberShowHistory, setAddMemberShowHistory] = useState(true);
 
+  // ─── Error feedback state — istifadəçiyə xəta göstərmək üçün ─────────────
+  const [inviteError, setInviteError] = useState(null);
+  const [actionError, setActionError] = useState(null);
+
   // ─── Ref ───────────────────────────────────────────────────────────────────
   const addMemberRef = useRef(null);
 
@@ -37,12 +41,10 @@ export default function useChannelManagement(selectedChat, conversations, channe
   async function refreshChannelMembers(channelId) {
     try {
       const members = await apiGet(`/api/channels/${channelId}/members?take=100`);
+      // Tam member obj saxla — handleInviteMembers ilə eyni format
       setChannelMembers((prev) => ({
         ...prev,
-        [channelId]: members.reduce((map, m) => {
-          map[m.userId] = { fullName: m.fullName, avatarUrl: m.avatarUrl, role: m.role };
-          return map;
-        }, {}),
+        [channelId]: members.reduce((map, m) => ({ ...map, [m.userId]: m }), {}),
       }));
       // Members paneli açıqdırsa — paneli də yenilə
       if (showMembersPanel) {
@@ -55,57 +57,65 @@ export default function useChannelManagement(selectedChat, conversations, channe
 
   // ─── handleMakeAdmin ───────────────────────────────────────────────────────
   async function handleMakeAdmin(targetUserId) {
+    setActionError(null);
     try {
       await apiPut(`/api/channels/${selectedChat.id}/members/${targetUserId}/role`, { newRole: 2 });
       await refreshChannelMembers(selectedChat.id);
-    } catch (err) {
-      console.error("Failed to make admin:", err);
+    } catch {
+      setActionError("Admin etmək mümkün olmadı");
     }
   }
 
   // ─── handleRemoveAdmin ─────────────────────────────────────────────────────
   async function handleRemoveAdmin(targetUserId) {
+    setActionError(null);
     try {
       await apiPut(`/api/channels/${selectedChat.id}/members/${targetUserId}/role`, { newRole: 1 });
       await refreshChannelMembers(selectedChat.id);
-    } catch (err) {
-      console.error("Failed to remove admin:", err);
+    } catch {
+      setActionError("Admin statusunu silmək mümkün olmadı");
     }
   }
 
   // ─── handleRemoveFromChat ──────────────────────────────────────────────────
   async function handleRemoveFromChat(targetUserId) {
+    setActionError(null);
     try {
       await apiDelete(`/api/channels/${selectedChat.id}/members/${targetUserId}`);
       await refreshChannelMembers(selectedChat.id);
-    } catch (err) {
-      console.error("Failed to remove member:", err);
+    } catch {
+      setActionError("Üzvü silmək mümkün olmadı");
     }
   }
 
   // ─── handleInviteMembers ───────────────────────────────────────────────────
+  // Promise.all ilə paralel invite — 10 user üçün 10 ardıcıl request əvəzinə 1 batch
   async function handleInviteMembers() {
     if (addMemberSelected.size === 0 || !selectedChat) return;
     setAddMemberInviting(true);
     try {
-      for (const userId of addMemberSelected) {
-        await apiPost(`/api/channels/${selectedChat.id}/members`, {
-          userId,
-          showChatHistory: addMemberShowHistory,
-        });
+      const results = await Promise.allSettled(
+        [...addMemberSelected].map((userId) =>
+          apiPost(`/api/channels/${selectedChat.id}/members`, {
+            userId,
+            showChatHistory: addMemberShowHistory,
+          })
+        )
+      );
+
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length > 0) {
+        setInviteError(`${failed.length} üzvü dəvət etmək mümkün olmadı`);
       }
-      const members = await apiGet(`/api/channels/${selectedChat.id}/members?take=100`);
-      setChannelMembers((prev) => ({
-        ...prev,
-        [selectedChat.id]: members.reduce((map, m) => ({ ...map, [m.userId]: m }), {}),
-      }));
+
+      await refreshChannelMembers(selectedChat.id);
       setShowAddMember(false);
       setAddMemberSearch("");
       setAddMemberSearchActive(false);
       setAddMemberSelected(new Set());
       setAddMemberShowHistory(true);
-    } catch (err) {
-      console.error("Failed to invite members:", err);
+    } catch {
+      setInviteError("Üzvləri dəvət edərkən xəta baş verdi");
     } finally {
       setAddMemberInviting(false);
     }
@@ -172,6 +182,8 @@ export default function useChannelManagement(selectedChat, conversations, channe
     setAddMemberSearch("");
     setAddMemberSearchActive(false);
     setAddMemberSelected(new Set());
+    setInviteError(null);
+    setActionError(null);
   }
 
   return {
@@ -186,6 +198,9 @@ export default function useChannelManagement(selectedChat, conversations, channe
     addMemberInviting, addMemberShowHistory, setAddMemberShowHistory,
     addMemberSearchResults, addMemberUsers,
     addMemberRef,
+    // Error feedback
+    inviteError, setInviteError,
+    actionError, setActionError,
     // Functions
     refreshChannelMembers,
     handleMakeAdmin, handleRemoveAdmin, handleRemoveFromChat,

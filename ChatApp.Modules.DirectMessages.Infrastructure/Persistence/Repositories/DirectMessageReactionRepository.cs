@@ -44,5 +44,16 @@ namespace ChatApp.Modules.DirectMessages.Infrastructure.Persistence.Repositories
                 ))
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task<DirectMessageReaction?> GetReactionAsync(Guid messageId, Guid userId, string reaction, CancellationToken cancellationToken = default)
+        {
+            return await _context.DirectMessageReactions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r=>
+                    r.MessageId==messageId &&
+                    r.UserId==userId &&
+                    r.Reaction==reaction, 
+                    cancellationToken);
+        }
     }
 }

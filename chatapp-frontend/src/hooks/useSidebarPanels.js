@@ -16,6 +16,7 @@ export default function useSidebarPanels(selectedChat, messages, channelMembers,
 
   // ─── Core sidebar state ───────────────────────────────────────────────────
   const [showSidebar, setShowSidebar] = useState(false);
+  const [sidebarClosing, setSidebarClosing] = useState(false);
   const [showSidebarMenu, setShowSidebarMenu] = useState(false);
 
   // ─── Favorites panel ──────────────────────────────────────────────────────
@@ -266,29 +267,34 @@ export default function useSidebarPanels(selectedChat, messages, channelMembers,
     }
   }, []);
 
-  // ─── closeSidebar — tam bağlama (X düyməsi) ───────────────────────────────
+  // ─── closeSidebar — animasiyalı bağlama (200ms slide-out, sonra unmount) ──
   const closeSidebar = useCallback(() => {
-    setShowSidebar(false);
-    setShowFavorites(false);
-    setFavSearchOpen(false);
-    setFavSearchText("");
-    setShowAllLinks(false);
-    setLinksSearchOpen(false);
-    setLinksSearchText("");
-    setShowChatsWithUser(false);
-    setChatsWithUserData([]);
-    setChatsWithUserSource(null);
-    setShowFilesMedia(false);
-    setFilesSearchOpen(false);
-    setFilesSearchText("");
-    setShowMembersPanel(false);
-    setMembersPanelDirect(false);
-    setMemberMenuId(null);
+    setSidebarClosing(true);
+    setTimeout(() => {
+      setSidebarClosing(false);
+      setShowSidebar(false);
+      setShowFavorites(false);
+      setFavSearchOpen(false);
+      setFavSearchText("");
+      setShowAllLinks(false);
+      setLinksSearchOpen(false);
+      setLinksSearchText("");
+      setShowChatsWithUser(false);
+      setChatsWithUserData([]);
+      setChatsWithUserSource(null);
+      setShowFilesMedia(false);
+      setFilesSearchOpen(false);
+      setFilesSearchText("");
+      setShowMembersPanel(false);
+      setMembersPanelDirect(false);
+      setMemberMenuId(null);
+    }, 200);
   }, []);
 
   return {
     // Core
     showSidebar, setShowSidebar,
+    sidebarClosing,
     showSidebarMenu, setShowSidebarMenu,
     // Favorites
     showFavorites, setShowFavorites,

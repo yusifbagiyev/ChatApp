@@ -278,16 +278,22 @@ function MessageBubble({
     const elHeight = el.scrollHeight;
     const elWidth = el.scrollWidth;
 
+    // Scroll container boundary — messages-area container-in görünən sahəsi
+    const scrollContainer = wrapEl.closest(".messages-area");
+    const containerRect = scrollContainer
+      ? scrollContainer.getBoundingClientRect()
+      : { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+
     // Yuxarıda yer: quick picker wrap-ın yuxarısında açılır
     // Aşağıda yer yoxdursa yuxarıya, varsa aşağıya expand olur
     let top;
-    const spaceBelow = window.innerHeight - wrapRect.bottom;
+    const spaceBelow = containerRect.bottom - wrapRect.bottom;
 
     if (!reactionExpanded) {
       // Quick mode — həmişə yuxarıda açılır
       top = wrapRect.top - elHeight;
       // Yuxarıda yer yoxdursa aşağıya flip et
-      if (top < 0) top = wrapRect.bottom;
+      if (top < containerRect.top) top = wrapRect.bottom;
     } else {
       // Expanded mode — quick sıra yerində qalır, grid aşağıya böyüyür
       // Quick row yüksəkliyi: ~50px (padding + emoji btn)
@@ -300,7 +306,7 @@ function MessageBubble({
       } else {
         // Aşağıda yer yoxdur → tamamilə yuxarıya
         top = wrapRect.top - elHeight;
-        if (top < 0) top = 4; // ekranın yuxarı kənarından 4px
+        if (top < containerRect.top) top = containerRect.top + 4;
       }
     }
 

@@ -24,11 +24,11 @@ namespace ChatApp.Modules.Channels.Domain.Entities
         private readonly List<ChannelMessageReaction> _reactions = [];
         public IReadOnlyCollection<ChannelMessageReaction> Reactions => _reactions.AsReadOnly();
 
-        private readonly List<ChannelMessageRead> _reads = [];
-        public IReadOnlyCollection<ChannelMessageRead> Reads => _reads.AsReadOnly();
-
         private readonly List<ChannelMessageMention> _mentions = [];
-        public IReadOnlyCollection<ChannelMessageMention> Mentions => _mentions.AsReadOnly();
+        public IReadOnlyCollection<ChannelMessageMention> Mentions =>_mentions.AsReadOnly();
+
+        private readonly List<ChannelMessageRead> _reads = [];
+        public IReadOnlyCollection<ChannelMessageRead> Reads=> _reads.AsReadOnly();
 
         private ChannelMessage() : base() { }
 
@@ -106,41 +106,6 @@ namespace ChatApp.Modules.Channels.Domain.Entities
             PinnedAtUtc = null;
             PinnedBy = null;
             UpdateTimestamp();
-        }
-
-        /// <summary>
-        /// Toggles a reaction: removes if same emoji clicked, replaces if different emoji.
-        /// User can only have ONE reaction per message (like WhatsApp/Telegram).
-        /// Returns (wasAdded, addedReaction, removedReactions)
-        /// </summary>
-        public (bool WasAdded, ChannelMessageReaction? AddedReaction, ChannelMessageReaction? RemovedReaction) ToggleReaction(
-            Guid userId,
-            string reactionEmoji)
-        {
-            // Find user's existing reaction with the same emoji
-            var existingSameReaction = _reactions.FirstOrDefault(r => r.UserId == userId && r.Reaction == reactionEmoji);
-
-            if (existingSameReaction != null)
-            {
-                // Same emoji clicked - remove it (toggle off)
-                _reactions.Remove(existingSameReaction);
-                return (false, null, existingSameReaction);
-            }
-            else
-            {
-                // Different emoji or no reaction - remove ALL user's existing reactions first
-                var userExistingReaction = _reactions.Find(r => r.UserId == userId);
-
-                if(userExistingReaction != null)
-                {
-                    _reactions.Remove(userExistingReaction);
-                }
-
-                // Add new reaction
-                var newReaction = new ChannelMessageReaction(Id, userId, reactionEmoji);
-                _reactions.Add(newReaction);
-                return (true, newReaction, userExistingReaction);
-            }
         }
 
         /// <summary>

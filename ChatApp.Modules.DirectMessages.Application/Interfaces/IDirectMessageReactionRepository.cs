@@ -7,6 +7,11 @@ namespace ChatApp.Modules.DirectMessages.Application.Interfaces
     {
         Task AddAsync(DirectMessageReaction reaction, CancellationToken cancellationToken = default);
         Task DeleteAsync(DirectMessageReaction reaction, CancellationToken cancellationToken = default);
+        Task<DirectMessageReaction?> GetReactionAsync(
+            Guid messageId,
+            Guid userId,
+            string reaction,
+            CancellationToken cancellationToken = default);
         Task<List<ReactionSummary>> GetMessageReactionsWithUserDetailsAsync(Guid messageId, CancellationToken cancellationToken = default);
     }
 }

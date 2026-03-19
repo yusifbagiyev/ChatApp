@@ -63,6 +63,7 @@ Identity | Channels | DirectMessages | Files | Notifications | Search | Settings
 ### 7. Agentlərlə iş
 - Agentlər nəticələri düzgün və dəqiq şəkildə təqdim etməlidir.
 - Yanlış nəticə verilən agentlərdən istifadə olunmamalıdır.
+- Commentləri azərbaycan dilində yaz, xətaları, warningləri və informasiyaları isə mütləq ingilis dilində yaz.
 
 ## Task Management
 

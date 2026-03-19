@@ -1,5 +1,6 @@
 using ChatApp.Modules.Channels.Application.DTOs.Responses;
 using ChatApp.Modules.Channels.Application.Interfaces;
+using ChatApp.Modules.Channels.Domain.Entities;
 using ChatApp.Shared.Infrastructure.SignalR.Services;
 using ChatApp.Shared.Kernel.Common;
 using ChatApp.Shared.Kernel.Exceptions;
@@ -53,8 +54,8 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelReactions
         {
             try
             {
-                // Load message with reactions (AsNoTracking for validation only)
-                var message = await _unitOfWork.ChannelMessages.GetByIdWithReactionsAsync(
+                // Load message (don't need reactions loaded)
+                var message = await _unitOfWork.ChannelMessages.GetByIdAsync(
                     request.MessageId,
                     cancellationToken)
                     ?? throw new NotFoundException($"Message with ID {request.MessageId} not found");
@@ -76,21 +77,23 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelReactions
                     return Result.Failure<List<ChannelMessageReactionDto>>("You must be a member to react to messages");
                 }
 
-                // Use domain method for toggle logic (DDD principle - business logic in domain)
-                // User can only have ONE reaction per message - old reactions are automatically removed
-                var (wasAdded, addedReaction, removedReaction) = message.ToggleReaction(
+                // Find existing reaction
+                var existingReaction = await _unitOfWork.ChannelMessageReactions.GetReactionAsync(
+                    request.MessageId,
                     request.UserId,
-                    request.Reaction);
+                    request.Reaction,
+                    cancellationToken);
 
-                if (removedReaction!=null)
+                if (existingReaction != null)
                 {
-                    await _unitOfWork.ChannelMessageReactions.RemoveReactionAsync(removedReaction, cancellationToken);
+                    // Remove reaction
+                    await _unitOfWork.ChannelMessageReactions.RemoveReactionAsync(existingReaction, cancellationToken);
                 }
-
-                // Add new reaction to database (if user selected different emoji)
-                if (wasAdded && addedReaction != null)
+                else
                 {
-                    await _unitOfWork.ChannelMessageReactions.AddReactionAsync(addedReaction, cancellationToken);
+                    // Add reaction
+                    var newReaction = new ChannelMessageReaction(request.MessageId, request.UserId, request.Reaction);
+                    await _unitOfWork.ChannelMessageReactions.AddReactionAsync(newReaction, cancellationToken);
                 }
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);

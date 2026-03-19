@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir /s /b \"..\\ChatApp.Modules.DirectMessages.Infrastructure\\*Configuration.cs\")"
+      "Bash(dir /s /b \"..\\ChatApp.Modules.DirectMessages.Infrastructure\\*Configuration.cs\")",
+      "Bash(dotnet build:*)",
+      "Bash(timeout 10:*)",
+      "Bash(nul)",
+      "Bash(Get-Content -Path \"C:\\Users\\ybaghiyev\\Desktop\\ChatApp\\ChatApp.Modules.Channels.Domain\\Entities\\ChannelMessage.cs\" -Tail 5)"
     ],
     "deny": [],
     "ask": []

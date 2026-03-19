@@ -105,6 +105,11 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Configurations
                 .WithOne(r => r.Message)
                 .HasForeignKey(r => r.MessageId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasMany(m => m.Mentions)
+                .WithOne(m => m.Message)
+                .HasForeignKey(m => m.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

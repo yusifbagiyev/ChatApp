@@ -20,7 +20,8 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             string reaction,
             CancellationToken cancellationToken = default)
         {
-            return await _context.Set<ChannelMessageReaction>()
+            return await _context.ChannelMessageReactions
+                .AsNoTracking()
                 .FirstOrDefaultAsync(r =>
                     r.MessageId == messageId &&
                     r.UserId == userId &&
@@ -32,7 +33,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             Guid messageId,
             CancellationToken cancellationToken = default)
         {
-            return await _context.Set<ChannelMessageReaction>()
+            return await _context.ChannelMessageReactions
                 .Where(r => r.MessageId == messageId)
                 .ToListAsync(cancellationToken);
         }
@@ -60,14 +61,14 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
             ChannelMessageReaction reaction,
             CancellationToken cancellationToken = default)
         {
-            await _context.Set<ChannelMessageReaction>().AddAsync(reaction, cancellationToken);
+            await _context.ChannelMessageReactions.AddAsync(reaction, cancellationToken);
         }
 
         public Task RemoveReactionAsync(
             ChannelMessageReaction reaction,
             CancellationToken cancellationToken = default)
         {
-            _context.Set<ChannelMessageReaction>().Remove(reaction);
+            _context.ChannelMessageReactions.Remove(reaction);
             return Task.CompletedTask;
         }
     }

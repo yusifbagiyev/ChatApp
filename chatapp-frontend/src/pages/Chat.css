@@ -436,6 +436,10 @@
   background: var(--white);
   box-shadow: 0 0 0 3px rgba(0, 172, 227, 0.12);
 }
+.search-input:focus-visible {
+  outline: 2px solid var(--selected-chat);
+  outline-offset: 1px;
+}
 
 /* Focus olduqda search ikonunun rəngi */
 .search-wrapper:focus-within .search-icon {
@@ -657,7 +661,7 @@
 .conversation-list::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 3px;
-  transition: background 0.2s;
+  transition: background var(--transition-base);
 }
 
 .conversation-list:hover::-webkit-scrollbar-thumb {
@@ -1273,7 +1277,7 @@
 .pinned-bar-title {
   font-size: 12px;
   font-weight: 600;
-  color: #67a4d5;
+  color: var(--selected-chat);
 }
 
 .pinned-bar-preview {
@@ -1285,7 +1289,7 @@
 }
 
 .pinned-bar-preview strong {
-  color: #989ba9;
+  color: var(--gray-400);
   font-weight: 600;
 }
 
@@ -1478,7 +1482,7 @@
   flex-shrink: 0;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--transition-slow);
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -1628,7 +1632,7 @@
   padding: 4px 12px;
   border-radius: 12px;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--transition-base);
 }
 
 .floating-date:empty {
@@ -1894,10 +1898,10 @@
 .message-bubble::after {
   content: "";
   position: absolute;
-  top: 0;
-  bottom: -15px;
-  right: -50px;
-  width: 50px;
+  top: -8px;
+  bottom: -25px;
+  right: -55px;
+  width: 55px;
 }
 
 .message-bubble.own {
@@ -2099,9 +2103,11 @@
 /* More + React butonları — default gizli, hover/actions-locked ilə görünür */
 .bubble-more-wrap,
 .bubble-react-wrap {
+  position: absolute;
+  z-index: var(--z-float);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s;
+  transition: opacity var(--transition-fast);
 }
 
 /* Hover olduqda butonları göstər */
@@ -2146,10 +2152,8 @@
 
 /* More butonu — bubble-ın sağ kənarında, yuxarıda (own: sol kənarında) */
 .bubble-more-wrap {
-  position: absolute;
   top: 4px;
   left: calc(100% + 4px);
-  z-index: var(--z-float);
 }
 .bubble-more-wrap.own {
   left: auto;
@@ -2158,10 +2162,8 @@
 
 /* React butonu — bubble-ın sağ alt küncündə çölə çıxır (own: sol alt) */
 .bubble-react-wrap {
-  position: absolute;
   bottom: -5px;
   right: -18px;
-  z-index: var(--z-float);
 }
 .bubble-react-wrap.own {
   right: auto;
@@ -2281,7 +2283,7 @@
   z-index: var(--z-popover);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s;
+  transition: opacity var(--transition-fast);
   display: flex;
   align-items: center;
   /* top/left JS tərəfindən set olunur (useLayoutEffect) */
@@ -2358,7 +2360,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease;
+  transition: background var(--transition-fast);
 }
 
 .reaction-emoji-btn:hover {
@@ -2379,7 +2381,7 @@
 }
 
 .reaction-emoji-btn .twemoji {
-  transition: transform 0.2s ease-out;
+  transition: transform 200ms ease-out;
 }
 
 .reaction-emoji-btn:hover .twemoji {
@@ -2646,7 +2648,7 @@
   justify-content: center;
   color: var(--gray-400);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .readers-panel-close:hover {
@@ -2741,7 +2743,7 @@
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--transition-base);
   z-index: 2;
 }
 
@@ -3447,6 +3449,11 @@
   border-radius: 20px;
   background: var(--white);
   border-top: 1px solid var(--gray-200);
+  animation: selectToolbarIn 0.2s ease;
+}
+@keyframes selectToolbarIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .select-toolbar-inner {
@@ -3512,6 +3519,9 @@
   transition: all var(--transition-fast);
 }
 
+.select-action-btn:not(:disabled):active {
+  transform: scale(0.94);
+}
 .select-action-btn:disabled {
   opacity: 0.5;
   cursor: default;
@@ -3633,6 +3643,9 @@
 
 .delete-confirm-btn:hover {
   background: #008dba;
+}
+.delete-confirm-btn:active {
+  transform: scale(0.96);
 }
 
 .delete-cancel-btn {
@@ -4225,7 +4238,7 @@
 }
 
 .add-member-chevron {
-  transition: transform 0.2s ease;
+  transition: transform var(--transition-base);
 }
 
 .add-member-chevron.open {
@@ -4352,14 +4365,15 @@
 
 /* transform + opacity animasiya — layout reflow yaratmır, Virtuoso scroll pozisiyasını pozmur */
 @keyframes detailSidebarSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes detailSidebarSlideOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(20px); }
+}
+.detail-sidebar.closing {
+  animation: detailSidebarSlideOut 0.2s ease-in forwards;
 }
 
 /* Header — X button solda, title ortada */
@@ -4775,7 +4789,7 @@
   background: var(--gray-300);
   border-radius: 12px;
   cursor: pointer;
-  transition: background 0.25s;
+  transition: background var(--transition-base);
 }
 
 .ds-switch-track::before {
@@ -4787,7 +4801,7 @@
   top: 2px;
   background: var(--white);
   border-radius: 50%;
-  transition: transform 0.25s;
+  transition: transform var(--transition-base);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
@@ -5824,6 +5838,11 @@
 .ds-am-user.selected {
   background: #e8f7fc;
 }
+.ds-am-user.nav-active {
+  background: var(--gray-100);
+  outline: 2px solid var(--selected-chat);
+  outline-offset: -2px;
+}
 
 .ds-am-user-avatar {
   width: 40px;
@@ -5867,6 +5886,13 @@
 
 .ds-am-check {
   flex-shrink: 0;
+}
+
+.ds-am-error {
+  color: #e74c3c;
+  font-size: 12px;
+  padding: 6px 16px;
+  text-align: center;
 }
 
 .ds-am-footer {
@@ -5974,7 +6000,7 @@
 .mention-panel-list::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 4px;
-  transition: background 0.2s;
+  transition: background var(--transition-base);
 }
 
 .mention-panel-list:hover::-webkit-scrollbar-thumb {
@@ -5991,7 +6017,7 @@
   gap: 10px;
   padding: 8px 14px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition-fast);
   animation: mentionItemIn 0.15s ease-out both;
 }
 
@@ -6193,11 +6219,13 @@
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal);
+  animation: overlayFadeIn 0.2s ease;
 }
 
 .file-preview-panel {
   background: var(--white);
   border-radius: 12px;
+  animation: modalScaleIn 0.25s ease;
   width: 420px;
   max-width: 90vw;
   max-height: 80vh;
@@ -6477,7 +6505,7 @@
 .file-upload-progress-bar {
   height: 100%;
   background: var(--primary-color);
-  transition: width 200ms ease;
+  transition: width var(--transition-base);
 }
 
 /* ─── Bubble File/Image — mesaj bubble-ında fayl/şəkil ─── */
@@ -6522,7 +6550,7 @@
   max-width: 100%;
   max-height: 400px;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--transition-slow);
 }
 
 .bubble-file-image img.loaded {
@@ -6621,7 +6649,7 @@
   padding: 10px 16px;
   border-radius: 12px;
   font-size: 11px;
-  transition: background 0.15s ease;
+  transition: background var(--transition-fast);
 }
 
 .upload-retry-btn:hover {
@@ -6658,7 +6686,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease;
+  transition: background var(--transition-fast);
 }
 
 .upload-cancel-btn-small:hover,
@@ -6942,7 +6970,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: background var(--transition-fast);
 }
 
 .iv-btn:hover {
@@ -6977,7 +7005,7 @@
   max-width: 90vw;
   max-height: calc(100vh - 140px);
   object-fit: contain;
-  transition: transform 0.15s ease;
+  transition: transform var(--transition-fast);
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -7005,7 +7033,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: background var(--transition-fast);
   z-index: 2;
 }
 

@@ -108,3 +108,30 @@
 - **Context**: `handlePinBarClick`-ı `function` → `const useCallback` çevirdim. Bu funksiya `handleScrollToMessage`-ı çağırırdı, amma `handleScrollToMessage` kodda AŞAĞIDA təyin olunmuşdu.
 - **Mistake**: `function` hoisting olur (təyin olunmamışdan əvvəl istifadə oluna bilər), amma `const` hoisting OLMUR → `Cannot access before initialization` xətası.
 - **Rule**: `function` → `const useCallback` çevirərkən HƏMİŞƏ dependency-lərin KOD SIRASInda ƏVVƏL təyin olunduğunu yoxla. Əgər dependency aşağıdadırsa, ya funksiyanı dependency-dən SONRAYA köçür, ya da ref pattern istifadə et.
+
+### HƏLL EDİLMƏYƏN PROBLEM: EF Core backing field pattern + tracked entity
+- **Date**: 2026-03-19
+- **Context**: `ChannelMessage` entity-də backing field pattern istifadə olunur:
+  ```csharp
+  private readonly List<ChannelMessageReaction> _reactions = [];
+  public IReadOnlyCollection<ChannelMessageReaction> Reactions => _reactions.AsReadOnly();
+
+  public void ToggleReaction(...) {
+      _reactions.Add(newReaction);  // or Remove
+      UpdateTimestamp();
+  }
+  ```
+- **Problem**:
+  - `SendChannelMessage`-də YENİ message yaranır → `message.AddMention(mention)` → işləyir
+  - `ToggleReaction`-da MÖVCUD message yüklənir → `message.ToggleReaction()` → `DbUpdateConcurrencyException`
+  - Hər iki halda backing field pattern eynidir, hər ikisi parent entity-də child add edir
+  - Fərq: biri Added state, biri tracked (yüklənmiş) entity
+- **Sınaqlar**:
+  1. `UpdateTimestamp()` çağırmaqla parent-i Modified state-ə keçirdik → işləmədi
+  2. `Navigation(m => m.Reactions).UsePropertyAccessMode(PropertyAccessMode.Field)` konfiqurasiya əlavə etdik → işləmədi
+  3. `ICollection` pattern-ə keçmək istədik amma user backing field pattern-də qalmaq istəyir
+- **Nəticə**: MƏN BU PROBLEMİ HƏLL EDƏ BİLMİRƏM
+  - Niyə SendMessage-də işləyib ToggleReaction-da işləmədiyini anlamıram
+  - Backing field pattern + tracked entity + domain method birlikdə EF Core tracking problemi yaradır
+  - Həll yolu: Repository pattern istifadə etmək (DirectMessage-də olduğu kimi child repository ilə add/remove)
+  - İstifadəçi backing field pattern-i saxlamaq istəyir, amma domain method ilə işləmir

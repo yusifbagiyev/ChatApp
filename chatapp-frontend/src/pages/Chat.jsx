@@ -1112,6 +1112,7 @@ function Chat() {
       try {
         await apiPost(`/api/channels/${conv.id}/members/leave`);
         setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+        delete draftsRef.current[conv.id];
         if (selectedChat && selectedChat.id === conv.id) {
           setSelectedChat(null);
           setMessages([]);
@@ -1133,6 +1134,7 @@ function Chat() {
             : `/api/conversations/${conv.id}`;
         await apiDelete(endpoint);
         setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+        delete draftsRef.current[conv.id];
         if (selectedChat && selectedChat.id === conv.id) {
           setSelectedChat(null);
           setMessages([]);
@@ -2693,6 +2695,9 @@ function Chat() {
     [channel],
   );
 
+  // ─── AddMember keyboard navigation ─────────────────────────────────────────
+  const [addMemberNavIndex, setAddMemberNavIndex] = useState(-1);
+
   // AddMember user select/toggle handler (loop daxilində)
   const handleToggleAddMemberUser = useCallback(
     (userId) => {
@@ -2705,6 +2710,7 @@ function Chat() {
       channel.setAddMemberSearch("");
       channel.setAddMemberSearchActive(false);
       channel.setAddMemberSearchResults([]);
+      setAddMemberNavIndex(-1);
     },
     [channel],
   );
@@ -3596,10 +3602,25 @@ function Chat() {
                         type="text"
                         placeholder="Search..."
                         value={channel.addMemberSearch}
-                        onChange={(e) =>
-                          channel.setAddMemberSearch(e.target.value)
-                        }
+                        onChange={(e) => {
+                          channel.setAddMemberSearch(e.target.value);
+                          setAddMemberNavIndex(-1);
+                        }}
                         autoFocus
+                        onKeyDown={(e) => {
+                          const len = addMemberFilteredUsers.length;
+                          if (!len) return;
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setAddMemberNavIndex((i) => (i + 1) % len);
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setAddMemberNavIndex((i) => (i <= 0 ? len - 1 : i - 1));
+                          } else if (e.key === "Enter" && addMemberNavIndex >= 0) {
+                            e.preventDefault();
+                            handleToggleAddMemberUser(addMemberFilteredUsers[addMemberNavIndex].id);
+                          }
+                        }}
                         onBlur={() => {
                           if (
                             !channel.addMemberSearch.trim() &&
@@ -3648,12 +3669,13 @@ function Chat() {
                         : "No recent chats"}
                     </div>
                   ) : (
-                    addMemberFilteredUsers.map((u) => {
+                    addMemberFilteredUsers.map((u, idx) => {
                       const isSelected = channel.addMemberSelected.has(u.id);
+                      const isNav = idx === addMemberNavIndex;
                       return (
                         <div
                           key={u.id}
-                          className={`ds-am-user${isSelected ? " selected" : ""}`}
+                          className={`ds-am-user${isSelected ? " selected" : ""}${isNav ? " nav-active" : ""}`}
                           onClick={() => handleToggleAddMemberUser(u.id)}
                         >
                           <div
@@ -3699,7 +3721,10 @@ function Chat() {
                   )}
                 </div>
 
-                {/* Footer — INVITE + CANCEL */}
+                {/* Footer — error + INVITE + CANCEL */}
+                {channel.inviteError && (
+                  <div className="ds-am-error">{channel.inviteError}</div>
+                )}
                 <div className="ds-am-footer">
                   <button
                     className="ds-am-invite-btn"

@@ -28,9 +28,8 @@ let stopRequested = false;
 // retryTimerId: onclose retry setTimeout ID-si — cleanup üçün
 let retryTimerId = null;
 
-// retryCount: sonsuz retry-nin qarşısını almaq üçün sayğac
+// retryCount: exponential backoff üçün sayğac (limit yoxdur — tab aktiv olduqda həmişə retry)
 let retryCount = 0;
-const MAX_RETRY_COUNT = 30; // Maksimum 30 cəhd (~2.5 dəq)
 
 // ─── Tab bağlananda bağlantını təmiz bağla ──────────────────────────────────
 function handleBeforeUnload() {
@@ -145,20 +144,45 @@ export async function startConnection() {
 }
 
 // ─── scheduleRetry ────────────────────────────────────────────────────────────
-// Retry loop — hər 5 saniyədən bir yenidən bağlanmağa cəhd edir (max 30 cəhd)
+// Exponential backoff: 5s → 10s → 20s → 30s (cap) — limit yoxdur, həmişə cəhd edir.
+// Tab gizlidirsə retry dayandırılır — tab aktiv olduqda dərhal yenidən başlayır.
+function getRetryDelay() {
+  // 5s, 10s, 20s, 30s, 30s, 30s, ...
+  return Math.min(5000 * Math.pow(2, retryCount), 30000);
+}
+
 function scheduleRetry() {
   if (retryTimerId) clearTimeout(retryTimerId);
   retryCount++;
-  if (retryCount > MAX_RETRY_COUNT) {
-    notifyConnectionState("disconnected");
+
+  // Tab gizlidirsə retry etmə — handleVisibilityChange aktiv olduqda başladacaq
+  if (document.hidden) {
+    notifyConnectionState("reconnecting");
     return;
   }
+
+  const delay = getRetryDelay();
   retryTimerId = setTimeout(() => {
     retryTimerId = null;
     if (stopRequested) return;
     startConnection().catch(() => {});
-  }, 5000);
+  }, delay);
 }
+
+// ─── Tab aktiv olduqda dərhal reconnect cəhd et ──────────────────────────────
+// Bu sayədə backend 5 dəq sonra geri gəlsə belə, user tab-a keçdikdə dərhal bağlanır.
+function handleVisibilityChange() {
+  if (document.hidden || stopRequested) return;
+  if (connection) return; // artıq bağlıdır
+  // Mövcud retry timer-i ləğv et — dərhal cəhd edəcəyik
+  if (retryTimerId) {
+    clearTimeout(retryTimerId);
+    retryTimerId = null;
+  }
+  retryCount = 0; // Tab aktiv oldu — sayğacı sıfırla, sürətli retry-dən başla
+  startConnection().catch(() => {});
+}
+document.addEventListener("visibilitychange", handleVisibilityChange);
 
 // ─── stopConnection ───────────────────────────────────────────────────────────
 // Bağlantını dayandırır. Logout zamanı çağırılır.
@@ -211,6 +235,7 @@ function notifyConnectionState(state) {
 export function cleanup() {
   window.removeEventListener("beforeunload", handleBeforeUnload);
   window.removeEventListener("online", handleOnline);
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
   connectionStateCallbacks.clear();
 }
 

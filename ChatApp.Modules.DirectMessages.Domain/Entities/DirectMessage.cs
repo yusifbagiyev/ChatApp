@@ -102,35 +102,6 @@ namespace ChatApp.Modules.DirectMessages.Domain.Entities
                 UpdatedAtUtc = DateTime.UtcNow;
             }
         }
-
-
-        public void AddReaction(DirectMessageReaction reaction)
-        {
-            // Check if user already reacted with this emoji
-            var existing=Reactions.FirstOrDefault(r=>
-                r.UserId==reaction.UserId &&
-                r.Reaction==reaction.Reaction);
-
-            if (existing != null)
-                throw new InvalidOperationException("User already reacted with this emoji");
-
-            Reactions.Add(reaction);
-            // Don't update UpdatedAtUtc - reactions are child entities and shouldn't modify parent
-        }
-
-        public void RemoveReaction(Guid userId,string reactionEmoji)
-        {
-            var reaction = Reactions.FirstOrDefault(r =>
-                r.UserId == userId &&
-                r.Reaction == reactionEmoji);
-
-            if(reaction!= null)
-            {
-                Reactions.Remove(reaction);
-                // Don't update UpdatedAtUtc - reactions are child entities and shouldn't modify parent
-            }
-        }
-
         public void Pin(Guid pinnedBy)
         {
             if (IsDeleted)
