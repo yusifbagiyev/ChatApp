@@ -1,5 +1,6 @@
 import { memo } from "react";
 import ConfirmDialog from "./ConfirmDialog";
+import "./SelectToolbar.css";
 
 function SelectToolbar({
   selectedCount,

@@ -2,6 +2,7 @@
 // .NET ekvivalenti: IEqualityComparer ilə dəyər müqayisəsi
 import { memo } from "react";
 import { downloadFile } from "../services/api";
+import "./MessageActionMenu.css";
 
 // MessageActionMenu komponenti — mesaj üzərindəki "⋮" menyusu
 // memo ilə wrap edilib — MessageBubble yenidən render olunsa belə,

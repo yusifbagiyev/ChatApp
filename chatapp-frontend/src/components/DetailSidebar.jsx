@@ -7,6 +7,7 @@ import { memo } from "react";
 
 import { getInitials, getAvatarColor, getMessagePreview, highlightMatches, formatFileSize, formatSectionDate, formatRelativeDate } from "../utils/chatUtils";
 import { downloadFileByUrl, getFileUrl } from "../services/api";
+import "./DetailSidebar.css";
 
 // highlightMatches helper — parts array-dan JSX render edir
 const renderHighlight = (text, query) => {

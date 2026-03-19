@@ -1,0 +1,310 @@
+/* ===================================
+   BUBBLE HOVER ACTIONS
+   =================================== */
+
+/* More + React butonları — default gizli, hover/actions-locked ilə görünür */
+.bubble-more-wrap,
+.bubble-react-wrap {
+  position: absolute;
+  z-index: var(--z-float);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+/* Hover olduqda butonları göstər */
+.message-bubble:hover .bubble-more-wrap,
+.message-bubble:hover .bubble-react-wrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Menu açıq olduqda — more butonu görünsün, react butonu gizlənsin */
+.message-bubble.menu-open .bubble-more-wrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+.message-bubble.menu-open .bubble-react-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Reaction picker açıq olduqda — hər iki buton görünsün (hover kimi) */
+.message-bubble.reaction-open .bubble-more-wrap,
+.message-bubble.reaction-open .bubble-react-wrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Picker üzərindədirsə — more butonu və react butonun özü gizlənsin, wrap qalsın (picker üçün) */
+.message-bubble.picker-hovered .bubble-more-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+.message-bubble.picker-hovered .bubble-react-wrap > .bubble-action-btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Select mode-da heç vaxt göstərmə */
+.message-bubble.select-mode .bubble-more-wrap,
+.message-bubble.select-mode .bubble-react-wrap {
+  display: none;
+}
+
+/* More butonu — bubble-ın sağ kənarında, yuxarıda (own: sol kənarında) */
+.bubble-more-wrap {
+  top: 4px;
+  left: calc(100% + 4px);
+}
+.bubble-more-wrap.own {
+  left: auto;
+  right: calc(100% + 4px);
+}
+
+/* React butonu — bubble-ın sağ alt küncündə çölə çıxır (own: sol alt) */
+.bubble-react-wrap {
+  bottom: -5px;
+  right: -18px;
+}
+.bubble-react-wrap.own {
+  right: auto;
+  left: -18px;
+}
+
+.bubble-action-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* React butonu — kiçik, açıq boz arxa fon */
+.bubble-react-wrap .bubble-action-btn {
+  width: 22px;
+  height: 22px;
+  background: #eaf2f1;
+  color: #b5bbbf;
+}
+.bubble-react-wrap .bubble-action-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* More butonu — açıq boz arxa fon */
+.bubble-more-wrap .bubble-action-btn {
+  background: #eaf2f1;
+  color: var(--gray-500);
+}
+
+.bubble-react-wrap .bubble-action-btn:hover {
+  background: #d9e8e6;
+  color: var(--gray-700);
+}
+
+.bubble-more-wrap .bubble-action-btn:hover {
+  background: #d9e8e6;
+  color: var(--gray-700);
+}
+
+/* ===================================
+   ACTION MENU DROPDOWN
+   =================================== */
+
+/* position: fixed — overflow container-dən çıxır */
+.action-menu {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  background: var(--white);
+  border-radius: 10px;
+  padding: 4px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: var(--z-popover);
+  min-width: 180px;
+  overflow: hidden;
+  animation: dropdownIn 0.15s ease-out;
+  transform-origin: top right;
+  /* top/left JS tərəfindən useEffect-dən set olunur */
+}
+
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.action-menu-item:hover {
+  background: var(--gray-50);
+}
+
+.action-menu-item svg {
+  color: var(--gray-400);
+  flex-shrink: 0;
+}
+
+.action-menu-item.delete {
+  color: var(--error-color);
+}
+
+.action-menu-item.delete svg {
+  color: var(--error-color);
+}
+
+/* ===================================
+   REACTION PICKER
+   =================================== */
+
+/* Reaction picker — default gizli, hover ilə açılır */
+/* Qarşı tərəfin mesajı → sola yapışıq, sağa doğru açılır (mərkəzə doğru) */
+/* position: fixed — overflow container-dən çıxır, hər yerdə görünür */
+.reaction-picker {
+  position: fixed;
+  background: var(--white);
+  border-radius: 24px;
+  padding: 6px 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  z-index: var(--z-popover);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+  display: flex;
+  align-items: center;
+  /* top/left JS tərəfindən set olunur (useLayoutEffect) */
+}
+
+/* Picker açıq olduqda göstər */
+.bubble-react-wrap.picker-open .reaction-picker {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Quick sıra — tək sətir, wrap yoxdur */
+/* Vahid emoji grid — quick + expanded emojilər birlikdə */
+.reaction-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 38px);
+  gap: 4px;
+}
+
+/* Expand olduqda: 5 sıralıq sahə + scroll */
+.reaction-emoji-grid.expanded {
+  max-height: calc(5 * (38px + 4px));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.reaction-emoji-grid.expanded:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.reaction-emoji-grid.expanded::-webkit-scrollbar {
+  width: 3px;
+}
+
+.reaction-emoji-grid.expanded::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reaction-emoji-grid.expanded::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.reaction-emoji-grid.expanded:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Twemoji şəkillər — canlı, rəngli emoji (text əvəzinə SVG) */
+.twemoji {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  pointer-events: none;
+}
+
+/* Mesaj content-dəki inline Apple emojilər */
+.inline-emoji {
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: -0.25em;
+  pointer-events: none;
+  display: inline;
+}
+
+.reaction-emoji-btn {
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+}
+
+.reaction-emoji-btn:hover {
+  background: var(--gray-100);
+}
+
+/* Hover animasiya — yüngül böyümə + yuxarı qalxma */
+@keyframes emoji-pop {
+  0% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.3) translateY(-4px);
+  }
+  100% {
+    transform: scale(1.2) translateY(-2px);
+  }
+}
+
+.reaction-emoji-btn .twemoji {
+  transition: transform 200ms ease-out;
+}
+
+.reaction-emoji-btn:hover .twemoji {
+  animation: emoji-pop 0.3s ease-out forwards;
+}
+
+.reaction-expand-btn {
+  width: 32px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.reaction-expand-btn:hover {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}

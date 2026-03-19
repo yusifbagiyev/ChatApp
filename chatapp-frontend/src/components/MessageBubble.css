@@ -1,0 +1,396 @@
+/* ===================================
+   MESSAGE ROW
+   =================================== */
+
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 75%;
+  margin-top: 4px;
+  position: relative;
+  padding-right: 66px;
+}
+
+/* Yalnız yeni gələn mesajlar üçün animasiya — JS tərəfindən class əlavə edilir */
+.message-row.new-message {
+  animation: messageFadeIn 0.2s ease-out;
+}
+
+.message-row.own {
+  align-self: flex-end;
+  margin-right: 8px;
+  padding-right: 0;
+  padding-left: 66px;
+}
+
+/* ─── Sender Group Flat — hər mesaj ayrı Virtuoso item (flat layout) ─── */
+/* Avatar yalnız qrupun sonuncu mesajında görünür, qalanlarında boş yer saxlanır */
+.sender-group-flat {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 75%;
+}
+
+/* Qrupun ilk mesajı — yeni sender qrupu başlayır */
+.sender-group-flat.first-in-group {
+  margin-top: 8px;
+}
+
+/* Avatar — qrupun sonuncu mesajında göstərilir */
+.sender-group-avatar {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Avatar boşluğu — avatar olmayan mesajlarda eyni indenti saxlamaq üçün */
+.sender-group-avatar-space {
+  width: 42px;
+  min-width: 42px;
+  flex-shrink: 0;
+}
+
+/* Mesaj sarğısı — flex-1 ilə qalan yeri tutur */
+.sender-group-msg-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Flat sender-group daxilindəki message-row — parent genişliyi idarə edir */
+.sender-group-flat .message-row {
+  max-width: 100%;
+}
+
+/* ===================================
+   MESSAGE BUBBLE
+   =================================== */
+
+.message-bubble {
+  background: var(--bubble-other);
+  border-radius: 12px;
+  padding: 4px 10px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  max-width: 100%;
+  width: fit-content;
+  overflow-wrap: anywhere;
+  position: relative;
+}
+
+/* Görünməz hover zona — sağa + aşağıya genişlənir (more + react butonlarını əhatə edir) */
+.message-bubble::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  bottom: -25px;
+  right: -55px;
+  width: 55px;
+}
+
+.message-bubble.own {
+  background: var(--bubble-own);
+  margin-left: auto;
+}
+
+/* Şəkil + mətn olan bubble — max 450px, şəklin ölçüsünə uyğunlaşır */
+.message-bubble:has(.bubble-file-image:not(.image-only)) {
+  max-width: 450px;
+}
+
+/* Qarşı tərəfin şəkil+mətn bubble — şəkil kənarları #F0F6EE, mətn hissəsi #FFFFFF */
+.message-bubble:not(.own):has(.bubble-file-image:not(.image-only)) {
+  background: var(--white);
+  overflow: hidden;
+}
+
+.message-bubble:not(.own):has(.bubble-file-image:not(.image-only))
+  .bubble-file-image {
+  background: #f0f6ee;
+}
+
+/* Şəkil+mətn — inline aspect-ratio override: konteyner tam eni tutmalıdır, daralmaz */
+.bubble-file-image:not(.image-only) {
+  aspect-ratio: auto !important;
+  min-height: 150px;
+}
+
+/* Öz mesajda şəkil+mətn — şəkil kənarları F0F6EE */
+.message-bubble.own:has(.bubble-file-image:not(.image-only))
+  .bubble-file-image {
+  background: #f0f6ee;
+}
+
+/* Öz mesajda shimmer — yaşıl tonda */
+.message-bubble.own .img-shimmer {
+  background: linear-gradient(90deg, #c8e6c9 25%, #dcedc8 50%, #c8e6c9 75%);
+  background-size: 200% 100%;
+  animation: imgShimmer 1.5s ease-in-out infinite;
+}
+
+/* Öz mesajında hover zona sola + aşağıya genişlənir */
+.message-bubble.own::after {
+  right: auto;
+  left: -50px;
+}
+
+.message-content {
+  font-size: 15px;
+  color: var(--gray-900);
+  line-height: 1.5;
+  word-wrap: break-word;
+  padding-right: 20px;
+}
+
+.message-meta {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.message-modified {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.5);
+  font-style: italic;
+}
+
+.message-time {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.read-check {
+  flex-shrink: 0;
+}
+
+/* ===================================
+   FORWARDED MESSAGE LABEL
+   =================================== */
+
+.forwarded-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0 8px;
+  color: #39b9d6;
+  font-size: 13px;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.forwarded-label svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+/* ===================================
+   REPLY REFERENCE INSIDE BUBBLE
+   =================================== */
+
+.reply-reference {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.reply-reference:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.message-bubble.own .reply-reference {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.message-bubble.own .reply-reference:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.reply-reference-bar {
+  width: 3px;
+  min-width: 3px;
+  border-radius: 2px;
+  background: #39b9d6;
+  flex-shrink: 0;
+}
+
+.reply-reference-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.reply-reference-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #39b9d6;
+}
+
+.reply-reference-text {
+  font-size: 13px;
+  color: var(--gray-500);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===================================
+   MESSAGE HIGHLIGHT (scroll-to)
+   =================================== */
+
+.message-row.highlight-message::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: -2000px;
+  right: -2000px;
+  animation: messageHighlight 3s ease-out forwards;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.message-row.highlight-message > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes messageHighlight {
+  0% {
+    background: rgba(0, 172, 227, 0.18);
+  }
+  15% {
+    background: rgba(0, 172, 227, 0.22);
+  }
+  50% {
+    background: rgba(0, 172, 227, 0.12);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* ===================================
+   REACTION BADGES (on message bubble)
+   =================================== */
+
+.reaction-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+  margin-top: 4px;
+}
+
+.reaction-badge-wrapper {
+  position: relative;
+}
+
+.reaction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.reaction-badge:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.reaction-badge-emoji {
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+.reaction-badge-emoji .twemoji {
+  width: 16px;
+  height: 16px;
+}
+
+.reaction-badge-count {
+  font-size: 12px;
+  font-weight: 450;
+  color: var(--gray-600);
+  line-height: 1;
+}
+
+/* Reaction tooltip — klik ilə açılır */
+.reaction-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: var(--white);
+  border-radius: 10px;
+  padding: 6px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: var(--z-sidebar);
+  min-width: 180px;
+  white-space: nowrap;
+}
+
+/* Öz mesajlarda tooltip sola açılsın (sağ kənardan çıxmasın) */
+.message-row.own .reaction-tooltip {
+  left: auto;
+  right: 0;
+}
+
+.reaction-tooltip.visible {
+  display: block;
+}
+
+.reaction-tooltip-loading {
+  color: var(--gray-400);
+  font-style: italic;
+}
+
+.reaction-tooltip-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+}
+
+.reaction-tooltip-avatar {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.reaction-tooltip-name {
+  font-size: 13px;
+  color: var(--gray-800);
+  font-weight: 450;
+}

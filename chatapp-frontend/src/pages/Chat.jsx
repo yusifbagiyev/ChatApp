@@ -126,6 +126,7 @@ function Chat() {
   // highlightTimerRef — highlight setTimeout ID-si (unmount-da təmizləmək üçün)
   const highlightTimerRef = useRef(null);
   const handleSendMessageRef = useRef(null);
+  const handleSelectChatRef = useRef(null);
 
   // showScrollDownRef — scroll-to-bottom buton görünürmü (ref — stale closure yoxdur)
   const showScrollDownRef = useRef(false);
@@ -429,11 +430,13 @@ function Chat() {
       }
     });
 
+    // Ref dəyərini cleanup-dan əvvəl capture et (React rule)
+    const capturedTimerId = toastTimerRef.current;
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       unsubscribe();
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (capturedTimerId) clearTimeout(capturedTimerId);
     };
   }, []);
 
@@ -1182,16 +1185,17 @@ function Chat() {
         return;
       }
       const convs = conversationsRef.current;
+      const selectChat = handleSelectChatRef.current;
       const channelConv = convs.find((c) => c.type === 1 && c.id === m.userId);
       if (channelConv) {
-        handleSelectChat(channelConv);
+        selectChat(channelConv);
         return;
       }
       const existing = convs.find(
         (c) => c.type === 0 && c.otherUserId === m.userId,
       );
       if (existing) {
-        handleSelectChat(existing);
+        selectChat(existing);
         return;
       }
       const deptUser = convs.find(
@@ -1199,20 +1203,19 @@ function Chat() {
           c.type === 2 && (c.otherUserId === m.userId || c.userId === m.userId),
       );
       if (deptUser) {
-        handleSelectChat(deptUser);
+        selectChat(deptUser);
         return;
       }
       // İstifadəçi conversationlist-də yoxdur — virtual DM yarat (type=2 pattern)
       // İlk mesaj göndəriləndə real conversation yaranacaq
-      handleSelectChat({
+      selectChat({
         id: m.userId,
         type: 2,
         name: m.userFullName,
         otherUserId: m.userId,
       });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [selectedChat],
+    [selectedChat, sidebar],
   );
 
   // ─── Search panel handler-ləri (state useSearchPanel hook-unda) ──────────────
@@ -1810,6 +1813,8 @@ function Chat() {
       }
     }
   }
+
+  handleSelectChatRef.current = handleSelectChat;
 
   // handleForward — ForwardPanel-dan chat seçilib, mesajı ora göndər
   async function handleForward(targetChat) {
@@ -3048,7 +3053,7 @@ function Chat() {
         800,
       );
     }
-  }, [user?.id, selectedChat, scrollToBottom]);
+  }, [user?.id, selectedChat, hasMoreDownRef, loadOlderTriggeredRef]);
 
   // Scroll listener attach/detach — messagesAreaRef üçün
   useEffect(() => {

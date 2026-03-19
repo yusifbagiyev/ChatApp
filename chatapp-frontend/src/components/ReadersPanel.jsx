@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, memo } from "react";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
 import { getFileUrl } from "../services/api";
+import "./ReadersPanel.css";
 
 const READERS_PAGE_SIZE = 20;
 

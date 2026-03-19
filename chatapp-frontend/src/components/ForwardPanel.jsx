@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { apiGet, getFileUrl } from "../services/api";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
+import "./ForwardPanel.css";
 
 function ForwardPanel({ conversations, onForward, onClose }) {
   const [searchText, setSearchText] = useState("");

@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { formatFileSize } from "../utils/chatUtils";
 import FileTypeIcon from "./FileTypeIcon";
+import "./FilePreviewPanel.css";
 
 function FilePreviewPanel({
   selectedFiles,

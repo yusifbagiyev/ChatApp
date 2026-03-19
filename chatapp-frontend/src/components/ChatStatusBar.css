@@ -1,0 +1,82 @@
+/* ===================================
+   CHAT STATUS BAR
+   =================================== */
+
+/* Container — messages-area içərisində, mesajlarla birlikdə scroll edir */
+.chat-status-bar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.chat-status-bar {
+  min-height: 0;
+}
+
+.chat-status-bar.has-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: #a3bad4;
+  border-radius: 10px;
+}
+
+.status-bar-typing-dots {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.status-bar-typing-dots .typing-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--white);
+  animation: typingBounce 1.2s infinite ease-in-out;
+}
+
+.status-bar-typing {
+  font-size: 13px;
+  color: var(--white);
+  font-weight: 450;
+  font-style: italic;
+}
+
+.status-bar-tick {
+  width: 13px;
+  height: 9px;
+  flex-shrink: 0;
+}
+
+.status-bar-tick polyline {
+  fill: none;
+  stroke: var(--white);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status-bar-viewed {
+  font-size: 12px;
+  color: var(--white);
+  font-weight: 400;
+}
+
+.status-bar-more-btn {
+  border: none;
+  background: none;
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 450;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+
+.status-bar-more-btn:hover {
+  color: var(--white);
+}

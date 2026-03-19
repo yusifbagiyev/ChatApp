@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from "../services/api";
+import "./ChannelPanel.css";
 
 // ─── Hierarchy helpers ──────────────────────────────────────────────────────
 

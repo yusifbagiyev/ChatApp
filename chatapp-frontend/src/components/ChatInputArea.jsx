@@ -6,6 +6,7 @@ import { renderTextWithEmojis } from "../utils/emojiConstants";  // Emoji → Ap
 import MentionPanel from "./MentionPanel";                       // @ mention dropdown paneli
 import FilePreviewPanel from "./FilePreviewPanel";               // Fayl preview modal
 import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react"; // Modern emoji picker
+import "./ChatInputArea.css";
 
 // ChatInputArea komponenti — mesaj yazma sahəsi + emoji panel
 // Bu komponent "pure UI" — bütün state Chat.jsx-dədir, buraya prop olaraq gəlir

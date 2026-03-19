@@ -9,6 +9,7 @@ import { renderTextWithEmojis } from "../utils/emojiConstants";  // Emoji → Ap
 
 // API servis — backend-ə HTTP GET request göndərmək üçün
 import { apiGet, getFileUrl } from "../services/api";
+import "./ConversationList.css";
 
 // ─── renderPreviewEmojis — preview mətndəki Unicode emojiləri Apple CDN img-ə çevirir ───
 function renderPreviewEmojis(text) {

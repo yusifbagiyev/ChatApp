@@ -1,4 +1,5 @@
 import { useMemo, memo } from "react";
+import "./ChatStatusBar.css";
 
 // ChatStatusBar — mesaj input sahəsinin üstündə sabit yer tutan status bar
 // İki hissəsi var:

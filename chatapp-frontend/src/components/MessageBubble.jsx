@@ -22,6 +22,7 @@ import {
   renderTextWithEmojis,
 } from "../utils/emojiConstants";
 import MessageActionMenu from "./MessageActionMenu"; // "⋮" menyu komponenti
+import "./MessageBubble.css";
 
 // ─── URL regex — linkləri tapıb klikləyilən etmək üçün ────────────────────────
 const URL_REGEX = /(https?:\/\/[^\s<>"')\]]+)/g;

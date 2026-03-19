@@ -2,6 +2,7 @@ import { memo } from "react";
 // Utility funksiyaları import et
 import { getInitials, getAvatarColor, getLastSeenText } from "../utils/chatUtils";
 import { getFileUrl } from "../services/api";
+import "./ChatHeader.css";
 
 // ChatHeader komponenti — chat panelinin yuxarı başlığı
 // Props:

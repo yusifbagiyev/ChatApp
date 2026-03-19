@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, useRef, useCallback } from "react";
 import { getFileUrl, downloadFile } from "../services/api";
+import "./ImageViewer.css";
 
 function ImageViewer({ images, currentIndex, onClose, onNavigate }) {
   const [zoom, setZoom] = useState(1);

@@ -1,6 +1,7 @@
 // Utility funksiyaları import et
 import { getInitials, getAvatarColor, getMessagePreview } from "../utils/chatUtils";
 import { getFileUrl } from "../services/api";
+import "./PinnedBar.css";
 
 // PinnedBar komponenti — chatın üstündə compact pinlənmiş mesaj barı
 // Bir dəfədə bir pinlənmiş mesaj göstərir, klikləndikdə həmin mesaja scroll edir

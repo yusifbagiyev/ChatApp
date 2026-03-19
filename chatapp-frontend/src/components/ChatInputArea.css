@@ -1,0 +1,449 @@
+/* ===================================
+   MESSAGE INPUT AREA
+   =================================== */
+
+.message-input-area {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+  gap: 8px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Bitrix-style resize handle — input sahəsini yuxarıya dartmaq üçün */
+/* Hover olduqda görünür, drag ilə textarea hündürlüyünü dəyişmək olur */
+.input-resize-handle {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 14px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  z-index: 2;
+}
+
+.message-input-area:hover .input-resize-handle {
+  opacity: 1;
+}
+
+.input-resize-handle span {
+  width: 28px;
+  height: 3px;
+  background: var(--gray-300);
+  border-radius: 2px;
+}
+
+.input-resize-handle:hover span {
+  background: var(--gray-400);
+}
+
+/* Drag aktiv olduqda — handle həmişə görünür */
+.input-resize-handle.dragging {
+  opacity: 1;
+}
+
+.input-resize-handle.dragging span {
+  background: var(--primary-color);
+}
+
+/* Reply preview — input-un üstündə */
+.reply-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--white);
+  border-radius: 22px;
+  padding: 8px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  animation: slideDown 0.2s ease-out;
+}
+
+.reply-preview-icon {
+  flex-shrink: 0;
+}
+
+.reply-preview-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reply-preview-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--selected-chat);
+}
+
+.reply-preview-text {
+  font-size: 13px;
+  color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reply-preview-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.reply-preview-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+/* Edit Preview — reply preview ilə eyni struktur */
+.edit-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--white);
+  border-radius: 22px;
+  padding: 8px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  animation: slideDown 0.2s ease-out;
+}
+
+.edit-preview-icon {
+  flex-shrink: 0;
+}
+
+.edit-preview-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edit-preview-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--selected-chat);
+}
+
+.edit-preview-text {
+  font-size: 13px;
+  color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edit-preview-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.edit-preview-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.message-input-wrapper {
+  position: relative;
+  background: var(--white);
+  border-radius: 22px;
+  padding: 6px 6px 6px 10px;
+  min-height: 86px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.input-icon-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+/* Attach butonu — sol yuxarı (absolute, Bitrix pattern) */
+.input-icon-btn.attach-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+}
+
+/* Sağ aşağı butonlar qrupu — emoji + send (absolute) */
+/* Sağ aşağı butonlar sətri — tam enli ağ fon, text bu sətirə girmir */
+.input-actions-group {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  z-index: 2;
+  background: var(--white);
+  padding: 6px 8px;
+  border-radius: 0 0 22px 22px;
+}
+
+.input-icon-btn:hover {
+  color: var(--gray-600);
+}
+
+.input-icon-btn.active {
+  color: var(--selected-chat);
+}
+
+/* Textarea + mirror konteyner — full width */
+.message-input-container {
+  position: relative;
+  min-height: 34px;
+}
+
+/* Mirror — textarea ilə eyni font/padding/line-height */
+/* padding-bottom: 44px — butonlar sətri üçün boşluq (text heç vaxt butonlara keçmir) */
+/* overflow-y: scroll — textarea ilə eyni scrollbar eni ayırır (text wrapping sinxron olur) */
+.message-input-mirror {
+  position: absolute;
+  inset: 0;
+  padding: 6px 8px 44px 38px;
+  font-size: 15px;
+  font-family: inherit;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  box-sizing: border-box; /* Textarea ilə eyni hesablama */
+  overflow-y: hidden; /* Textarea ilə sinxron — JS content artdıqda auto edir */
+  pointer-events: none;
+  color: var(--gray-900);
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+/* Mirror scrollbar — görünməz, lakin textarea ilə eyni eni tutur */
+.message-input-mirror::-webkit-scrollbar {
+  width: 4px;
+}
+
+.message-input-mirror::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+/* Emoji wrap — inline-block + relative, eni native emoji ilə eyni qalır (textarea sync) */
+.mirror-emoji-wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+/* Native emoji simvolu — gizli amma eni saxlanılır (textarea layout ilə eyni) */
+.mirror-emoji-char {
+  visibility: hidden;
+}
+
+/* Apple CDN emoji şəkli — wrapper-in tam sahəsini doldurur (textarea sync üçün) */
+.mirror-emoji-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* Textarea — transparent text, visible caret */
+/* padding-bottom: 44px — butonlar sətri üçün boşluq saxlayır */
+.message-input {
+  position: relative;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  color: transparent;
+  -webkit-text-fill-color: transparent; /* Windows-da rəngli emoji fontları tam gizlətmək üçün */
+  caret-color: var(--gray-900);
+  outline: none;
+  padding: 6px 8px 44px 38px;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: none;
+  box-sizing: border-box; /* padding daxil — scrollHeight/offsetHeight eyni bazada hesablanır */
+  min-height: 71px;
+  max-height: 300px;
+  overflow-y: hidden; /* Default gizli — content 1 sətri aşdıqda JS overflow:auto edir */
+  height: auto;
+  z-index: var(--z-base);
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+/* Scroll olduqda scrollbar görünsün */
+.message-input:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+/* Webkit scrollbar — modern, nazik, mesajın üzərinə düşmür */
+.message-input::-webkit-scrollbar {
+  width: 4px;
+}
+
+.message-input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.message-input::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.message-input:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.message-input::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.message-input::placeholder {
+  color: var(--gray-400);
+  -webkit-text-fill-color: var(--gray-400);
+  font-size: 14px;
+}
+
+/* Selection zamanı rəng — transparent text seçiləndə görünməlidir */
+.message-input::selection {
+  background: rgba(0, 172, 227, 0.3);
+  color: transparent;
+}
+
+.send-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  flex-shrink: 0;
+  border: none;
+  background: var(--selected-chat);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.send-btn:hover {
+  background: #0098ca;
+  transform: scale(1.05);
+}
+
+.send-btn.disabled {
+  background: #b0dff0;
+  cursor: default;
+  transform: scale(0.9);
+  opacity: 0.6;
+}
+
+.send-btn.disabled:hover {
+  background: #b0dff0;
+  transform: none;
+}
+
+/* ===================================
+   EMOJI PICKER PANEL
+   =================================== */
+
+.emoji-panel {
+  position: absolute;
+  bottom: 70px;
+  right: 14px;
+  width: 350px;
+  height: 435px;
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  z-index: var(--z-popup);
+  overflow: hidden;
+  animation: emojiPanelIn 0.18s ease-out;
+}
+
+@keyframes emojiPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* emoji-picker-react kitabxanasının daxili stillərini override et */
+.emoji-panel .EmojiPickerReact {
+  border: none !important;
+  box-shadow: none !important;
+  --epr-emoji-size: 28px;
+  --epr-category-label-height: 28px;
+  --epr-header-padding: 8px 10px;
+  font-family: inherit;
+}
+
+/* Emoji panel scroll — modern, nazik, smooth */
+.emoji-panel .EmojiPickerReact .epr-body {
+  scroll-behavior: smooth;
+}
+
+.emoji-panel .EmojiPickerReact .epr-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.emoji-panel .EmojiPickerReact .epr-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.emoji-panel .EmojiPickerReact .epr-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+}
+
+.emoji-panel .EmojiPickerReact .epr-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* Firefox üçün */
+.emoji-panel .EmojiPickerReact .epr-body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}

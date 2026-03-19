@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
 import { getFileUrl } from "../services/api";
+import "./MentionPanel.css";
 
 // MentionPanel — @ mention dropdown paneli
 // ChatInputArea daxilində render olunur (emoji panel kimi)

@@ -1,4 +1,5 @@
 import { memo } from "react";
+import "./Sidebar.css";
 
 // Sidebar komponenti — sol dar navigasiya paneli (60px en)
 // Props:

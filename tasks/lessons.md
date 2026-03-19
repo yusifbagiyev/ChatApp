@@ -135,3 +135,14 @@
   - Backing field pattern + tracked entity + domain method birlikdə EF Core tracking problemi yaradır
   - Həll yolu: Repository pattern istifadə etmək (DirectMessage-də olduğu kimi child repository ilə add/remove)
   - İstifadəçi backing field pattern-i saxlamaq istəyir, amma domain method ilə işləmir
+
+## CSS Architecture Rule (2026-03-19)
+
+- **QAYDA**: Hər yeni komponent yaradılanda öz CSS faylı da yaradılmalıdır.
+  - Fayl adı: `ComponentName.css` → `src/components/` qovluğunda
+  - Import: komponentin içində `import "./ComponentName.css";`
+  - Chat.css-ə stil əlavə etmə — yalnız `:root` variables, shared animations, və Chat.jsx-ə aid stillər orada qalır
+- **Səbəb**: 7139 sətirlik monolitik Chat.css 16 komponent CSS faylına bölündü. Bakım, ad konflikti və ölü kod problemlərinin qarşısını alır.
+- **Mövcud struktur**:
+  - `Chat.css` → :root, animations, layout, chat-panel, messages-area (656 sətir)
+  - Hər komponent öz CSS-i: Sidebar, ConversationList, ChatHeader, PinnedBar, MessageBubble, MessageActionMenu, ChatStatusBar, ReadersPanel, ChatInputArea, ForwardPanel, SelectToolbar, ChannelPanel, DetailSidebar, MentionPanel, FilePreviewPanel, ImageViewer
