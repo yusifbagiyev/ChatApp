@@ -15,7 +15,7 @@ import { getMessagePreview } from "../utils/chatUtils";
 
 export default function useChatSignalR(
   userId,             // Cari istifadəçinin ID-si (öz typing signal-ını ignore etmək üçün)
-  setSelectedChat,    // Seçilmiş chat-ı yeniləmək üçün Chat.jsx state setter
+  selectedChatRef,    // Seçilmiş chat-ın ref-i (stale closure problemi yoxdur)
   setMessages,        // Mesajlar array-ını yeniləmək üçün
   setConversations,   // Conversation list-i yeniləmək üçün (son mesaj)
   setShouldScrollBottom, // Yeni mesaj gəldikdə aşağı scroll et
@@ -34,6 +34,9 @@ export default function useChatSignalR(
   useEffect(() => {
     // conn: SignalR connection obyekti — cleanup funksiyasında istifadə üçün
     let conn = null;
+    // StrictMode qoruması: mount→cleanup→remount zamanı köhnə callback-in handler
+    // qeydə almasının qarşısını alır (async startConnection cleanup-dan sonra resolve olur)
+    let aborted = false;
 
     // ─── handleNewMessage — DM və Channel üçün ortaq handler ─────────────────
     // chatType: 0 = DM, 1 = Channel
@@ -52,40 +55,53 @@ export default function useChatSignalR(
       }
 
       // Əgər bu chat açıqdırsa — messages state-ə əlavə et
-      setSelectedChat((current) => {
-        if (current && current.type === chatType && current.id === chatId) {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === message.id)) return prev;
-            // Öz mesajımızın echo-su — optimistic mesajı tap və əvəz et
-            // FIFO: ən köhnə optimistic-i tap (echo-lar göndərmə sırasına uyğun gəlir)
-            let enrichedMsg = message;
-            let matchedOptId = null;
-            if (message.senderId === userId) {
-              const optimistics = prev.filter((m) => m._optimistic || (typeof m.id === "string" && m.id.startsWith("temp-")));
-              const optimistic = optimistics.length > 0 ? optimistics[optimistics.length - 1] : null;
-              if (optimistic) {
-                matchedOptId = optimistic.id;
-                enrichedMsg = {
-                  ...message,
-                  replyToContent: message.replyToContent || optimistic.replyToContent || null,
-                  replyToSenderName: message.replyToSenderName || optimistic.replyToSenderName || null,
-                  mentions: message.mentions?.length > 0 ? message.mentions : (optimistic.mentions || []),
-                  _stableKey: optimistic._stableKey || optimistic.id,
-                };
-              }
+      // selectedChatRef.current istifadə olunur — setState içindən setState çağırmaq anti-pattern-dır
+      const current = selectedChatRef?.current;
+      if (current && current.type === chatType && current.id === chatId) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === message.id)) return prev;
+          // Öz mesajımızın echo-su — optimistic mesajı tap və əvəz et
+          // FIFO: ən köhnə optimistic-i tap (echo-lar göndərmə sırasına uyğun gəlir)
+          let enrichedMsg = message;
+          let matchedOptId = null;
+          if (message.senderId === userId) {
+            const optimistics = prev.filter((m) => m._optimistic || (typeof m.id === "string" && m.id.startsWith("temp-")));
+            const optimistic = optimistics.length > 0 ? optimistics[optimistics.length - 1] : null;
+            if (optimistic) {
+              matchedOptId = optimistic.id;
+              enrichedMsg = {
+                ...message,
+                createdAtUtc: optimistic.createdAtUtc, // Lokal vaxt saxla — layout shift olmasın
+                _optimistic: true,  // Hələ pending saxla — layout shift olmasın
+                replyToContent: message.replyToContent || optimistic.replyToContent || null,
+                replyToSenderName: message.replyToSenderName || optimistic.replyToSenderName || null,
+                mentions: message.mentions?.length > 0 ? message.mentions : (optimistic.mentions || []),
+                _stableKey: optimistic._stableKey || optimistic.id,
+              };
+              // Scroll sabitləşdikdən sonra _optimistic sil + status yenilə
+              // useLayoutEffect -32 shift-i paint-dən əvvəl düzəldəcək
+              const realId = message.id;
+              setTimeout(() => {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === realId ? { ...m, _optimistic: false } : m,
+                  ),
+                );
+              }, 200);
             }
-            // Aşağıda deyilsə programmatic scroll et
-            if (message.senderId === userId && showScrollDownRef?.current) {
-              setShouldScrollBottom(true);
-            }
-            if (matchedOptId) {
-              return prev.map((m) => m.id === matchedOptId ? enrichedMsg : m);
-            }
-            return [enrichedMsg, ...prev];
-          });
-        }
-        return current;
-      });
+          }
+          if (matchedOptId) {
+            return prev.map((m) => m.id === matchedOptId ? enrichedMsg : m);
+          }
+          // Başqasının mesajı — aşağıda deyilsə programmatic scroll et
+          if (message.senderId === userId && showScrollDownRef?.current) {
+            setShouldScrollBottom(true);
+          }
+          return [enrichedMsg, ...prev];
+        });
+
+
+      }
 
       // Conversation list-i yenilə
       setConversations((prev) => {
@@ -438,29 +454,42 @@ export default function useChatSignalR(
     // ─── SignalR Bağlantısını Qur + Handler-ları Register Et ─────────────────
     // startConnection() → Promise qaytarır → .then() ilə uğurlu bağlantıda handler-lar qur
     // conn.on("EventName", handlerFunction) — .NET-də: hub.On<T>("EventName", handler) kimi
+    // Event adları — handler register/unregister üçün mərkəzləşdirilmiş siyahı
+    const eventHandlers = [
+      ["NewDirectMessage", handleNewDirectMessage],
+      ["NewChannelMessage", handleNewChannelMessage],
+      ["MessageRead", handleMessageRead],
+      ["UserOnline", handleUserOnline],
+      ["UserOffline", handleUserOffline],
+      ["UserTypingInConversation", handleUserTypingInConversation],
+      ["UserTypingInChannel", handleUserTypingInChannel],
+      ["DirectMessagePinned", handleMessagePinned],
+      ["DirectMessageUnpinned", handleMessageUnpinned],
+      ["ChannelMessagePinned", handleMessagePinned],
+      ["ChannelMessageUnpinned", handleMessageUnpinned],
+      ["DirectMessageDeleted", handleMessageDeleted],
+      ["ChannelMessageDeleted", handleMessageDeleted],
+      ["DirectMessageEdited", handleMessageEdited],
+      ["ChannelMessageEdited", handleMessageEdited],
+      ["ChannelMessageReactionsUpdated", handleReactionsUpdated],
+      ["DirectMessageReactionToggled", handleReactionsUpdated],
+      ["ChannelMessagesRead", handleChannelMessagesRead],
+      ["AddedToChannel", handleAddedToChannel],
+    ];
+
     startConnection()
       .then((c) => {
+        if (aborted) return; // StrictMode: köhnə mount-un callback-i → skip
         conn = c; // cleanup üçün saxla
-        // Hər event adı — server-dəki ChatHub-da public method/invoke adıdır
-        conn.on("NewDirectMessage", handleNewDirectMessage);
-        conn.on("NewChannelMessage", handleNewChannelMessage);
-        conn.on("MessageRead", handleMessageRead);
-        conn.on("UserOnline", handleUserOnline);
-        conn.on("UserOffline", handleUserOffline);
-        conn.on("UserTypingInConversation", handleUserTypingInConversation);
-        conn.on("UserTypingInChannel", handleUserTypingInChannel);
-        conn.on("DirectMessagePinned", handleMessagePinned);
-        conn.on("DirectMessageUnpinned", handleMessageUnpinned);
-        conn.on("ChannelMessagePinned", handleMessagePinned);
-        conn.on("ChannelMessageUnpinned", handleMessageUnpinned);
-        conn.on("DirectMessageDeleted", handleMessageDeleted);
-        conn.on("ChannelMessageDeleted", handleMessageDeleted);
-        conn.on("DirectMessageEdited", handleMessageEdited);
-        conn.on("ChannelMessageEdited", handleMessageEdited);
-        conn.on("ChannelMessageReactionsUpdated", handleReactionsUpdated);
-        conn.on("DirectMessageReactionToggled", handleReactionsUpdated);
-        conn.on("ChannelMessagesRead", handleChannelMessagesRead);
-        conn.on("AddedToChannel", handleAddedToChannel);
+        // Əvvəlcə bütün köhnə handler-ları sil (StrictMode/HMR dublikat qoruması)
+        // conn.off("EventName") — handler göstərilmədən çağırıldıqda bütün handler-ları silir
+        for (const [event] of eventHandlers) {
+          conn.off(event);
+        }
+        // Yeni handler-ları qeydiyyata al
+        for (const [event, handler] of eventHandlers) {
+          conn.on(event, handler);
+        }
       })
       .catch((err) => console.error("SignalR connection failed:", err));
 
@@ -469,26 +498,11 @@ export default function useChatSignalR(
     // .NET-də: IDisposable.Dispose() kimi.
     // conn.off() — handler-ları sil. Əks halda memory leak + duplicate event-lər olar.
     return () => {
+      aborted = true;
       if (conn) {
-        conn.off("NewDirectMessage", handleNewDirectMessage);
-        conn.off("NewChannelMessage", handleNewChannelMessage);
-        conn.off("MessageRead", handleMessageRead);
-        conn.off("UserOnline", handleUserOnline);
-        conn.off("UserOffline", handleUserOffline);
-        conn.off("UserTypingInConversation", handleUserTypingInConversation);
-        conn.off("UserTypingInChannel", handleUserTypingInChannel);
-        conn.off("DirectMessagePinned", handleMessagePinned);
-        conn.off("DirectMessageUnpinned", handleMessageUnpinned);
-        conn.off("ChannelMessagePinned", handleMessagePinned);
-        conn.off("ChannelMessageUnpinned", handleMessageUnpinned);
-        conn.off("DirectMessageDeleted", handleMessageDeleted);
-        conn.off("ChannelMessageDeleted", handleMessageDeleted);
-        conn.off("DirectMessageEdited", handleMessageEdited);
-        conn.off("ChannelMessageEdited", handleMessageEdited);
-        conn.off("ChannelMessageReactionsUpdated", handleReactionsUpdated);
-        conn.off("DirectMessageReactionToggled", handleReactionsUpdated);
-        conn.off("ChannelMessagesRead", handleChannelMessagesRead);
-        conn.off("AddedToChannel", handleAddedToChannel);
+        for (const [event] of eventHandlers) {
+          conn.off(event);
+        }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

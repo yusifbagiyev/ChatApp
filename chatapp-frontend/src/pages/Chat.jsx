@@ -131,6 +131,10 @@ function Chat() {
   // showScrollDownRef — scroll-to-bottom buton görünürmü (ref — stale closure yoxdur)
   const showScrollDownRef = useRef(false);
 
+  // selectedChatRef — useChatSignalR-da stale closure-dan qaçmaq üçün
+  // setState içindən setState çağırmaq anti-pattern-dır, ref ilə əvəz olunur
+  const selectedChatRef = useRef(null);
+
   // ─── Conversation Cache — chat dəyişəndə blank screen əvəzinə cache-dən göstər ───
   // Map<chatId, { messages, pinnedMessages, hasMore, hasMoreDown, timestamp }>
   const messageCacheRef = useRef(new Map());
@@ -378,11 +382,14 @@ function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // selectedChatRef-i həmişə aktual saxla — useChatSignalR ref-dən oxuyur
+  selectedChatRef.current = selectedChat;
+
   // useChatSignalR — real-time event-ləri dinlə (NewMessage, UserOnline, Typing, etc.)
   // Bu hook içəridə useEffect ilə SignalR event handler-larını qeydiyyata alır
   useChatSignalR(
     user.id,
-    setSelectedChat,
+    selectedChatRef,
     setMessages,
     setConversations,
     setShouldScrollBottom,
@@ -678,6 +685,17 @@ function Chat() {
       programmaticScrollRef.current = false;
     }, 400);
   }, [shouldScrollBottom, scrollToBottom]);
+
+  // Mesajlar dəyişəndə (echo replacement, status update) aşağıda idik → aşağıda qal
+  // useLayoutEffect — paint-dən ƏVVƏL scroll düzəldir, istifadəçi sıçramanı görməz
+  useLayoutEffect(() => {
+    const area = messagesAreaRef.current;
+    if (!area) return;
+    const gap = area.scrollHeight - area.scrollTop - area.clientHeight;
+    if (gap > 0 && gap < 80) {
+      area.scrollTop = area.scrollHeight;
+    }
+  }, [messages]);
 
   // getAround / highlight — mesajlar yüklənəndən sonra hədəfə scroll + highlight
   useEffect(() => {
@@ -2359,13 +2377,9 @@ function Chat() {
         ...(mentionsForSend.length > 0 ? { mentions: mentionsForSend } : {}),
       });
 
-      // ── API uğurlu → optimistic mesajın statusunu Sent (1) et + _optimistic sil ──
-      // _optimistic silinir ki, react/more butonları dərhal görünsün (SignalR echo gözləmədən)
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === tempId ? { ...m, status: 1, _optimistic: false } : m,
-        ),
-      );
+      // API uğurlu — status/optimistic dəyişikliyi ETMƏ
+      // Echo gəldikdə bütün field-lər (status, id, _optimistic) bir dəfəyə yenilənir
+      // Bu, aralıq re-render-i və scroll sıçramasını aradan qaldırır
 
       // ConversationList-də statusu Sent et
       setConversations((prev) =>
@@ -3006,22 +3020,25 @@ function Chat() {
     const floatingEl = floatingDateRef.current;
     if (floatingEl) {
       const containerTop = area.getBoundingClientRect().top;
+      const containerBottom = containerTop + area.clientHeight;
       const dateSeps = area.querySelectorAll(".date-separator");
       let currentLabel = "";
+      let currentSep = null;
       for (const sep of dateSeps) {
-        if (sep.getBoundingClientRect().top - containerTop <= 20) {
+        const sepTop = sep.getBoundingClientRect().top;
+        if (sepTop - containerTop <= 20) {
           currentLabel = sep.textContent || "";
+          currentSep = sep;
         } else {
           break;
         }
       }
-      // İlk görünən item date separator-dursa, floating date gizlət (overlap olmasın)
-      const firstSep = dateSeps[0];
-      if (
-        firstSep &&
-        Math.abs(firstSep.getBoundingClientRect().top - containerTop) < 30
-      ) {
-        currentLabel = "";
+      // Əgər floating date-in göstərəcəyi separator hələ görünürdürsə — gizlət (overlap olmasın)
+      if (currentSep) {
+        const sepTop = currentSep.getBoundingClientRect().top;
+        if (sepTop >= containerTop && sepTop < containerBottom) {
+          currentLabel = "";
+        }
       }
       if (floatingEl.textContent !== currentLabel)
         floatingEl.textContent = currentLabel;

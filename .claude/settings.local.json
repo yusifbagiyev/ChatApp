@@ -110,7 +110,8 @@
       "Bash(awk '/^\\\\.action-menu-item\\\\s*\\\\{/,/^}/' \"C:\\\\Users\\\\ybaghiyev\\\\Desktop\\\\ChatApp\\\\chatapp-frontend\\\\src\\\\pages\\\\Chat.css\")",
       "Bash(awk '/^\\\\.reaction-badge\\\\s*\\\\{/,/^}/' \"C:\\\\Users\\\\ybaghiyev\\\\Desktop\\\\ChatApp\\\\chatapp-frontend\\\\src\\\\pages\\\\Chat.css\")",
       "Bash(awk '/^\\\\.img-error\\\\s*\\\\{/,/^}/' \"C:\\\\Users\\\\ybaghiyev\\\\Desktop\\\\ChatApp\\\\chatapp-frontend\\\\src\\\\pages\\\\Chat.css\")",
-      "Bash(declare -A file_map file_map[\"search-section-title\"]=\"ConversationList.css\" file_map[\"ds-card-divider\"]=\"DetailSidebar.css\" file_map[\"ds-dropdown-accent\"]=\"DetailSidebar.css\" file_map[\"ds-file-icon\"]=\"DetailSidebar.css\" file_map[\"ds-file-item\"]=\"DetailSidebar.css\" file_map[\"ds-file-name\"]=\"DetailSidebar.css\" file_map[\"ds-file-thumb\"]=\"DetailSidebar.css\" file_map[\"ds-files-empty\"]=\"DetailSidebar.css\" file_map[\"ds-files-grid\"]=\"DetailSidebar.css\" file_map[\"file-upload-progress\"]=\"FilePreviewPanel.css\" file_map[\"file-upload-progress-bar\"]=\"FilePreviewPanel.css\" __NEW_LINE_2a9aa6d785607259__ for class in \"$!ile_map[@]\")"
+      "Bash(declare -A file_map file_map[\"search-section-title\"]=\"ConversationList.css\" file_map[\"ds-card-divider\"]=\"DetailSidebar.css\" file_map[\"ds-dropdown-accent\"]=\"DetailSidebar.css\" file_map[\"ds-file-icon\"]=\"DetailSidebar.css\" file_map[\"ds-file-item\"]=\"DetailSidebar.css\" file_map[\"ds-file-name\"]=\"DetailSidebar.css\" file_map[\"ds-file-thumb\"]=\"DetailSidebar.css\" file_map[\"ds-files-empty\"]=\"DetailSidebar.css\" file_map[\"ds-files-grid\"]=\"DetailSidebar.css\" file_map[\"file-upload-progress\"]=\"FilePreviewPanel.css\" file_map[\"file-upload-progress-bar\"]=\"FilePreviewPanel.css\" __NEW_LINE_2a9aa6d785607259__ for class in \"$!ile_map[@]\")",
+      "Bash(2)"
     ],
     "deny": [],
     "ask": []
