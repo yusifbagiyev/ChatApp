@@ -3,8 +3,8 @@
    =================================== */
 
 /* Attach dropdown menu — input-un sol yuxarı hissəsindən açılır (yuxarıya) */
-.attach-menu {
-  position: absolute;
+/* .ds-dropdown.attach-menu — specificity artırılıb ki, .ds-dropdown-un top:100% override olunsun */
+.ds-dropdown.attach-menu {
   bottom: calc(100% + 4px);
   left: 8px;
   top: auto;
