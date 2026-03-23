@@ -156,6 +156,12 @@
   background: #d4eaf5;
   border-radius: 14px;
   position: relative;
+  animation: cpChipIn 200ms ease-out;
+}
+
+@keyframes cpChipIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .create-channel-crown {
@@ -202,6 +208,11 @@
 
 .create-channel-chip-remove:hover {
   color: var(--error-color);
+  transform: scale(1.2);
+}
+
+.create-channel-chip-remove:active {
+  transform: scale(0.9);
 }
 
 .create-channel-add-btn {
@@ -222,6 +233,11 @@
 
 .create-channel-add-btn:hover {
   background: #d4eaf5;
+}
+
+.create-channel-add-btn:active {
+  background: #b8dced;
+  transform: scale(0.95);
 }
 
 /* --- Chat Settings kart --- */
@@ -255,6 +271,11 @@
   background: var(--gray-50);
 }
 
+.create-channel-card-header:active {
+  background: var(--gray-100);
+  transform: scale(0.995);
+}
+
 .create-channel-card-title {
   display: flex;
   align-items: center;
@@ -281,6 +302,12 @@
 
 .create-channel-card-body {
   padding: 0 18px 18px;
+  animation: cpFadeSlide 250ms ease-out;
+}
+
+@keyframes cpFadeSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .create-channel-field-label {
@@ -316,6 +343,10 @@
   justify-content: center;
   transition: all var(--transition-fast);
   margin-top: 2px;
+}
+
+.create-channel-radio:hover .create-channel-radio-dot {
+  border-color: var(--gray-400);
 }
 
 .create-channel-radio input[type="radio"]:checked + .create-channel-radio-dot {
@@ -411,9 +442,15 @@
   background: #aad91e;
 }
 
+.create-channel-submit-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 .create-channel-submit-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(30%);
+  box-shadow: none;
 }
 
 .create-channel-cancel-btn {
@@ -434,6 +471,10 @@
 .create-channel-cancel-btn:hover {
   color: var(--gray-700);
   background: var(--gray-100);
+}
+
+.create-channel-cancel-btn:active {
+  transform: scale(0.97);
 }
 
 .create-channel-create-error {
@@ -492,8 +533,8 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: 50%;
-  max-height: 340px;
+  width: 60%;
+  height: 400px;
   background: var(--white);
   border-radius: 10px;
   border: 1px solid #dde0e6;
@@ -501,6 +542,13 @@
   padding: 4px 0;
   overflow-y: auto;
   z-index: var(--z-sidebar);
+  animation: cpDropIn 220ms ease-out;
+  transform-origin: top left;
+}
+
+@keyframes cpDropIn {
+  from { opacity: 0; transform: scaleY(0.92) translateY(-4px); }
+  to { opacity: 1; transform: scaleY(1) translateY(0); }
 }
 
 .add-member-panel::-webkit-scrollbar {
@@ -512,7 +560,32 @@
   border-radius: 4px;
 }
 
-.add-member-loading,
+.add-member-loading {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.add-member-loading::before,
+.add-member-loading::after {
+  content: "";
+  height: 36px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: cpShimmer 1.2s ease-in-out infinite;
+}
+
+.add-member-loading::after {
+  width: 75%;
+}
+
+@keyframes cpShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .add-member-empty {
   padding: 16px;
   text-align: center;
@@ -558,6 +631,11 @@
 
 .add-member-expand-btn:hover {
   background: var(--gray-200);
+  transform: scale(1.1);
+}
+
+.add-member-expand-btn:active {
+  transform: scale(0.9);
 }
 
 .add-member-expand-placeholder {
@@ -665,6 +743,12 @@
 .add-member-check {
   margin-left: auto;
   flex-shrink: 0;
+  animation: cpCheckPop 200ms ease-out;
+}
+
+@keyframes cpCheckPop {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 /* --- Children indent --- */

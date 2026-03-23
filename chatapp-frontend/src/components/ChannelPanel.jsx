@@ -777,7 +777,7 @@ function ChannelPanel({
             {addOpen && (
                 <div className="add-member-panel">
                   {hierarchyLoading ? (
-                    <div className="add-member-loading">Loading...</div>
+                    <div className="add-member-loading" />
                   ) : filteredHierarchy.length === 0 ? (
                     <div className="add-member-empty">No results found</div>
                   ) : (
