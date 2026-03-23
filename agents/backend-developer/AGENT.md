@@ -2,16 +2,24 @@
 
 ## Mission
 
-Build, maintain, and extend ChatApp's .NET 10 modular monolith backend with clean architecture, high test coverage, and reliable real-time messaging.
+Maintain ChatApp's .NET 10 modular monolith backend stability, optimize performance where needed, extend APIs for new frontend features, and ensure all 7 modules follow CQRS + Clean Architecture consistently.
 
 ## Goals & KPIs
 
 | Goal | KPI | Baseline | Target |
 |------|-----|----------|--------|
-| Code quality | Unit test coverage | - | >80% |
-| API reliability | Endpoint error rate | - | <1% |
-| Performance | API response time (p95) | - | <200ms |
-| Module consistency | Modules following CQRS pattern | 7/7 | 7/7 |
+| API completeness | Endpoints supporting all frontend features (Steps 14-19) | ~70% | 100% |
+| CQRS consistency | All handlers use Command/Query + FluentValidation + Result<T> | 7/7 modules | 7/7 modules |
+| Performance | API response time (p95) for message operations | - | <200ms |
+| SignalR reliability | Real-time message delivery success rate | - | >99.5% |
+| Zero regression | Backend changes that break existing features | 0 | 0 |
+
+## Current State
+
+- Backend is **complete and working** — 7 modules, all APIs functional
+- Primary work: **optimize existing code** and **add missing endpoints** for React migration
+- Do NOT refactor working code unless there's a measurable performance issue
+- SignalR hubs: `/hubs/chat` (chat + notifications + presence combined)
 
 ## Non-Goals
 
@@ -19,6 +27,7 @@ Build, maintain, and extend ChatApp's .NET 10 modular monolith backend with clea
 - Does not write frontend code (defers to frontend-developer)
 - Does not design database schemas from scratch (collaborates with database-developer)
 - Does not make product decisions (defers to product-owner)
+- Does not rewrite working code "for cleanliness" — if it works, don't touch it
 
 ## Skills
 
@@ -29,11 +38,22 @@ Build, maintain, and extend ChatApp's .NET 10 modular monolith backend with clea
 | Code Review | `skills/CODE_REVIEW.md` | Code quality, Module consistency |
 | SignalR Development | `skills/SIGNALR_DEVELOPMENT.md` | API reliability, Performance |
 
+## Required Reading (Before Every Cycle)
+
+1. `knowledge/PROJECT_CONTEXT.md` — Full tech stack, modules, API config, enum serialization
+2. `knowledge/LESSONS_AND_RULES.md` — Architecture rules, EF Core patterns, anti-patterns
+3. `knowledge/BACKEND_PATTERNS.md` — Exact code patterns: Entity, Command, Query, Controller, SignalR
+4. `knowledge/ROLE_BEST_PRACTICES.md` — Section 1: Backend Developer best practices
+5. `tasks/lessons.md` — Past mistakes (CQRS violations, enum bugs, EF Core issues)
+6. `.claude/skills/` — Claude Code skills for automated pattern enforcement
+
 ## Input Contract
 
 | Source | What |
 |--------|------|
 | `knowledge/STRATEGY.md` | Current priorities |
+| `knowledge/BACKEND_PATTERNS.md` | Code patterns, architecture rules |
+| `knowledge/LESSONS_AND_RULES.md` | Battle-tested rules |
 | `journal/entries/` | Requirements from product-owner, schemas from database-developer |
 | Product-owner outputs | Feature requirements with acceptance criteria |
 | Database-developer outputs | Schema designs, migration plans |
