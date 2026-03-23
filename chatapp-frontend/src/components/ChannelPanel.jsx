@@ -729,6 +729,29 @@ function ChannelPanel({
                 </button>
               )}
             </div>
+            {/* Hierarchy panel — input-un altında açılır */}
+            {addOpen && (
+                <div className="add-member-panel" ref={panelRef}>
+                  {hierarchyLoading ? (
+                    <div className="add-member-loading">Loading...</div>
+                  ) : filteredHierarchy.length === 0 ? (
+                    <div className="add-member-empty">No results found</div>
+                  ) : (
+                    <div className="add-member-list">
+                      {filteredHierarchy.map((node) => (
+                        <HierarchyNode
+                          key={node.id}
+                          node={node}
+                          selectedIds={selectedIds}
+                          onToggle={handleToggle}
+                          expandedDepts={expandedDepts}
+                          onToggleExpand={handleToggleExpand}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
           </div>
 
         </div>
@@ -824,31 +847,6 @@ function ChannelPanel({
           )}
         </div>
 
-        {/* Floating overlay panel — +Add klik olunanda açılır */}
-        {addOpen && (
-          <div className="add-member-overlay">
-            <div className="add-member-panel" ref={panelRef}>
-              {hierarchyLoading ? (
-                <div className="add-member-loading">Loading...</div>
-              ) : filteredHierarchy.length === 0 ? (
-                <div className="add-member-empty">No results found</div>
-              ) : (
-                <div className="add-member-list">
-                  {filteredHierarchy.map((node) => (
-                    <HierarchyNode
-                      key={node.id}
-                      node={node}
-                      selectedIds={selectedIds}
-                      onToggle={handleToggle}
-                      expandedDepts={expandedDepts}
-                      onToggleExpand={handleToggleExpand}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Alt buttonlar */}

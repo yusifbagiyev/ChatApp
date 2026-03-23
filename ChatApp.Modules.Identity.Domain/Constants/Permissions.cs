@@ -71,6 +71,7 @@ namespace ChatApp.Modules.Identity.Domain.Constants
                     FilesDelete,
                     FilesDownload,
                     // Channel permissions
+                    ChannelsCreate,
                     ChannelsRead
                 ],
                 _ => []
