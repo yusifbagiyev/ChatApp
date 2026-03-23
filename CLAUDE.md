@@ -79,3 +79,34 @@ Identity | Channels | DirectMessages | Files | Notifications | Search | Settings
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+
+## Agent Team System
+
+Multi-agent system powered by markdown files. Agents live in `agents/` and communicate through `journal/entries/`.
+
+### Agents
+
+| Agent | Folder | Heartbeat | Skills |
+|-------|--------|-----------|--------|
+| Product Owner | `agents/product-owner/` | Monday AM | Requirements, Backlog Management, Sprint Planning |
+| Backend Developer | `agents/backend-developer/` | Tuesday | API Development, Testing, Code Review, SignalR Development |
+| Frontend Developer | `agents/frontend-developer/` | Wednesday | Component Development, SignalR Integration, State Management |
+| UI/UX Developer | `agents/uiux-developer/` | Monday PM | User Research, Wireframing, Interaction Design |
+| Database Developer | `agents/database-developer/` | Tuesday | Schema Design, Query Optimization, Migration Management |
+
+### Agent System Files
+
+- `AGENT_REGISTRY.md` — Master list of all agents
+- `CONVENTIONS.md` — Naming rules and structure
+- `knowledge/` — Static reference (STRATEGY, AUDIENCE, BRAND) — read-only for agents
+- `journal/entries/` — Shared communication channel — agents read and write here
+- `orchestrator/` — Task routing and priority management
+- `templates/` — Journal entry, task intake, weekly review templates
+
+### Information Flow
+
+```
+product-owner → journal → uiux-developer → journal → database-developer → journal → backend-developer → journal → frontend-developer
+```
+
+Agents never talk directly. All communication flows through `journal/entries/`.
