@@ -643,13 +643,8 @@ function MessageBubble({
                     tabIndex={0}
                   >
                     <div className="bubble-file-icon">
-                      {/* Fayl tipinə görə rəngli icon + extension badge */}
+                      {/* Fayl tipinə görə rəngli icon — extension FileTypeIcon daxilindədir */}
                       <FileTypeIcon fileName={msg.fileName} size={32} />
-                      <span
-                        className={`bubble-file-badge ${(msg.fileName?.split(".").pop() || "").toLowerCase()}`}
-                      >
-                        {(msg.fileName?.split(".").pop() || "").toUpperCase()}
-                      </span>
                       {/* Upload overlay — fayl icon üzərində */}
                       {msg._uploading && (
                         <div className="upload-file-icon-overlay">
