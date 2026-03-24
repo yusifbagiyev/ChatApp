@@ -26,11 +26,13 @@ namespace ChatApp.Modules.Identity.Application.DTOs.Responses
         string? SupervisorAvatarUrl,
         string? SupervisorPosition,
         bool IsHeadOfDepartment,
+        string? HeadOfDepartmentName,
         List<SubordinateDto> Subordinates,
         List<string> Permissions,
         bool IsSuperAdmin,
         DateTime CreatedAtUtc,
-        DateTime UpdatedAtUtc)
+        DateTime UpdatedAtUtc,
+        DateTime? PasswordChangedAt)
     {
         public string FullName => $"{FirstName} {LastName}";
     };

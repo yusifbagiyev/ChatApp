@@ -62,6 +62,10 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence.Configurations
                 .HasColumnName("last_visit")
                 .HasColumnType("timestamp with time zone");
 
+            builder.Property(u => u.PasswordChangedAt)
+                .HasColumnName("password_changed_at")
+                .HasColumnType("timestamp with time zone");
+
             // Timestamps
             builder.Property(u => u.CreatedAtUtc)
                 .IsRequired()

@@ -187,7 +187,7 @@ namespace ChatApp.Modules.Identity.Application.Commands.Users
                 employee.UpdateWorkPhone(request.WorkPhone);
 
             if (request.HiringDate.HasValue)
-                employee.UpdateHiringDate(request.HiringDate);
+                employee.UpdateHiringDate(DateTime.SpecifyKind(request.HiringDate.Value, DateTimeKind.Utc));
         }
     }
 }

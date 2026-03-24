@@ -210,6 +210,7 @@ function ConversationList({
   onHide,
   onLeaveChannel,
   onFindChatsWithUser,
+  onViewProfile,
 }) {
   // --- Search mode state-ləri ---
   // searchMode — true olduqda conversation siyahısı gizlənir, search nəticələri görünür
@@ -647,7 +648,11 @@ function ConversationList({
           {/* DM + DepartmentUser: View profile, Find chats */}
           {(contextMenu.conv.type === 0 || contextMenu.conv.type === 2) && (
             <>
-              <button className="conv-context-item" onClick={() => { setContextMenu(null); }}>
+              <button className="conv-context-item" onClick={() => {
+                const otherUserId = contextMenu.conv.otherUserId || contextMenu.conv.userId;
+                setContextMenu(null);
+                if (onViewProfile && otherUserId) onViewProfile(otherUserId);
+              }}>
                 View profile
               </button>
               <button className="conv-context-item" onClick={() => {

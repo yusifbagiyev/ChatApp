@@ -162,15 +162,16 @@ async function apiFetch(endpoint, options = {}) {
 
 // ─── Convenience Functions ────────────────────────────────────────────────────
 // GET sorğusu — body yoxdur, sadəcə endpoint
-// Auto-retry: network xətası olduqda 1 dəfə yenidən cəhd edir (1s gecikmə ilə)
-// POST/PUT/DELETE retry olunmur — dublikat data yarana bilər
+// Auto-retry: yalnız network xətasında (TypeError) 1 dəfə yenidən cəhd edir.
+// HTTP error-lar (4xx/5xx) retry olunmur — server cavabı qətidir.
 async function apiGet(endpoint) {
   try {
     return await apiFetch(endpoint);
   } catch (err) {
-    // Yalnız network/fetch xətalarında retry et, session expired-da yox
+    // Session expired və ya HTTP error — retry etmə
     if (sessionExpired || err.message === "Session expired") throw err;
-    // 1 saniyə gözlə, sonra yenidən cəhd et
+    if (!(err instanceof TypeError)) throw err;
+    // Yalnız network xətasında (fetch throws TypeError) 1s sonra retry
     await new Promise((r) => setTimeout(r, 1000));
     return apiFetch(endpoint);
   }
@@ -207,8 +208,8 @@ function apiDelete(endpoint) {
 // onProgress({ loaded, total }) — raw bytes callback (caller format edir).
 // abortController (optional) — cancel üçün: abortController.abort() → upload dayandırılır.
 // 401 gəldikdə: refreshToken() + retry (apiFetch ilə eyni pattern).
-function apiUpload(endpoint, formData, onProgress, abortController) {
-  if (sessionExpired) return Promise.reject(new Error("Session expired"));
+async function apiUpload(endpoint, formData, onProgress, abortController) {
+  if (sessionExpired) throw new Error("Session expired");
 
   function send() {
     return new Promise((resolve, reject) => {
@@ -320,5 +321,50 @@ function downloadFileByUrl(fileUrl, fileName) {
   document.body.removeChild(a);
 }
 
+// İstifadəçinin tam profilini gətirir — UserProfilePanel üçün
+function getUserProfile(userId) {
+  return apiGet(`/api/users/${userId}`);
+}
+
+// Bütün departmentləri gətirir
+function getDepartments() {
+  return apiGet("/api/identity/departments");
+}
+
+// Departmentə görə positionları gətirir
+function getPositionsByDepartment(departmentId) {
+  return apiGet(`/api/identity/positions/department/${departmentId}`);
+}
+
+// İstifadəçinin subordinatlarını gətirir
+function getSubordinates(userId) {
+  return apiGet(`/api/users/${userId}/subordinates`);
+}
+
+// İstifadəçinin öz şifrəsini dəyişir
+function changePassword(userId, currentPassword, newPassword, confirmNewPassword) {
+  return apiPut("/api/users/me/change-password", { userId, currentPassword, newPassword, confirmNewPassword });
+}
+
+// Admin tərəfindən istifadəçinin şifrəsini dəyişir
+function adminChangePassword(userId, newPassword, confirmNewPassword) {
+  return apiPut("/api/users/change-user-password", { id: userId, newPassword, confirmNewPassword });
+}
+
+// İstifadəçini departmentə təyin edir
+function assignEmployeeToDepartment(userId, departmentId) {
+  return apiPost(`/api/users/${userId}/department`, { departmentId });
+}
+
+// İstifadəçinin hesabını aktiv edir
+function activateUser(userId) {
+  return apiFetch(`/api/users/${userId}/activate`, { method: "PUT" });
+}
+
+// İstifadəçinin hesabını deaktiv edir
+function deactivateUser(userId) {
+  return apiFetch(`/api/users/${userId}/deactivate`, { method: "PUT" });
+}
+
 // Named exports — başqa fayllar bunları import edə bilsin
-export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, scheduleRefresh, stopRefreshTimer, resetSessionExpired };
+export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, getUserProfile, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, activateUser, deactivateUser, assignEmployeeToDepartment, scheduleRefresh, stopRefreshTimer, resetSessionExpired };

@@ -1,0 +1,1929 @@
+/* =====================================================
+   USER PROFILE PANEL — Bitrix24 stilindən ilhamlanan
+   Sağdan sola animasiya · 70% ekran eni · Cosmic bg
+   ===================================================== */
+
+/* ─── Overlay ───────────────────────────────────────── */
+.upp-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1900;
+  animation: uppFadeIn 0.25s ease;
+}
+
+@keyframes uppFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Panel ─────────────────────────────────────────── */
+.upp-panel {
+  position: fixed;
+  top: 20px;
+  right: 0;
+  width: 76%;
+  height: calc(100vh - 20px);
+  z-index: 1901;
+  border-radius: 16px 0 0 0;
+  animation: uppSlideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  overflow: hidden;
+
+  /* Body — State A (əsas) */
+  background:
+    radial-gradient(ellipse at 88% 8%,   rgba(0, 180, 255, 0.35) 0%, transparent 42%),
+    radial-gradient(ellipse at 8%  92%,  rgba(0, 60,  220, 0.30) 0%, transparent 48%),
+    radial-gradient(ellipse at 50% 50%,  rgba(0, 100, 200, 0.15) 0%, transparent 55%),
+    linear-gradient(175deg, #063f7a 0%, #074987 50%, #055a8a 100%);
+}
+
+/* Body — scroll container */
+.upp-panel-scroll {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.4) transparent;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+
+.upp-panel-scroll::-webkit-scrollbar        { width: 6px; }
+.upp-panel-scroll::-webkit-scrollbar-track  { background: transparent; }
+.upp-panel-scroll::-webkit-scrollbar-thumb  { background: rgba(150,150,150,0.6); border-radius: 3px; transition: background 150ms ease; }
+.upp-panel-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.9); }
+
+/* Body — Layer B: sol üst → sağ alt */
+.upp-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 5%  12%,  rgba(20, 200, 255, 0.38) 0%, transparent 45%),
+    radial-gradient(ellipse at 90% 80%,  rgba(0,  50,  210, 0.32) 0%, transparent 50%),
+    radial-gradient(ellipse at 45% 55%,  rgba(0, 130, 230, 0.18) 0%, transparent 55%),
+    linear-gradient(175deg, #055a8a 0%, #052f6e 50%, #074987 100%);
+  opacity: 0;
+  animation: uppFadeAB 12s ease-in-out 0s infinite alternate;
+  will-change: opacity;
+}
+
+/* Body — Layer C: mərkəz dərinlik effekti */
+.upp-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 50% 20%,  rgba(0, 160, 255, 0.28) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 70%,  rgba(10, 80,  230, 0.22) 0%, transparent 48%),
+    radial-gradient(ellipse at 80% 40%,  rgba(0, 200, 255, 0.20) 0%, transparent 42%),
+    linear-gradient(175deg, #074987 0%, #055a8a 50%, #063f7a 100%);
+  opacity: 0;
+  animation: uppFadeAB 18s ease-in-out 6s infinite alternate;
+  will-change: opacity;
+}
+
+@keyframes uppSlideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0);    }
+}
+
+@keyframes uppIconIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1);   }
+}
+
+/* Body: 0→1 (A→B), Header: 1→0 (B→A) — əks fazada */
+@keyframes uppFadeAB { from { opacity: 0; } to { opacity: 1; } }
+@keyframes uppFadeBA { from { opacity: 1; } to { opacity: 0; } }
+
+/* ─── Header ─────────────────────────────────────────── */
+.upp-header {
+  position: relative;
+  z-index: 1;
+  padding: 18px 28px 0;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 16px 0 0 0;
+  box-shadow: 0 6px 32px rgba(0, 120, 255, 0.28), 0 2px 0 rgba(80, 160, 255, 0.18);
+
+  /* Header — State A (əsas) */
+  background:
+    radial-gradient(ellipse at 0%   0%,   rgba(100, 160, 255, 0.14) 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(0,  40,  120, 0.28)  0%, transparent 48%),
+    linear-gradient(160deg, #0a4a8a 0%, #053366 55%, #042d5c 100%);
+}
+
+/* Header — State B: əks fazada fade */
+.upp-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 100% 0%,  rgba(100, 160, 255, 0.14) 0%, transparent 55%),
+    radial-gradient(ellipse at 0%   100%, rgba(0,  40,  120, 0.28) 0%, transparent 48%),
+    linear-gradient(160deg, #042d5c 0%, #0a4a8a 55%, #053366 100%);
+  opacity: 1;
+  animation: uppFadeBA 8s ease-in-out 0.3s infinite alternate;
+}
+
+/* Header içindəki content pseudo-element-in üstündə olmalı */
+.upp-header-info,
+.upp-tab-bar {
+  position: relative;
+  z-index: 1;
+}
+
+.upp-close-btn {
+  position: fixed;
+  top: 32px;
+  right: 76%;
+  width: 52px;
+  height: 36px;
+  border-radius: 18px 0 0 18px;
+  border: none;
+  background: #1565c0;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 11px;
+  transition: background 150ms ease;
+  z-index: 1902;
+  flex-shrink: 0;
+  opacity: 0;
+  animation: uppIconIn 0.15s ease 0.28s forwards;
+}
+
+.upp-close-btn:hover {
+  background: #1e88e5;
+}
+
+.upp-header-info {
+  margin-bottom: 16px;
+}
+
+.upp-name {
+  font-size: 30px;
+  font-weight: 500;
+  color: #fff;
+  margin: 0 0 4px;
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+}
+
+.upp-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
+}
+
+/* Tab paneli */
+.upp-tab-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.upp-tab {
+  padding: 9px 20px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: #fff;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.upp-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.upp-tab.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  cursor: default;
+  border-color: transparent;
+}
+
+/* ─── Body ───────────────────────────────────────────── */
+.upp-body {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  padding: 20px 28px 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.upp-panel::-webkit-scrollbar       { width: 6px; }
+.upp-panel::-webkit-scrollbar-track { background: transparent; }
+.upp-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+/* ─── Sol sütun — avatar kartı ───────────────────────── */
+.upp-col-left {
+  width: 380px;
+  min-width: 380px;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.upp-avatar-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.10),
+    0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+  padding: 18px 16px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Status sətri */
+.upp-status-bar {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.upp-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.upp-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.upp-status-badge.online .upp-status-dot  { background: #9dcf00; }
+.upp-status-badge.online                  { color: #1e293b; font-weight: 400; font-size: 10px; }
+.upp-status-badge.offline .upp-status-dot { background: #ef4444; }
+.upp-status-badge.offline                 { color: #374151; font-weight: 400; }
+
+.upp-status-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  margin-left: auto;
+}
+
+/* ─── Administrator ribbon ───────────────────────────── */
+.upp-admin-ribbon {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px 3px 8px;
+  background: #2fc6f6;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 50%, calc(100% - 7px) 100%, 0 100%);
+  align-self: flex-start;
+  white-space: nowrap;
+  margin-left: -16px;
+}
+
+/* ─── Actions dropdown ───────────────────────────────── */
+.upp-actions-wrap {
+  position: relative;
+  align-self: flex-start;
+}
+
+.upp-actions-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: #fff;
+  color: #374151;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.upp-actions-btn:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.upp-actions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  width: max-content;
+  min-width: 210px;
+  background: var(--white);
+  border-radius: 8px;
+  padding: 6px 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  z-index: 10;
+  animation: dropdownIn 0.15s ease-out;
+  transform-origin: top left;
+}
+
+.upp-actions-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 18px;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-family: inherit;
+  text-align: left;
+}
+
+.upp-actions-item:hover {
+  background: var(--gray-50);
+}
+
+.upp-actions-item--danger { color: #e53e3e; }
+.upp-actions-item--danger:hover { background: #fff5f5; }
+
+/* ─── Chat icon button — panelin xaricindədir ─────────── */
+.upp-chat-icon-btn {
+  position: fixed;
+  top: 76px;
+  right: 76%;
+  width: 38px;
+  height: 36px;
+  border-radius: 18px 0 0 18px;
+  border: none;
+  background: #1565c0;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease;
+  z-index: 1902;
+  opacity: 0;
+  animation: uppIconIn 0.15s ease 0.28s forwards;
+}
+
+.upp-chat-icon-btn:hover {
+  background: #1e88e5;
+}
+
+.upp-last-seen {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: right;
+}
+
+/* Avatar dairəsi */
+.upp-avatar-wrap {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  flex-shrink: 0;
+  /* clip-path GPU tərəfindən anti-aliased kəsir — border-radius+overflow:hidden-dən smooth */
+  clip-path: circle(50% at 50% 50%);
+}
+
+.upp-avatar-wrap.editable { cursor: pointer; }
+
+/* Hover overlay */
+.upp-avatar-upload-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.48);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.upp-avatar-wrap.editable:hover .upp-avatar-upload-overlay { opacity: 1; }
+
+/* ─── Avatar Crop Modal ───────────────────────────────── */
+.upp-crop-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: uppFadeIn 0.2s ease;
+}
+
+.upp-crop-modal {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+  width: 620px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  animation: uppConfirmIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.upp-crop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.upp-crop-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.upp-crop-close {
+  border: none;
+  background: none;
+  font-size: 20px;
+  color: #94a3b8;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+  transition: color 150ms;
+}
+.upp-crop-close:hover { color: #334155; }
+
+.upp-crop-body {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 24px 16px;
+}
+
+.upp-crop-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Zoom bar */
+.upp-crop-zoom-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+}
+
+.upp-crop-zoom-btn {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  cursor: pointer;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms;
+  flex-shrink: 0;
+}
+.upp-crop-zoom-btn:hover { background: #e2e8f0; }
+
+.upp-crop-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: #cbd5e1;
+  outline: none;
+  cursor: pointer;
+}
+.upp-crop-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1565c0;
+  cursor: grab;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* Drag area */
+.upp-crop-area {
+  width: 300px;
+  height: 300px;
+  background: #1e293b;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+}
+
+.upp-crop-img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Dairə xaricini qaraldır */
+.upp-crop-mask {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 268px;
+  height: 268px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 600px rgba(0,0,0,0.52);
+  pointer-events: none;
+}
+
+.upp-crop-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 20px;
+  background: #fff;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms;
+}
+.upp-crop-upload-btn:hover { border-color: #1565c0; color: #1565c0; background: #eff6ff; }
+
+/* Arrow */
+.upp-crop-arrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Preview */
+.upp-crop-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.upp-crop-preview-circle {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  background: #e2e8f0;
+}
+
+.upp-crop-preview-label {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* Footer */
+.upp-crop-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 14px 24px 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.upp-crop-save {
+  padding: 9px 32px;
+  border: none;
+  border-radius: 8px;
+  background: #bbed21;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 150ms;
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.upp-crop-save:hover    { background: #d2f95f; }
+.upp-crop-save:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.upp-crop-cancel-btn {
+  padding: 9px 24px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 150ms;
+}
+.upp-crop-cancel-btn:hover { color: #1e293b; }
+
+.upp-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.upp-avatar-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.upp-avatar-initials svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.upp-avatar-skeleton {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #e8ecef 25%, #f3f5f7 50%, #e8ecef 75%);
+  background-size: 200% 100%;
+  animation: uppShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes uppShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Avatar altında ad */
+.upp-avatar-name-wrap {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.upp-avatar-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.upp-avatar-role {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Fəaliyyət butonları */
+.upp-action-btns {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+.upp-btn-chat {
+  padding: 8px 28px;
+  border: 1.5px solid #b0bec5;
+  border-radius: 20px;
+  background: transparent;
+  color: #37474f;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.upp-btn-chat:hover {
+  background: #f0f4f8;
+  border-color: #78909c;
+  color: #1e293b;
+}
+
+.upp-btn-chat:active {
+  transform: scale(0.97);
+}
+
+/* ─── Sağ sütun — məlumat kartları ──────────────────── */
+.upp-col-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 28px;
+}
+
+/* Yükləmə skeleton kartı */
+.upp-card-skeleton {
+  background: rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.upp-sk-title {
+  height: 18px;
+  width: 140px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.12) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.12) 75%);
+  background-size: 200% 100%;
+  animation: uppShimmer 1.4s ease-in-out infinite;
+}
+
+.upp-sk-field {
+  height: 38px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0.08) 75%);
+  background-size: 200% 100%;
+  animation: uppShimmer 1.4s ease-in-out infinite;
+}
+
+/* ─── Security skeleton ──────────────────────────────── */
+.upp-sec-skel-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.upp-sk-sec-field {
+  height: 42px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.11) 50%, rgba(0,0,0,0.06) 75%);
+  background-size: 200% 100%;
+  animation: uppShimmer 1.4s ease-in-out infinite;
+}
+
+.upp-sk-sec-btn {
+  height: 38px;
+  width: 90px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.08) 25%, rgba(0,0,0,0.14) 50%, rgba(0,0,0,0.08) 75%);
+  background-size: 200% 100%;
+  animation: uppShimmer 1.4s ease-in-out infinite;
+  margin-top: 4px;
+}
+
+.upp-sec-skel-recover {
+  align-items: center;
+  justify-content: center;
+}
+
+.upp-sk-sec-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, rgba(0,0,0,0.07) 25%, rgba(0,0,0,0.13) 50%, rgba(0,0,0,0.07) 75%);
+  background-size: 200% 100%;
+  animation: uppShimmer 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.upp-sk-sec-line {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.07) 25%, rgba(0,0,0,0.13) 50%, rgba(0,0,0,0.07) 75%);
+  background-size: 200% 100%;
+  animation: uppShimmer 1.4s ease-in-out infinite;
+}
+
+.upp-sk-sec-email-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+.upp-sk-sec-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,0.07) 25%, rgba(0,0,0,0.13) 50%, rgba(0,0,0,0.07) 75%);
+  background-size: 200% 100%;
+  animation: uppShimmer 1.4s ease-in-out infinite;
+}
+
+/* Xəta/boş vəziyyət */
+.upp-state-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 180px;
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+}
+
+/* ─── Məlumat kartı ──────────────────────────────────── */
+.upp-info-card {
+  background: #f6fafb;
+  border-radius: 14px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.10),
+    0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+  padding: 20px 24px 30px;
+  transition: box-shadow 200ms ease;
+}
+
+.upp-info-card:hover {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+}
+
+.upp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.upp-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a2a4a;
+  margin: 0;
+}
+
+.upp-card-edit {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 150ms ease;
+}
+
+.upp-card-edit:hover {
+  color: #2563eb;
+}
+
+/* Field list — tək sütun */
+.upp-fields {
+  display: flex;
+  flex-direction: column;
+}
+
+.upp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0;
+}
+
+.upp-field-label {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.upp-field-value {
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.upp-field-value.empty {
+  color: #b0bec5;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.upp-field-value.email {
+  color: #2563eb;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.upp-field-value.email:hover {
+  text-decoration: underline;
+}
+
+/* ─── Edit rejimi ────────────────────────────────────── */
+.upp-edit-fields {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.upp-edit-fields.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─── Custom Select Dropdown ─────────────────────────── */
+.upp-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  user-select: none;
+}
+
+.upp-select.open {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.upp-select-value {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+}
+
+.upp-select-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #e0f0ff;
+  color: #1d4ed8;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.upp-select-tag-x {
+  border: none;
+  background: transparent;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 1px;
+  display: flex;
+  align-items: center;
+}
+
+.upp-select-tag-x:hover { color: #1e40af; }
+
+.upp-select-placeholder {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.upp-select-chevron {
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: transform 150ms ease;
+}
+
+.upp-select-dropdown {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.08);
+  z-index: 9999;
+  overflow: hidden;
+  animation: dropdownIn 0.15s ease-out;
+  transform-origin: top left;
+}
+
+.upp-select-search-wrap {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.upp-select-search {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.upp-select-search:focus { border-color: #3b82f6; }
+
+.upp-select-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.upp-select-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #1e293b;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.upp-select-item:hover { background: #f8fafc; }
+.upp-select-item.selected { background: #eff6ff; color: #1d4ed8; }
+
+.upp-select-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.upp-select-checkbox.checked {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 6l3 3 5-5' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 10px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.upp-select-empty {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.upp-field-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 16px;
+  font-family: inherit;
+  color: #1e293b;
+  background: transparent;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  box-sizing: border-box;
+}
+
+.upp-field-input--half { width: 50%; }
+
+.upp-field-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.upp-edit-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px 28px;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.upp-edit-footer.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.upp-edit-save {
+  padding: 13px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #bbed21;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+.upp-edit-save:hover {
+  background: #d2f95f;
+  box-shadow: 0 0 12px rgba(210, 249, 95, 0.55);
+}
+
+.upp-edit-cancel {
+  padding: 13px 16px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.upp-edit-cancel:hover {
+  background: transparent;
+}
+
+.upp-card-footer {
+  display: flex;
+  gap: 16px;
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.upp-card-footer-btn {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  transition: color 150ms ease;
+}
+
+.upp-card-footer-btn:hover {
+  color: #2563eb;
+}
+
+/* ─── Person grid (subordinates / supervisor) ────────── */
+.upp-person-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+  margin-top: 8px;
+}
+
+.upp-person-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.upp-person-item:hover {
+  background: transparent;
+}
+
+.upp-person-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.upp-person-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upp-person-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.upp-person-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upp-person-role {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upp-show-more {
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+}
+
+.upp-show-more:hover { color: #1d4ed8; }
+
+/* ─── Supervisor satırı ──────────────────────────────── */
+.upp-sup-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upp-sup-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.upp-sup-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.upp-sup-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upp-sup-name {
+  font-size: 15px;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+/* ─── About me ───────────────────────────────────────── */
+.upp-about {
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.65;
+  margin: 0;
+  margin-top: 14px;
+}
+
+/* Empty state */
+.upp-about-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 8px 0 4px;
+}
+
+.upp-about-empty-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1.5px solid #bae6fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #f0f9ff;
+}
+
+.upp-about-empty-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.upp-about-empty-text {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.upp-about-tell-btn {
+  align-self: flex-start;
+  padding: 7px 18px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 20px;
+  background: transparent;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.upp-about-tell-btn:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+/* Editor */
+.upp-about-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.upp-about-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1e293b;
+  line-height: 1.65;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.upp-about-textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.upp-about-footer-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upp-about-send-btn {
+  padding: 7px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #12b1e3;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.upp-about-send-btn:hover { background: #3eddff; }
+
+.upp-about-cancel-btn {
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+}
+
+.upp-about-cancel-btn:hover { color: #374151; }
+
+/* ─── Security Tab ───────────────────────────────────── */
+.upp-security-body {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 32px;
+  padding: 24px 28px 48px;
+  max-width: 1250px;
+}
+
+.upp-sec-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px 20px 22px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  flex: 1;
+  min-width: 0;
+}
+
+.upp-security-body .upp-sec-card {
+  align-self: stretch;
+}
+
+.upp-security-body.compact .upp-sec-card {
+  padding: 16px 20px 18px;
+}
+
+.upp-security-body.compact .upp-sec-recover-visual {
+  padding-top: 4px;
+  gap: 7px;
+}
+
+.upp-security-body.compact .upp-sec-recover-circle {
+  width: 52px;
+  height: 52px;
+}
+
+.upp-security-body.compact .upp-sec-recover-circle svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* Security card içindəki elementlər ağ arxa fon üçün */
+.upp-sec-card .upp-card-title { color: #1e293b; }
+.upp-sec-card .upp-field-label { color: #64748b; }
+
+.upp-sec-card .upp-field-input {
+  background: #f8fafc;
+  border-color: #d1d5db;
+  color: #1e293b;
+}
+.upp-sec-card .upp-field-input::placeholder { color: #9ca3af; }
+.upp-sec-card .upp-field-input:focus {
+  border-color: #3b82f6;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+.upp-sec-card .upp-field-input.err {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+.upp-sec-card .upp-sec-eye { color: #94a3b8; }
+.upp-sec-card .upp-sec-eye:hover { color: #1565c0; }
+
+/* Password field wrapper — relative, eye toggle üçün */
+.upp-sec-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.upp-sec-pw-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.upp-sec-pw-wrap .upp-field-input {
+  padding-right: 40px;
+}
+
+.upp-sec-eye {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 150ms ease;
+}
+.upp-sec-eye:hover { color: #1e40af; }
+
+/* Son dəyişmə — tarix + icon */
+.upp-sec-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 12px;
+  margin-bottom: 4px;
+}
+.upp-sec-hint svg { flex-shrink: 0; opacity: 0.7; }
+
+.upp-sec-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.upp-field-input.err {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.upp-sec-field-err {
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 2px;
+}
+
+.upp-sec-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.upp-sec-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+/* SAVE button — panelin rəng sxeminə uyğun */
+.upp-sec-submit {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 10px 30px;
+  border: none;
+  border-radius: 8px;
+  background: #1565c0;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  transition: background 150ms ease, box-shadow 150ms ease;
+  min-width: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(21, 101, 192, 0.4);
+}
+
+.upp-sec-submit:hover    { background: #1e88e5; box-shadow: 0 4px 16px rgba(30, 136, 229, 0.5); }
+.upp-sec-submit:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.upp-sec-submit:disabled:hover { background: #1565c0; box-shadow: none; }
+
+/* Recover password card */
+.upp-sec-recover-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.upp-sec-recover-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.upp-sec-recover-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  color: #1d4ed8;
+  box-shadow: 0 4px 16px rgba(59,130,246,0.18);
+}
+
+.upp-sec-recover-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.upp-sec-recover-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 220px;
+}
+
+.upp-sec-recover-email-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
+  color: #64748b;
+}
+
+.upp-sec-email {
+  font-size: 13px;
+  color: #1e40af;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.upp-sec-via-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  background: #1565c0;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, box-shadow 150ms ease;
+  box-shadow: 0 2px 10px rgba(21,101,192,0.35);
+  width: 100%;
+  justify-content: center;
+}
+
+.upp-sec-via-btn:hover {
+  background: #1e88e5;
+  box-shadow: 0 4px 16px rgba(30,136,229,0.45);
+}
+
+/* Recover modal */
+.upp-sec-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px 26px 18px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.28);
+  position: relative;
+  animation: uppConfirmIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.upp-sec-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #eff6ff;
+  margin: 0 auto 14px;
+  color: #2563eb;
+}
+
+.upp-sec-modal-title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
+}
+
+.upp-sec-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  color: #94a3b8;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 150ms ease;
+}
+
+.upp-sec-modal-close:hover { color: #374151; }
+
+.upp-sec-modal-text {
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.65;
+  margin: 0 0 16px;
+  text-align: center;
+}
+
+.upp-sec-modal-hr {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 0 0 14px;
+}
+
+.upp-sec-modal-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.upp-sec-modal-btn {
+  padding: 9px 32px;
+  border: none;
+  border-radius: 8px;
+  background: #1565c0;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+  box-shadow: 0 2px 8px rgba(21,101,192,0.3);
+}
+
+.upp-sec-modal-btn:hover { background: #1e88e5; }
+
+/* ─── Save button disabled state ─────────────────────── */
+.upp-edit-save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.upp-edit-save:disabled:hover {
+  background: #bbed21;
+  box-shadow: none;
+}
+
+/* ─── Save spinner ───────────────────────────────────── */
+.upp-save-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid rgba(30, 41, 59, 0.25);
+  border-top-color: #1e293b;
+  border-radius: 50%;
+  animation: uppSpinnerRot 0.65s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes uppSpinnerRot {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Confirm Dialog ─────────────────────────────────── */
+.upp-confirm-overlay {
+  position: fixed;
+  top: 20px;
+  right: 0;
+  width: 76%;
+  height: calc(100vh - 20px);
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px 0 0 0;
+  animation: uppFadeIn 0.18s ease;
+}
+
+.upp-confirm-box {
+  background: #fff;
+  border-radius: 10px;
+  padding: 18px 22px 16px;
+  width: fit-content;
+  max-width: 90%;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0, 0, 0, 0.1);
+  animation: uppConfirmIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@keyframes uppConfirmIn {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.upp-confirm-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #9ca3af;
+  display: block;
+}
+
+.upp-confirm-msg {
+  font-size: 14px;
+  color: #1e293b;
+  line-height: 1;
+  margin: 0;
+  background: #eef2f4;
+  border: 1px solid #dde3e7;
+  border-radius: 6px;
+  padding: 12px 20px;
+  white-space: nowrap;
+}
+
+.upp-confirm-btns {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.upp-confirm-yes {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #bbed21;
+  color: #1e293b;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+.upp-confirm-yes:hover {
+  background: #d2f95f;
+  box-shadow: 0 0 12px rgba(210, 249, 95, 0.55);
+}
+
+.upp-confirm-no {
+  padding: 7px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.upp-confirm-no:hover {
+  background: transparent;
+}

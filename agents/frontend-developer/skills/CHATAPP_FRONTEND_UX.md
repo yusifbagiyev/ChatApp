@@ -278,3 +278,118 @@ Sound toggle in sidebar uses `--primary-color` (#2fc6f6) for active state.
 - Avatar overlaps top-left of each item (offset upward by ~40%)
 - More button appears on hover (top-right), with transparent background
 - Click on image = open lightbox, click on file = download
+
+## Pattern 7: Avatar Circle Smoothing (JPEG Artifact Fix)
+
+`clip-path: circle(50%)` creates a clean geometric cut but exposes JPEG compression artifacts at the boundary — jagged/rough edges appear.
+
+**Fix**: Apply globally in `src/index.css` — fades the outermost 4% of the circle to hide JPEG noise:
+
+```css
+/* index.css — bütün avatar şəkillərinə qlobal tətbiq et */
+[class*="avatar-img"],
+[class*="avatar"] > img {
+  -webkit-mask-image: radial-gradient(circle closest-side at 50% 50%, black 96%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side at 50% 50%, black 96%, transparent 100%);
+  display: block;
+}
+```
+
+This is Bitrix24's own technique. Do NOT try `border-radius + overflow: hidden` alone — JPEG artifacts still show.
+
+## Pattern 8: Avatar Upload — Two-Step Pattern
+
+`POST /api/files/upload/profile-picture` stores the file but does NOT update `users.avatar_url`. Always follow up with a user update call:
+
+```javascript
+// 1) Faylı yüklə
+const result = await apiUpload("/api/files/upload/profile-picture", formData, onProgress);
+// 2) avatarUrl-i user record-una yaz
+const endpoint = isOwn ? "/api/users/me" : `/api/users/${userId}`;
+await apiPut(endpoint, { avatarUrl: result.downloadUrl });
+```
+
+**Rule**: Never assume upload endpoint updates related entities. Always check swagger/controller. Upload = store file. Update entity = separate call.
+
+## Pattern 9: Destructive Action Confirm Modal Pattern
+
+For admin actions (grant/revoke role, disable/enable account) use a two-state confirm pattern:
+
+```jsx
+const [actionConfirm, setActionConfirm] = useState(null); // null | "admin" | "deactivate"
+const [actionLoading, setActionLoading] = useState(false);
+
+const handleActionConfirm = async () => {
+  setActionLoading(true);
+  try {
+    if (actionConfirm === "admin") {
+      const newRole = profile.role === "Administrator" ? 0 : 1;
+      await apiPut(`/api/users/${profile.id}`, { role: newRole });
+      setProfile(prev => ({ ...prev, role: newRole === 1 ? "Administrator" : "User" }));
+    } else if (actionConfirm === "deactivate") {
+      profile.isActive ? await deactivateUser(profile.id) : await activateUser(profile.id);
+      setProfile(prev => ({ ...prev, isActive: !prev.isActive }));
+    }
+    setActionConfirm(null);
+  } catch { } finally { setActionLoading(false); }
+};
+```
+
+Pass `loading={actionLoading}` to ConfirmDialog so the YES button shows a spinner.
+
+## Pattern 10: Ribbon/Badge Arrow Shape
+
+Bitrix24-style ribbon with arrow pointing right — flush to the left card edge:
+
+```css
+.ribbon-badge {
+  background: #2FC6F6;
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 50%, calc(100% - 7px) 100%, 0 100%);
+  margin-left: -16px; /* card padding-inə bərabər — sol kənara tam bitişir */
+  padding: 4px 18px 4px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+```
+
+Formula: `calc(100% - Xpx)` = arrow depth. `margin-left: -[card-padding]px` = flush to edge.
+
+## Pattern 11: Multi-Endpoint Save (Contact Info)
+
+Some data is split across multiple endpoints. Always check what each endpoint covers:
+
+```javascript
+const handleSave = async () => {
+  setSaving(true);
+  try {
+    // Əsas user məlumatları
+    const endpoint = isOwn ? "/api/users/me" : `/api/users/${profile.id}`;
+    await apiPut(endpoint, { firstName, lastName, email, dateOfBirth, positionId, workPhone, hiringDate });
+
+    // Department ayrı endpoint-dədir
+    if (editData.departmentId && editData.departmentId !== profile.departmentId) {
+      await assignEmployeeToDepartment(profile.id, editData.departmentId);
+    }
+    setProfile(prev => ({ ...prev, ...updatedFields }));
+    closeEditMode();
+  } catch { setSaving(false); }
+};
+```
+
+**Rule**: Never use `setTimeout` simulation as placeholder for real API calls. Identify the correct endpoint(s) and wire them up immediately.
+
+## Pattern 12: Date Input → Backend DateTime UTC
+
+Frontend `<input type="date">` sends `YYYY-MM-DD` string. .NET parses it as `DateTime` with `Kind=Unspecified`. PostgreSQL `timestamp with time zone` rejects `Kind=Unspecified`.
+
+**Backend fix** (in Command Handler):
+```csharp
+if (request.HiringDate.HasValue)
+    employee.UpdateHiringDate(DateTime.SpecifyKind(request.HiringDate.Value, DateTimeKind.Utc));
+```
+
+**Frontend** — pass date as string, no special handling needed:
+```javascript
+await apiPut(endpoint, { hiringDate: editData.hiringDate }); // "2023-05-15"
+```

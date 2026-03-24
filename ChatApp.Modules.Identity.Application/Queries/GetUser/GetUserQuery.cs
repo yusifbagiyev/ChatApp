@@ -23,7 +23,7 @@ namespace ChatApp.Modules.Identity.Application.Queries.GetUser
                 var user = await unitOfWork.Users
                     .Include(u => u.UserPermissions)
                     .Include(u => u.Employee!.Position)
-                    .Include(u => u.Employee!.Department)
+                    .Include(u => u.Employee!.Department).ThenInclude(d => d!.HeadOfDepartment)
                     .Include(u => u.Employee!.Supervisor!.User)
                     .Include(u => u.Employee!.Supervisor!.Position)
                     .Include(u => u.Employee!.Subordinates).ThenInclude(s => s.User)
@@ -88,11 +88,13 @@ namespace ChatApp.Modules.Identity.Application.Queries.GetUser
                 user.Employee?.Supervisor?.User?.AvatarUrl,
                 user.Employee?.Supervisor?.Position?.Name,
                 isHeadOfDepartment,
+                user.Employee?.Department?.HeadOfDepartment?.FullName,
                 subordinates,
                 permissions,
                 user.IsSuperAdmin,
                 user.CreatedAtUtc,
-                user.UpdatedAtUtc);
+                user.UpdatedAtUtc,
+                user.PasswordChangedAt);
         }
     }
 }

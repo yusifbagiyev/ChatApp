@@ -5,6 +5,27 @@
 ## What Works
 <!-- Proven patterns with evidence -->
 
+### DateTime UTC — PostgreSQL `timestamp with time zone` (2026-03-24)
+- Frontend `<input type="date">` sends `YYYY-MM-DD` → .NET parses as `Kind=Unspecified`
+- PostgreSQL `timestamptz` rejects `Kind=Unspecified` → throws at runtime
+- **Fix**: In Command Handler, always wrap date values with `DateTime.SpecifyKind(value, DateTimeKind.Utc)`
+  ```csharp
+  if (request.HiringDate.HasValue)
+      employee.UpdateHiringDate(DateTime.SpecifyKind(request.HiringDate.Value, DateTimeKind.Utc));
+  ```
+- Apply to ALL `DateTime` fields that come from frontend date inputs
+
+### EF Core ThenInclude for Nested Navigation (2026-03-24)
+- `Include(u => u.Employee!.Department)` alone does NOT load `Department.HeadOfDepartment`
+- Must chain: `.Include(u => u.Employee!.Department).ThenInclude(d => d!.HeadOfDepartment)`
+- Pattern for deeply nested navigation: each level needs its own `ThenInclude`
+- Forgetting this causes `null` reference — DTO mapping silently returns `null` instead of throwing
+
+### DTO Fields for Related Entity Names (2026-03-24)
+- When frontend needs a related entity's display name (e.g., head of department's full name), add a dedicated nullable string field to the DTO
+- Do NOT expose the full nested object — map only what's needed: `HeadOfDepartmentName = user.Employee?.Department?.HeadOfDepartment?.FullName`
+- Keep DTOs flat for frontend consumption
+
 ## What Doesn't Work
 <!-- Anti-patterns to avoid with evidence -->
 

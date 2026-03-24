@@ -80,6 +80,7 @@ function DetailSidebar({
   setPendingLeaveChannel,
   setSelectedChat,
   setMessageText,
+  onViewProfile,
 }) {
   const containerRef = useRef(null);
 
@@ -135,14 +136,14 @@ function DetailSidebar({
 
               {selectedChat.isNotes ? (
                 <>
-                  <button className="ds-dropdown-item" onClick={() => sidebar.setShowSidebarMenu(false)}>View profile</button>
+                  <button className="ds-dropdown-item" onClick={() => { onViewProfile?.(user.id); sidebar.setShowSidebarMenu(false); }}>View profile</button>
                   <button className="ds-dropdown-item" onClick={() => { onToggleHide(selectedChat); sidebar.setShowSidebarMenu(false); sidebar.setShowSidebar(false); }}>
                     {selectedChat.isHidden ? "Unhide" : "Hide"}
                   </button>
                 </>
               ) : selectedChat.type === 0 ? (
                 <>
-                  <button className="ds-dropdown-item" onClick={() => sidebar.setShowSidebarMenu(false)}>View profile</button>
+                  <button className="ds-dropdown-item" onClick={() => { onViewProfile?.(selectedChat.otherUserId); sidebar.setShowSidebarMenu(false); }}>View profile</button>
                   <button className="ds-dropdown-item" onClick={() => { sidebar.setShowSidebarMenu(false); sidebar.handleOpenChatsWithUser(selectedChat.otherUserId, "sidebar"); }}>Find chats with this user</button>
                   <button className="ds-dropdown-item" onClick={() => { onToggleHide(selectedChat); sidebar.setShowSidebarMenu(false); sidebar.setShowSidebar(false); }}>
                     {selectedChat.isHidden ? "Unhide" : "Hide"}
@@ -152,7 +153,7 @@ function DetailSidebar({
               ) : selectedChat.type === 2 ? (
                 /* DepartmentUser — conversation yaranmayıb: hide/leave yoxdur */
                 <>
-                  <button className="ds-dropdown-item" onClick={() => sidebar.setShowSidebarMenu(false)}>View profile</button>
+                  <button className="ds-dropdown-item" onClick={() => { onViewProfile?.(selectedChat.otherUserId || selectedChat.userId); sidebar.setShowSidebarMenu(false); }}>View profile</button>
                   <button className="ds-dropdown-item" onClick={() => { sidebar.setShowSidebarMenu(false); sidebar.handleOpenChatsWithUser(selectedChat.otherUserId || selectedChat.userId, "sidebar"); }}>Find chats with this user</button>
                   <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { setPendingDeleteConv(selectedChat); sidebar.setShowSidebarMenu(false); }}>Delete</button>
                 </>
@@ -1224,7 +1225,7 @@ function DetailSidebar({
                             }}>Send private message</button>
                           </>
                         )}
-                        <button className="ds-dropdown-item" onClick={() => sidebar.setMemberMenuId(null)}>View profile</button>
+                        <button className="ds-dropdown-item" onClick={() => { sidebar.setMemberMenuId(null); onViewProfile?.(uid); }}>View profile</button>
 
                         {/* Owner: member-i admin et */}
                         {!isMe && viewerIsOwner && !isOwner && !isAdmin && (

@@ -46,6 +46,7 @@ import ForwardPanel from "../components/ForwardPanel"; // mesaj yönləndir pane
 import ChatHeader from "../components/ChatHeader"; // chat başlığı (ad, status)
 import ChatInputArea from "../components/ChatInputArea"; // mesaj yazma sahəsi
 import DetailSidebar from "../components/DetailSidebar"; // sağ detail panel
+import UserProfilePanel from "../components/UserProfilePanel"; // istifadəçi profil paneli
 import ChatStatusBar from "../components/ChatStatusBar"; // viewed/typing status bar
 import ReadersPanel from "../components/ReadersPanel"; // oxuyanlar panel
 import ImageViewer from "../components/ImageViewer"; // şəkil lightbox viewer
@@ -189,6 +190,9 @@ function Chat() {
 
   // editMessage — redaktə ediləcək mesaj (null = edit mode yox)
   const [editMessage, setEditMessage] = useState(null);
+
+  // profileUserId — görüntülənəcək profil (null = panel bağlı)
+  const [profileUserId, setProfileUserId] = useState(null);
 
   // forwardMessage — yönləndirilən mesaj (null = forward panel bağlı)
   const [forwardMessage, setForwardMessage] = useState(null);
@@ -3177,6 +3181,7 @@ function Chat() {
             onHide={handleToggleHide}
             onLeaveChannel={handleLeaveChannel}
             onFindChatsWithUser={handleFindChatsWithUser}
+            onViewProfile={setProfileUserId}
           />
 
           {/* chat-panel — sağ panel, mesajlar */}
@@ -3605,6 +3610,7 @@ function Chat() {
               setPendingLeaveChannel={setPendingLeaveChannel}
               setSelectedChat={setSelectedChat}
               setMessageText={setMessageText}
+              onViewProfile={setProfileUserId}
             />
           )}
           {/* Add chat members popup — floating dialog sidebar-ın üstündə */}
@@ -3812,6 +3818,26 @@ function Chat() {
           )}
         </div>
       </div>
+
+      {/* İstifadəçi profil paneli — sağdan sola animasiya ilə açılır */}
+      {profileUserId && (
+        <UserProfilePanel
+          userId={profileUserId}
+          currentUserId={user?.id}
+          isAdmin={user?.isSuperAdmin || user?.role === "Admin" || user?.role === "SuperAdmin"}
+          onClose={() => setProfileUserId(null)}
+          onStartChat={async (uid) => {
+            setProfileUserId(null);
+            const existing = conversations.find((c) => c.type === 0 && c.otherUserId === uid);
+            if (existing) { handleSelectChat(existing); return; }
+            try {
+              const result = await apiPost("/api/conversations", { otherUserId: uid });
+              handleSelectChat({ id: result.conversationId, type: 0, otherUserId: uid, name: "", unreadCount: 0, lastMessage: null, lastMessageAtUtc: null });
+            } catch (err) { console.error("Failed to open DM:", err); }
+          }}
+          onlineUsers={onlineUsers}
+        />
+      )}
     </div>
   );
 }

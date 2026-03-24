@@ -26,6 +26,7 @@ namespace ChatApp.Modules.Identity.Domain.Entities
         // Optional fields (NULLABLE)
         public string? AvatarUrl { get; private set; }
         public DateTime? LastVisit { get; private set; }
+        public DateTime? PasswordChangedAt { get; private set; }
 
         // Employee relationship (1:1 mandatory)
         public Employee? Employee { get; private set; }
@@ -123,6 +124,7 @@ namespace ChatApp.Modules.Identity.Domain.Entities
                 throw new ArgumentException("Password hash cannot be empty", nameof(newPasswordHash));
 
             PasswordHash = newPasswordHash;
+            PasswordChangedAt = DateTime.UtcNow;
             UpdateTimestamp();
         }
 

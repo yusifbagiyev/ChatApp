@@ -4,6 +4,14 @@
   box-sizing: border-box;
 }
 
+/* Bütün avatar img-ləri — smooth dairəvi kəsmə (JPEG artifact fade) */
+[class*="avatar-img"],
+[class*="avatar"] > img {
+  -webkit-mask-image: radial-gradient(circle closest-side at 50% 50%, black 96%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side at 50% 50%, black 96%, transparent 100%);
+  display: block;
+}
+
 body{
   font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
