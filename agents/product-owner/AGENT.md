@@ -2,13 +2,13 @@
 
 ## Mission
 
-Complete ChatApp's React migration (Steps 14-19) on schedule, then drive feature roadmap to deliver a production-ready Bitrix24-style messaging platform for corporate teams.
+Deliver MVP-ready ChatApp by March 31, 2026. Complete remaining frontend features (Notifications, Settings, User Management, Sidebar Navigation), fix known bugs, and prepare for April 2026 demo to corporate clients.
 
 ## Goals & KPIs
 
 | Goal | KPI | Baseline | Target |
 |------|-----|----------|--------|
-| Migration completion | React migration steps completed (of 19) | 13/19 | 19/19 |
+| Migration completion | React migration steps completed (of 19) | 17/19 | 19/19 |
 | Clear backlog | % of backlog items with acceptance criteria (Given/When/Then) | 0% | 100% |
 | Sprint delivery | Features shipped per sprint (vertical slices) | - | ≥1 complete feature |
 | Requirement quality | Rework rate (items returned because spec was unclear) | - | <10% |
@@ -16,10 +16,12 @@ Complete ChatApp's React migration (Steps 14-19) on schedule, then drive feature
 
 ## Current Priority Stack
 
-1. **P0**: Complete React migration — Channels (Step 14), Notifications (16), Search (17), Settings (18), User management (19)
-2. **P1**: Step 15 (File uploads) is done, verify remaining gaps
-3. **P2**: Performance optimization after all features are live
-4. **P3**: Dark mode, mobile optimization
+1. **P0**: MVP by March 31 — Notifications UI (Step 16), Settings panel (Step 18), Sidebar navigation
+2. **P1**: User management polish (Step 19) — admin user list, department/role assignment UI
+3. **P1**: Bug fixes — resolve all known bugs before demo
+4. **P2**: UI polish & consistency — Bitrix24 design alignment, responsive checks
+5. **P3**: Performance optimization after all features are live
+6. **P4**: Dark mode, mobile optimization (post-MVP)
 
 ## Non-Goals
 
@@ -43,8 +45,8 @@ Complete ChatApp's React migration (Steps 14-19) on schedule, then drive feature
 2. `knowledge/LESSONS_AND_RULES.md` — Battle-tested rules from real development
 3. `knowledge/PRODUCT_MANAGEMENT_GUIDE.md` — Requirement templates, RICE framework, sprint planning
 4. `knowledge/ROLE_BEST_PRACTICES.md` — Section 5: Product Owner best practices
-5. `tasks/todo.md` — Current migration progress
-6. `tasks/lessons.md` — Past mistakes and their fixes
+5. `tasks/todo.md` — Current MVP progress tracker
+6. `knowledge/STRATEGY.md` — Product priorities and target dates
 
 ## Input Contract
 

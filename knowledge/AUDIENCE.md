@@ -2,29 +2,49 @@
 
 ## Who They Are
 
-- **Demographics**: <!-- Company size, industry, team type -->
-- **Role**: <!-- Team members, managers, admins -->
-- **Tech level**: <!-- Technical, non-technical, mixed -->
+- **Demographics**: Mid-size companies (300-500 employees), mixed sectors (primarily business & sales)
+- **Role**: Team members, department managers, company admins
+- **Tech level**: Mixed — ranges from non-technical sales staff to IT administrators
+- **Environment**: Desktop-first, corporate office setting
 
 ## Pain Points
 
-- <!-- What keeps them frustrated with current tools? -->
-- <!-- What slows down their communication? -->
+- Existing tools (email, scattered messengers) fragment team communication
+- Slow context-switching between channels, DMs, and file sharing
+- Lack of company-controlled messaging platform with proper org hierarchy
+- Difficulty finding past messages and shared files
+- No unified platform that matches their organizational structure (departments, positions)
 
 ## Goals
 
-- <!-- What are they trying to achieve with a chat app? -->
-- <!-- Fast team communication, file sharing, organized channels? -->
+- Fast, reliable internal team communication
+- Organized channels for departments, projects, and topics
+- Easy file sharing with preview and download
+- Searchable message history
+- Clear organizational hierarchy reflected in the tool
+- Admin control over users, roles, and permissions
 
 ## Language
 
-- <!-- Key phrases they use -->
-- <!-- How they describe their needs -->
+- "Quick message" over formal email
+- "Send a file" — expects drag-and-drop simplicity
+- "Find that message" — expects instant search
+- "Who's online?" — expects real-time presence
+- Corporate terminology: departments, positions, supervisors
 
 ## Segments
 
-### Segment 1: <!-- e.g., Small Team Users -->
-- <!-- Description -->
+### Segment 1: Regular Employees (70%)
+- Daily messaging, file sharing, channel participation
+- Need simple, intuitive UI — no learning curve
+- Care about: speed, reliability, finding messages/files
 
-### Segment 2: <!-- e.g., Enterprise Admins -->
-- <!-- Description -->
+### Segment 2: Department Managers (20%)
+- Channel creation and management for their teams
+- Monitor team communication, assign tasks via channels
+- Care about: organization, member management, overview
+
+### Segment 3: IT Administrators (10%)
+- User provisioning, role/permission management
+- System configuration, notification settings
+- Care about: control, security, user management

@@ -160,5 +160,8 @@ HIGHLIGHT_DURATION_MS = 3000
 ## Progress Status
 
 - Backend: **Complete and working** (do not modify unless performance improvement needed)
-- Frontend: **Active migration** — see `tasks/todo.md` for current step
-- Currently at: Step 14 (Channels) — Steps 14-19 remaining
+- Frontend: **Active MVP push** — see `tasks/todo.md` for current progress
+- **Completed**: Steps 1-15, 17 (DMs, Channels, Files, Search, Real-time, Profiles)
+- **Remaining**: Step 16 (Notifications UI), Step 18 (Settings), Step 19 partial (Admin user management), Sidebar navigation
+- **MVP Deadline**: March 31, 2026
+- **Demo**: April 2026
