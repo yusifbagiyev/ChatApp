@@ -57,6 +57,13 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence.Configurations
                 .HasDatabaseName("ix_companies_is_active");
 
             // Relationships
+
+            // HeadOfCompany — Company → User (açıq konfiqurasiya, Users collection ilə qarışmasın)
+            builder.HasOne(c => c.HeadOfCompany)
+                .WithMany()
+                .HasForeignKey(c => c.HeadOfCompanyId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             builder.HasMany(c => c.Departments)
                 .WithOne(d => d.Company)
                 .HasForeignKey(d => d.CompanyId)
