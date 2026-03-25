@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { createPortal } from "react-dom";
 import { getUserProfile, getFileUrl, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, apiUpload, apiPut, activateUser, deactivateUser, assignEmployeeToDepartment } from "../services/api";
+import { useToast } from "../context/ToastContext";
 import "./UserProfilePanel.css";
 
 // ─── Field — görüntüləmə rejimi ──────────────────────────────────────────────
@@ -198,21 +199,21 @@ const CIRCLE_SIZE  = 268;  // kəsilən dairə diametr
 const PREVIEW_SIZE = 130;  // sağdakı preview dairə
 const SCALE        = PREVIEW_SIZE / CROP_SIZE;
 
-function AvatarCropModal({ file, onSave, onCancel, uploading }) {
+function AvatarCropModal({ file, onSave, onCancel, uploading, showToast }) {
   const [zoom, setZoom]           = useState(1);
   const [offset, setOffset]       = useState({ x: 0, y: 0 });
   const [dragging, setDragging]   = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [natSize, setNatSize]     = useState({ w: 0, h: 0 });
   const replaceRef = useRef(null);
-  const objUrl     = useRef(URL.createObjectURL(file));
+  const [imgSrc, setImgSrc] = useState(() => URL.createObjectURL(file));
 
   useEffect(() => {
-    const url = objUrl.current;
     const img = new Image();
     img.onload = () => setNatSize({ w: img.naturalWidth, h: img.naturalHeight });
-    img.src = url;
-    return () => URL.revokeObjectURL(url);
+    img.src = imgSrc;
+    return () => URL.revokeObjectURL(imgSrc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onMouseDown = (e) => {
@@ -275,7 +276,7 @@ function AvatarCropModal({ file, onSave, onCancel, uploading }) {
         "image/png"
       );
     };
-    img.src = objUrl.current;
+    img.src = imgSrc;
   };
 
   // Editor: mövqe üçün translate, scale yoxdur — explicit ölçü istifadə olunur
@@ -319,7 +320,7 @@ function AvatarCropModal({ file, onSave, onCancel, uploading }) {
               onMouseUp={onMouseUp}   onMouseLeave={onMouseUp}
               style={{ cursor: dragging ? "grabbing" : "grab" }}
             >
-              <img src={objUrl.current} className="upp-crop-img" draggable={false}
+              <img src={imgSrc} className="upp-crop-img" draggable={false}
                 style={editorStyle} alt="" />
               <div className="upp-crop-mask" />
             </div>
@@ -328,16 +329,25 @@ function AvatarCropModal({ file, onSave, onCancel, uploading }) {
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;
-                URL.revokeObjectURL(objUrl.current);
-                objUrl.current = URL.createObjectURL(f);
-                setOffset({ x: 0, y: 0 });
-                const img = new Image();
-                img.onload = () => {
-                  setNatSize({ w: img.naturalWidth, h: img.naturalHeight });
+                e.target.value = "";
+                if (f.size === 0) {
+                  showToast?.(`"${f.name}" is empty (0 bytes)`, "error");
+                  return;
+                }
+                const testUrl = URL.createObjectURL(f);
+                const testImg = new Image();
+                testImg.onload = () => {
+                  URL.revokeObjectURL(testUrl);
+                  setImgSrc((prev) => { URL.revokeObjectURL(prev); return URL.createObjectURL(f); });
+                  setOffset({ x: 0, y: 0 });
+                  setNatSize({ w: testImg.naturalWidth, h: testImg.naturalHeight });
                   setZoom(1);
                 };
-                img.src = objUrl.current;
-                e.target.value = "";
+                testImg.onerror = () => {
+                  URL.revokeObjectURL(testUrl);
+                  showToast?.(`"${f.name}" — corrupt or unreadable image`, "error");
+                };
+                testImg.src = testUrl;
               }}
             />
             <button className="upp-crop-upload-btn" onClick={() => replaceRef.current?.click()}>
@@ -354,7 +364,7 @@ function AvatarCropModal({ file, onSave, onCancel, uploading }) {
           {/* Sağ — preview */}
           <div className="upp-crop-preview">
             <div className="upp-crop-preview-circle">
-              <img src={objUrl.current} className="upp-crop-img" draggable={false}
+              <img src={imgSrc} className="upp-crop-img" draggable={false}
                 style={previewStyle} alt="" />
             </div>
             <span className="upp-crop-preview-label">Preview</span>
@@ -404,13 +414,28 @@ function UserProfilePanel({ userId, currentUserId, isAdmin, onClose, onStartChat
   const [cropFile, setCropFile]               = useState(null);  // crop modal üçün seçilmiş fayl
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const { showToast } = useToast();
 
   const handleAvatarClick = () => { if (canEdit) fileInputRef.current?.click(); };
 
   const handleFileSelect = (e) => {
     const f = e.target.files?.[0];
-    if (f) setCropFile(f);
+    if (!f) return;
     e.target.value = "";
+
+    // 0-byte və corrupt şəkil yoxlaması
+    if (f.size === 0) {
+      showToast(`"${f.name}" is empty (0 bytes)`, "error");
+      return;
+    }
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); setCropFile(f); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      showToast(`"${f.name}" — corrupt or unreadable image`, "error");
+    };
+    img.src = url;
   };
 
   const handleAvatarSave = async (croppedFile) => {
@@ -704,7 +729,7 @@ function UserProfilePanel({ userId, currentUserId, isAdmin, onClose, onStartChat
             <h1 className="upp-name">{loading ? "\u00A0" : fullName || "Unknown User"}</h1>
           </div>
           <div className="upp-tab-bar">
-            {["General", "Drive", "Feed", "Security"].map((tab) => (
+            {["General", "Drive", "Feed", ...((isOwn || isAdmin) ? ["Security"] : [])].map((tab) => (
               <span
                 key={tab}
                 className={`upp-tab${activeTab === tab ? " active" : ""}`}
@@ -1161,6 +1186,7 @@ function UserProfilePanel({ userId, currentUserId, isAdmin, onClose, onStartChat
           uploading={avatarUploading}
           onSave={handleAvatarSave}
           onCancel={() => setCropFile(null)}
+          showToast={showToast}
         />
       )}
 

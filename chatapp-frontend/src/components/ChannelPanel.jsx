@@ -327,6 +327,8 @@ function ChannelPanel({
     };
   }, [channelName, editMode, channelData]);
 
+  const { showToast } = useToast();
+
   // Channel avatar state — müvəqqəti, yalnız frontendda saxlanılır
   const [avatarPreview, setAvatarPreview] = useState(
     editMode && channelData?.avatarUrl ? channelData.avatarUrl : null,
@@ -341,13 +343,27 @@ function ChannelPanel({
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarFile(file);
-    // FileReader ilə data URL yaradırıq — preview üçün
-    const reader = new FileReader();
-    reader.onload = (ev) => setAvatarPreview(ev.target.result);
-    reader.readAsDataURL(file);
-    // Input-u reset et ki, eyni faylı yenidən seçmək mümkün olsun
     e.target.value = "";
+
+    // 0-byte və corrupt şəkil yoxlaması
+    if (file.size === 0) {
+      showToast(`"${file.name}" is empty (0 bytes)`, "error");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => setAvatarPreview(ev.target.result);
+      reader.readAsDataURL(file);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      showToast(`"${file.name}" — corrupt or unreadable image`, "error");
+    };
+    img.src = url;
   };
 
   // Add member dropdown state
@@ -477,7 +493,6 @@ function ChannelPanel({
 
   // CREATE CHAT state
   const [creating, setCreating] = useState(false);
-  const { showToast } = useToast();
 
   // ─── handleCreateChannel — CREATE CHAT butonu ─────────────────────────────
   // 1. Department member-ləri resolve edir (hierarchy-dən user ID-lər çıxarır)

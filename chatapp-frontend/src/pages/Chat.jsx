@@ -1452,14 +1452,13 @@ function Chat() {
     if (!selectedChat) return;
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("File", file);
       const result = await apiUpload(`/api/files/upload/channel-avatar/${selectedChat.id}`, formData);
       if (!result?.downloadUrl) return;
-      const res = await apiPut(`/api/channels/${selectedChat.id}`, { avatarUrl: result.downloadUrl });
-      if (res?.error) return;
+      await apiPut(`/api/channels/${selectedChat.id}`, { avatarUrl: result.downloadUrl });
       handleChannelUpdated({ id: selectedChat.id, name: selectedChat.name, avatarUrl: result.downloadUrl });
     } catch (err) {
-      console.error("Failed to update channel avatar:", err);
+      showToast(err.message || "Failed to update channel avatar", "error");
     }
   }
 
@@ -3973,12 +3972,23 @@ function Chat() {
           onClose={() => setProfileUserId(null)}
           onStartChat={async (uid) => {
             setProfileUserId(null);
-            const existing = conversations.find((c) => c.type === 0 && c.otherUserId === uid);
+            // Mövcud DM axtarışı — type 0 (DM) və type 2 (DepartmentUser) hər ikisi DM-dir
+            const existing = conversations.find((c) =>
+              (c.type === 0 || c.type === 2) && (c.otherUserId === uid || c.userId === uid)
+            );
             if (existing) { handleSelectChat(existing); return; }
             try {
               const result = await apiPost("/api/conversations", { otherUserId: uid });
-              handleSelectChat({ id: result.conversationId, type: 0, otherUserId: uid, name: "", unreadCount: 0, lastMessage: null, lastMessageAtUtc: null });
-            } catch (err) { console.error("Failed to open DM:", err); }
+              if (result?.conversationId) {
+                // Conversation list-i yenilə ki, yeni DM tam datası ilə gəlsin
+                const data = await apiGet(`/api/unified-conversations?pageNumber=1&pageSize=${CONVERSATION_PAGE_SIZE}`);
+                if (data?.items) {
+                  setConversations(data.items);
+                  const newConv = data.items.find((c) => c.id === result.conversationId);
+                  if (newConv) handleSelectChat(newConv);
+                }
+              }
+            } catch (err) { showToast(err.message || "Failed to open DM", "error"); }
           }}
           onlineUsers={onlineUsers}
         />

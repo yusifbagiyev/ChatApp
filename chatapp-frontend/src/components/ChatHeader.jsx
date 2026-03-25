@@ -2,6 +2,7 @@ import { memo, useState, useRef } from "react";
 // Utility funksiyaları import et
 import { getInitials, getAvatarColor, getLastSeenText } from "../utils/chatUtils";
 import { getFileUrl } from "../services/api";
+import { useToast } from "../context/ToastContext";
 import "./ChatHeader.css";
 
 // ChatHeader komponenti — chat panelinin yuxarı başlığı
@@ -34,6 +35,7 @@ function ChatHeader({
   const [nameValue, setNameValue] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
+  const { showToast } = useToast();
 
   // Ad save — boşdursa və ya dəyişməyibsə ləğv et; xəta olduqda edit açıq qalır
   async function handleSaveName() {
@@ -46,17 +48,33 @@ function ChatHeader({
     if (success !== false) setEditingName(false);
   }
 
-  // Avatar fayl seçim → yüklə
-  async function handleAvatarFileChange(e) {
+  // Avatar fayl seçim → validasiya → yüklə
+  function handleAvatarFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    setAvatarUploading(true);
-    try {
-      await onSaveChannelAvatar?.(file);
-    } finally {
-      setAvatarUploading(false);
+
+    // 0-byte və corrupt şəkil yoxlaması
+    if (file.size === 0) {
+      showToast(`"${file.name}" is empty (0 bytes)`, "error");
+      return;
     }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = async () => {
+      URL.revokeObjectURL(url);
+      setAvatarUploading(true);
+      try {
+        await onSaveChannelAvatar?.(file);
+      } finally {
+        setAvatarUploading(false);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      showToast(`"${file.name}" — corrupt or unreadable image`, "error");
+    };
+    img.src = url;
   }
 
   const isChannel = selectedChat?.type === 1;
