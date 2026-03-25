@@ -185,6 +185,7 @@ export default function useMention({ selectedChat, channelMembers, conversations
         .map(([uid, m]) => ({
           id: uid,
           fullName: m.fullName,
+          avatarUrl: m.avatarUrl || null,
           position: m.role === 3 ? "Owner" : m.role === 2 ? "Admin" : "User",
           type: "user",
           isAll: false,
@@ -208,6 +209,7 @@ export default function useMention({ selectedChat, channelMembers, conversations
       const otherUser = {
         id: selectedChat.otherUserId || selectedChat.userId || selectedChat.id,
         fullName: selectedChat.name,
+        avatarUrl: selectedChat.avatarUrl || null,
         position: selectedChat.otherUserPosition || selectedChat.positionName || "User",
         type: "user",
         isAll: false,
@@ -236,6 +238,7 @@ export default function useMention({ selectedChat, channelMembers, conversations
       .map((c) => ({
         id: c.otherUserId || c.userId || c.id,
         fullName: c.name,
+        avatarUrl: c.avatarUrl || null,
         position: c.otherUserPosition || c.positionName || "User",
         type: "user",
         isAll: false,
@@ -254,6 +257,7 @@ export default function useMention({ selectedChat, channelMembers, conversations
         .map((c) => ({
           id: c.id,
           fullName: c.name,
+          avatarUrl: c.avatarUrl || null,
           type: "channel",
           isAll: false,
         }));
@@ -281,6 +285,7 @@ export default function useMention({ selectedChat, channelMembers, conversations
             .map((u) => ({
               id: u.id,
               fullName: u.fullName,
+              avatarUrl: u.avatarUrl || null,
               position: u.position || "User",
               type: "user",
               isAll: false,
