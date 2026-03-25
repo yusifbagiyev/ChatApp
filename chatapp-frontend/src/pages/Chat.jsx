@@ -1228,7 +1228,9 @@ function Chat() {
   );
 
   // handleInputResize — textarea böyüdükdə/kiçildikdə mesajları aşağı scroll et
+  // Yalnız aşağıda olduqda (scroll-to-bottom butonu görünmürsə) scroll et
   const handleInputResize = useCallback(() => {
+    if (showScrollDownRef.current) return;
     requestAnimationFrame(() => {
       const area = messagesAreaRef.current;
       if (area) area.scrollTop = area.scrollHeight;

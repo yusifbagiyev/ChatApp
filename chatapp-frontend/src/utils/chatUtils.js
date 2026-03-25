@@ -147,13 +147,8 @@ export function formatTime(dateString) {
       hour: "2-digit",
       minute: "2-digit",
     });
-  } else if (diffDays === 1) {
-    return "Yesterday"; // Dünən
-  } else if (diffDays < 7) {
-    // Bu həftə → qısa gün adı: "Mon", "Tue"...
-    return date.toLocaleDateString("en-US", { weekday: "short" });
   } else {
-    // 7 gündən köhnə → "Jan 5" formatı
+    // Dünən və daha köhnə → "Jan 5" formatı
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",

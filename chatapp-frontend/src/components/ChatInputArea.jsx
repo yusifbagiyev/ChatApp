@@ -62,6 +62,16 @@ function ChatInputArea({
     }
   }, [inputRef]);
 
+  // Input konteynerinin hündürlüyü dəyişəndə (reply/edit panel, textarea resize) scroll düzəlt
+  const inputContainerRef = useRef(null);
+  useEffect(() => {
+    const el = inputContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => onInputResize?.());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [onInputResize]);
+
   // handleResizeDrag — Bitrix-style drag handle: textarea hündürlüyünü manual dəyişmək
   // mousedown → mousemove ilə hündürlük artır/azalır → mouseup ilə bitir
   const handleResizeDrag = useCallback((e) => {
@@ -185,7 +195,7 @@ function ChatInputArea({
     // Fragment <> </> — birden çox root element qaytarmaq üçün
     // .NET: RenderFragment ilə oxşardır
     <>
-      <div className="message-input-area">
+      <div className="message-input-area" ref={inputContainerRef}>
         {/* Bitrix-style resize handle — hover-da görünür, drag ilə textarea böyüdülür */}
         <div
           className={`input-resize-handle${dragging ? " dragging" : ""}`}
