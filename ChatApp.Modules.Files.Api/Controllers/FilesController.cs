@@ -119,7 +119,7 @@ namespace ChatApp.Modules.Files.Api.Controllers
             if (targetUserId.HasValue && targetUserId.Value != currentUserId)
             {
                 // Yalnız Admin/SuperAdmin başqa istifadəçilər üçün yükləyə bilər
-                var roleClaim = User.FindFirst("role")?.Value;
+                var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
                 var isAdmin = roleClaim == "Admin" || roleClaim == "SuperAdmin";
 
                 if (!isAdmin)

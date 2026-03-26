@@ -56,6 +56,7 @@ namespace ChatApp.Modules.Identity.Application.Queries.Companies
                         c.Id,
                         c.Name,
                         c.LogoUrl,
+                        c.Description,
                         c.IsActive,
                         c.Users.Count(u => u.IsActive),
                         c.HeadOfCompany != null ? c.HeadOfCompany.FirstName + " " + c.HeadOfCompany.LastName : null,

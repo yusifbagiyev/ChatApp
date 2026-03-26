@@ -7,6 +7,7 @@ namespace ChatApp.Modules.Identity.Application.DTOs.Responses
         Guid Id,
         string Name,
         string? LogoUrl,
+        string? Description,
         bool IsActive,
         int UserCount,
         string? AdminName,

@@ -27,7 +27,7 @@ namespace ChatApp.Shared.Infrastructure.Authorization
             var userId=context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value??"Unknown";
 
             // SuperAdmin bütün permission yoxlamalarını bypass edir
-            var roleClaim = context.User.FindFirst("role")?.Value;
+            var roleClaim = context.User.FindFirst(ClaimTypes.Role)?.Value;
             if (roleClaim == "SuperAdmin")
             {
                 context.Succeed(requirement);

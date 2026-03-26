@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ChatApp.Modules.Identity.Api.Controllers
 {
@@ -23,7 +24,7 @@ namespace ChatApp.Modules.Identity.Api.Controllers
             [FromQuery] Guid? companyId = null,
             CancellationToken cancellationToken = default)
         {
-            var isSuperAdmin = User.FindFirst("role")?.Value == "SuperAdmin";
+            var isSuperAdmin = User.FindFirst(ClaimTypes.Role)?.Value == "SuperAdmin";
             var userCompanyId = Guid.TryParse(User.FindFirst("companyId")?.Value, out var cid) ? cid : (Guid?)null;
 
             // SuperAdmin istənilən şirkəti, Admin/User yalnız öz şirkətini görür

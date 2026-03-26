@@ -605,7 +605,7 @@ namespace ChatApp.Modules.Identity.Api.Controllers
         private (Guid? companyId, bool isSuperAdmin) GetCompanyClaims()
         {
             var companyId = Guid.TryParse(GetClaimValue("companyId"), out var cid) ? cid : (Guid?)null;
-            var isSuperAdmin = GetClaimValue("role") == "SuperAdmin";
+            var isSuperAdmin = User.FindFirst(ClaimTypes.Role)?.Value == "SuperAdmin";
             return (companyId, isSuperAdmin);
         }
 

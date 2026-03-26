@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ChatApp.Modules.Identity.Api.Controllers
 {
@@ -48,13 +49,17 @@ namespace ChatApp.Modules.Identity.Api.Controllers
         public async Task<IActionResult> GetCompanyById(Guid id, CancellationToken cancellationToken)
         {
             var callerCompanyId = Guid.TryParse(User.FindFirst("companyId")?.Value, out var cid) ? cid : (Guid?)null;
-            var isSuperAdmin = User.FindFirst("role")?.Value == "SuperAdmin";
+            var isSuperAdmin = User.FindFirst(ClaimTypes.Role)?.Value == "SuperAdmin";
 
             var query = new GetCompanyByIdQuery(id, callerCompanyId, isSuperAdmin);
             var result = await mediator.Send(query, cancellationToken);
 
             if (result.IsFailure)
+            {
+                if (result.Error == "Access denied")
+                    return Forbid();
                 return NotFound(new { error = result.Error });
+            }
 
             return Ok(result.Value);
         }
