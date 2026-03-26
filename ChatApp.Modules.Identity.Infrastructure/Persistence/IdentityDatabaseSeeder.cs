@@ -86,7 +86,7 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence
             if (await context.Companies.AnyAsync())
             {
                 logger?.LogInformation("Companies already exist, skipping company seeding");
-                return await context.Companies.FirstAsync();
+                return await context.Companies.OrderBy(c => c.Id).FirstAsync();
             }
 
             logger?.LogInformation("Seeding default company...");
