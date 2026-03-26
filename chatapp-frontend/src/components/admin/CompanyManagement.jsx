@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, memo } from "react";
 import { getCompanies, createCompany, updateCompany, deleteCompany, assignCompanyAdmin, getUsers, apiUpload, apiPut } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
-import { getFileUrl, getInitials, getAvatarColor } from "../../services/api";
+import { getFileUrl } from "../../services/api";
+import { getInitials, getAvatarColor } from "../../utils/chatUtils";
 import "./CompanyManagement.css";
 
 // ─── CompanyForm — Create/Edit panel ─────────────────────────────────────────
