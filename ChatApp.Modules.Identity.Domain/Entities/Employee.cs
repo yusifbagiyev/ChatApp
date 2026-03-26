@@ -25,9 +25,6 @@ namespace ChatApp.Modules.Identity.Domain.Entities
         public Guid? DepartmentId { get; private set; }
         public Department? Department { get; private set; }
 
-        public Guid? SupervisorId { get; private set; }
-        public Employee? Supervisor { get; private set; }
-
         // Denormalized field for subdepartment employees
         // NULL for CEO, Department Heads, Subdepartment Heads
         // SET for subdepartment employees only (points to parent department head)
@@ -36,9 +33,12 @@ namespace ChatApp.Modules.Identity.Domain.Entities
         // Employment Information
         public DateTime? HiringDate { get; private set; }
 
-        // Navigation properties
-        private readonly List<Employee> _subordinates = [];
-        public IReadOnlyCollection<Employee> Subordinates => _subordinates.AsReadOnly();
+        // Many-to-many supervisor əlaqələri
+        private readonly List<EmployeeSupervisor> _supervisorLinks = [];
+        public IReadOnlyCollection<EmployeeSupervisor> SupervisorLinks => _supervisorLinks.AsReadOnly();
+
+        private readonly List<EmployeeSupervisor> _subordinateLinks = [];
+        public IReadOnlyCollection<EmployeeSupervisor> SubordinateLinks => _subordinateLinks.AsReadOnly();
 
         // Private constructor for EF Core
         private Employee() : base() { }
@@ -95,13 +95,12 @@ namespace ChatApp.Modules.Identity.Domain.Entities
             UpdateTimestamp();
         }
 
-        public void AssignToDepartment(Guid departmentId, Guid? supervisorId = null, Guid? headOfDepartmentId = null)
+        public void AssignToDepartment(Guid departmentId, Guid? headOfDepartmentId = null)
         {
             if (departmentId == Guid.Empty)
                 throw new ArgumentException("Department ID cannot be empty", nameof(departmentId));
 
             DepartmentId = departmentId;
-            SupervisorId = supervisorId;
             HeadOfDepartmentId = headOfDepartmentId;
             UpdateTimestamp();
         }
@@ -109,24 +108,31 @@ namespace ChatApp.Modules.Identity.Domain.Entities
         public void RemoveFromDepartment()
         {
             DepartmentId = null;
-            SupervisorId = null;
             HeadOfDepartmentId = null;
             UpdateTimestamp();
         }
 
-        public void AssignSupervisor(Guid supervisorId)
+        // Idempotent — eyni rəhbəri iki dəfə əlavə etmək xəta deyil
+        public void AddSupervisor(Guid supervisorEmployeeId)
         {
-            if (supervisorId == Guid.Empty)
-                throw new ArgumentException("Supervisor ID cannot be empty", nameof(supervisorId));
+            if (supervisorEmployeeId == Guid.Empty)
+                throw new ArgumentException("Supervisor employee ID cannot be empty", nameof(supervisorEmployeeId));
 
-            SupervisorId = supervisorId;
+            if (_supervisorLinks.Any(s => s.SupervisorEmployeeId == supervisorEmployeeId))
+                return;
+
+            _supervisorLinks.Add(new EmployeeSupervisor(Id, supervisorEmployeeId));
             UpdateTimestamp();
         }
 
-        public void RemoveSupervisor()
+        public void RemoveSupervisor(Guid supervisorEmployeeId)
         {
-            SupervisorId = null;
-            UpdateTimestamp();
+            var link = _supervisorLinks.FirstOrDefault(s => s.SupervisorEmployeeId == supervisorEmployeeId);
+            if (link != null)
+            {
+                _supervisorLinks.Remove(link);
+                UpdateTimestamp();
+            }
         }
 
         #endregion

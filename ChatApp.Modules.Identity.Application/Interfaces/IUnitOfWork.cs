@@ -7,6 +7,7 @@ namespace ChatApp.Modules.Identity.Application.Interfaces
     {
         DbSet<User> Users { get; }
         DbSet<Employee> Employees { get; }
+        DbSet<EmployeeSupervisor> EmployeeSupervisors { get; }
         DbSet<Company> Companies { get; }
         DbSet<Department> Departments { get; }
         DbSet<Position> Positions { get; }

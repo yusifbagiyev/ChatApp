@@ -23,8 +23,13 @@ namespace ChatApp.Modules.Identity.Application.Queries.GetUser
                     .Include(u => u.UserPermissions)
                     .Include(u => u.Employee!.Position)
                     .Include(u => u.Employee!.Department).ThenInclude(d => d!.HeadOfDepartment)
-                    .Include(u => u.Employee!.Supervisor!.User)
-                    .Include(u => u.Employee!.Supervisor!.Position)
+                    // Supervisors — many-to-many
+                    .Include(u => u.Employee!.SupervisorLinks)
+                        .ThenInclude(sl => sl.SupervisorEmployee)
+                            .ThenInclude(se => se.User)
+                    .Include(u => u.Employee!.SupervisorLinks)
+                        .ThenInclude(sl => sl.SupervisorEmployee)
+                            .ThenInclude(se => se.Position)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
@@ -34,9 +39,7 @@ namespace ChatApp.Modules.Identity.Application.Queries.GetUser
                     return Result.Success<UserDetailDto?>(null);
                 }
 
-                var userDto = MapToDetailDto(user);
-
-                return Result.Success<UserDetailDto?>(userDto);
+                return Result.Success<UserDetailDto?>(MapToDetailDto(user));
             }
             catch (Exception ex)
             {
@@ -50,6 +53,15 @@ namespace ChatApp.Modules.Identity.Application.Queries.GetUser
             var permissions = user.UserPermissions
                 .Select(up => up.PermissionName)
                 .ToList();
+
+            var supervisors = user.Employee?.SupervisorLinks
+                .Select(sl => new SupervisorDto(
+                    sl.SupervisorEmployee.UserId,
+                    sl.SupervisorEmployee.User?.FullName ?? "Unknown",
+                    sl.SupervisorEmployee.User?.AvatarUrl,
+                    sl.SupervisorEmployee.Position?.Name,
+                    sl.AssignedAtUtc))
+                .ToList() ?? [];
 
             var isHeadOfDepartment = user.Employee?.DepartmentId.HasValue == true &&
                 user.Employee.Department?.HeadOfDepartmentId == user.Id;
@@ -72,13 +84,10 @@ namespace ChatApp.Modules.Identity.Application.Queries.GetUser
                 user.IsActive,
                 user.Employee?.DepartmentId,
                 user.Employee?.Department?.Name,
-                user.Employee?.Supervisor?.UserId,
-                user.Employee?.Supervisor?.User?.FullName,
-                user.Employee?.Supervisor?.User?.AvatarUrl,
-                user.Employee?.Supervisor?.Position?.Name,
+                supervisors,
                 isHeadOfDepartment,
                 user.Employee?.Department?.HeadOfDepartment?.FullName,
-                [], // Current user doesn't need subordinates
+                [], // Cari istifadəçi üçün tabelilər göstərilmir
                 permissions,
                 user.CreatedAtUtc,
                 user.UpdatedAtUtc,

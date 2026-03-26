@@ -78,14 +78,6 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence.Configurations
                 .HasForeignKey(e => e.DepartmentId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            builder.Property(e => e.SupervisorId)
-                .HasColumnName("supervisor_id");
-
-            builder.HasOne(e => e.Supervisor)
-                .WithMany(e => e.Subordinates)
-                .HasForeignKey(e => e.SupervisorId)
-                .OnDelete(DeleteBehavior.SetNull);
-
             builder.Property(e => e.HeadOfDepartmentId)
                 .HasColumnName("head_of_department_id");
 
@@ -112,8 +104,6 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence.Configurations
             builder.HasIndex(e => e.PositionId)
                 .HasDatabaseName("ix_employees_position_id");
 
-            builder.HasIndex(e => e.SupervisorId)
-                .HasDatabaseName("ix_employees_supervisor_id");
         }
     }
 }

@@ -20,6 +20,7 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence
 
         public DbSet<User> Users => Set<User>();
         public DbSet<Employee> Employees => Set<Employee>();
+        public DbSet<EmployeeSupervisor> EmployeeSupervisors => Set<EmployeeSupervisor>();
         public DbSet<Company> Companies => Set<Company>();
         public DbSet<Department> Departments => Set<Department>();
         public DbSet<Position> Positions => Set<Position>();
@@ -44,6 +45,8 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence
             {
                 modelBuilder.ApplyConfiguration(new EmployeeConfiguration(_encryptionService));
             }
+
+            modelBuilder.ApplyConfiguration(new EmployeeSupervisorConfiguration());
         }
     }
 }

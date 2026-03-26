@@ -41,23 +41,34 @@ namespace ChatApp.Modules.Identity.Application.Commands.Departments
 
                 // === Auto Supervisor Cleanup ===
 
-                // 1. Remove supervisor from all department members who had the old head as supervisor
+                // 1. Remove the old head as supervisor from all their subordinates
                 var oldHeadEmployee = await unitOfWork.Employees
+                    .Include(e => e.SupervisorLinks)
                     .FirstOrDefaultAsync(e => e.UserId == previousHeadUserId, cancellationToken);
 
                 if (oldHeadEmployee != null)
                 {
+                    // junction table-dən köhnə rəhbərin tabelilərini tap
+                    var subordinateEmployeeIds = await unitOfWork.EmployeeSupervisors
+                        .Where(es => es.SupervisorEmployeeId == oldHeadEmployee.Id)
+                        .Select(es => es.EmployeeId)
+                        .ToListAsync(cancellationToken);
+
                     var subordinates = await unitOfWork.Employees
-                        .Where(e => e.SupervisorId == oldHeadEmployee.Id)
+                        .Include(e => e.SupervisorLinks)
+                        .Where(e => subordinateEmployeeIds.Contains(e.Id))
                         .ToListAsync(cancellationToken);
 
                     foreach (var sub in subordinates)
                     {
-                        sub.RemoveSupervisor();
+                        sub.RemoveSupervisor(oldHeadEmployee.Id);
                     }
 
-                    // 2. Remove supervisor from the old head itself
-                    oldHeadEmployee.RemoveSupervisor();
+                    // 2. Remove all supervisor links from the old head (no longer a department head)
+                    foreach (var supervisorId in oldHeadEmployee.SupervisorLinks.Select(sl => sl.SupervisorEmployeeId).ToList())
+                    {
+                        oldHeadEmployee.RemoveSupervisor(supervisorId);
+                    }
                 }
 
                 // Remove head from department

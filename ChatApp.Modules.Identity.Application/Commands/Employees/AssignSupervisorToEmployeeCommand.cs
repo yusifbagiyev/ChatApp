@@ -38,9 +38,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
         {
             try
             {
-                // Validate user exists and has employee record
+                // İşçini SupervisorLinks ilə yüklə (idempotency yoxlaması üçün)
                 var user = await unitOfWork.Users
-                    .Include(u => u.Employee)
+                    .Include(u => u.Employee!.SupervisorLinks)
                     .FirstOrDefaultAsync(u => u.Id == command.UserId, cancellationToken);
 
                 if (user == null)
@@ -49,9 +49,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
                 if (user.Employee == null)
                     return Result.Failure("User does not have an employee record");
 
-                // Validate supervisor exists and is active
+                // Rəhbəri User + Employee ilə yüklə
                 var supervisorUser = await unitOfWork.Users
-                    .Include(u => u.Employee)
+                    .Include(u => u.Employee!.SupervisorLinks)
                     .FirstOrDefaultAsync(u => u.Id == command.SupervisorId, cancellationToken);
 
                 if (supervisorUser == null)
@@ -63,18 +63,18 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
                 if (!supervisorUser.IsActive)
                     return Result.Failure("Cannot assign inactive user as supervisor");
 
-                // Optional: Check if supervisor is in the same department
-                if (user.Employee.DepartmentId.HasValue &&
-                    supervisorUser.Employee.DepartmentId != user.Employee.DepartmentId)
-                {
-                    logger.LogWarning(
-                        "Supervisor {SupervisorId} is in different department than employee {UserId}",
-                        command.SupervisorId,
-                        command.UserId);
-                }
+                // Şirkət izolyasiyası — fərqli şirkətdən rəhbər təyin edilə bilməz
+                if (user.CompanyId != supervisorUser.CompanyId)
+                    return Result.Failure("Cannot assign supervisor from a different company");
 
-                // Assign supervisor
-                user.Employee.AssignSupervisor(supervisorUser.Employee.Id);
+                // Dairəvi rəhbərlik yoxlanışı — A→B isə B→A ola bilməz
+                var isCircular = supervisorUser.Employee.SupervisorLinks
+                    .Any(s => s.SupervisorEmployeeId == user.Employee.Id);
+                if (isCircular)
+                    return Result.Failure("Circular supervision detected: supervisor is already a subordinate of this employee");
+
+                // Many-to-many: idempotent əlavə
+                user.Employee.AddSupervisor(supervisorUser.Employee.Id);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
 
                 logger.LogInformation(

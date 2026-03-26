@@ -588,8 +588,8 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence
             var user6Id = Guid.Parse("00000000-0000-0000-0000-000000000006"); // Fərid - Sales head
             var user9Id = Guid.Parse("00000000-0000-0000-0000-000000000009"); // Sevda - HR head
 
-            // Load all employees from DB
-            var employees = await context.Employees.ToListAsync();
+            // Load all employees from DB (SupervisorLinks include idempotency üçün)
+            var employees = await context.Employees.Include(e => e.SupervisorLinks).ToListAsync();
             var getEmp = (Guid userId) => employees.First(e => e.UserId == userId);
             var getEmpId = (Guid userId) => getEmp(userId).Id;
             Guid Uid(int idx) => Guid.Parse($"00000000-0000-0000-0000-0000000000{idx:D2}");
@@ -612,97 +612,97 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence
             var opsHeadEmpId = getEmpId(Uid(41));    // Xəyal - Operations head
 
             // ===== Top-level department heads → Head of Company =====
-            getEmp(user1Id).AssignSupervisor(headEmpId);   // Finance head
-            getEmp(user2Id).AssignSupervisor(headEmpId);   // Engineering head
-            getEmp(user6Id).AssignSupervisor(headEmpId);   // Sales & Marketing head
-            getEmp(user9Id).AssignSupervisor(headEmpId);   // HR head
-            getEmp(Uid(37)).AssignSupervisor(headEmpId);   // Legal head
-            getEmp(Uid(41)).AssignSupervisor(headEmpId);   // Operations head
+            getEmp(user1Id).AddSupervisor(headEmpId);   // Finance head
+            getEmp(user2Id).AddSupervisor(headEmpId);   // Engineering head
+            getEmp(user6Id).AddSupervisor(headEmpId);   // Sales & Marketing head
+            getEmp(user9Id).AddSupervisor(headEmpId);   // HR head
+            getEmp(Uid(37)).AddSupervisor(headEmpId);   // Legal head
+            getEmp(Uid(41)).AddSupervisor(headEmpId);   // Operations head
 
             // ===== Sub-department heads → parent department head =====
-            getEmp(user3Id).AssignSupervisor(emp2EmpId);   // Frontend head → Engineering head
-            getEmp(Uid(12)).AssignSupervisor(emp2EmpId);   // QA head → Engineering head
-            getEmp(Uid(17)).AssignSupervisor(emp2EmpId);   // DevOps head → Engineering head
-            getEmp(Uid(21)).AssignSupervisor(emp2EmpId);   // IT Support head → Engineering head
-            getEmp(Uid(25)).AssignSupervisor(emp6EmpId);   // Marketing head → Sales & Marketing head
-            getEmp(Uid(30)).AssignSupervisor(emp1EmpId);   // Accounting head → Finance head
-            getEmp(Uid(34)).AssignSupervisor(emp9EmpId);   // Recruitment head → HR head
+            getEmp(user3Id).AddSupervisor(emp2EmpId);   // Frontend head → Engineering head
+            getEmp(Uid(12)).AddSupervisor(emp2EmpId);   // QA head → Engineering head
+            getEmp(Uid(17)).AddSupervisor(emp2EmpId);   // DevOps head → Engineering head
+            getEmp(Uid(21)).AddSupervisor(emp2EmpId);   // IT Support head → Engineering head
+            getEmp(Uid(25)).AddSupervisor(emp6EmpId);   // Marketing head → Sales & Marketing head
+            getEmp(Uid(30)).AddSupervisor(emp1EmpId);   // Accounting head → Finance head
+            getEmp(Uid(34)).AddSupervisor(emp9EmpId);   // Recruitment head → HR head
 
             // ===== Original employees =====
-            getEmp(Uid(4)).AssignSupervisor(emp2EmpId);    // Elvin → Backend/Engineering head
-            getEmp(Uid(5)).AssignSupervisor(emp3EmpId);    // Günel → Frontend head
-            getEmp(Uid(7)).AssignSupervisor(emp6EmpId);    // Nigar → Sales head
-            getEmp(Uid(8)).AssignSupervisor(emp1EmpId);    // Kamran → Finance head
-            getEmp(Uid(10)).AssignSupervisor(emp9EmpId);   // Tural → HR head
-            getEmp(Uid(11)).AssignSupervisor(emp2EmpId);   // System Admin → Backend/Engineering head
+            getEmp(Uid(4)).AddSupervisor(emp2EmpId);    // Elvin → Backend/Engineering head
+            getEmp(Uid(5)).AddSupervisor(emp3EmpId);    // Günel → Frontend head
+            getEmp(Uid(7)).AddSupervisor(emp6EmpId);    // Nigar → Sales head
+            getEmp(Uid(8)).AddSupervisor(emp1EmpId);    // Kamran → Finance head
+            getEmp(Uid(10)).AddSupervisor(emp9EmpId);   // Tural → HR head
+            getEmp(Uid(11)).AddSupervisor(emp2EmpId);   // System Admin → Backend/Engineering head
 
             // ===== QA & Testing employees → QA head =====
-            getEmp(Uid(13)).AssignSupervisor(qaHeadEmpId);
-            getEmp(Uid(14)).AssignSupervisor(qaHeadEmpId);
-            getEmp(Uid(15)).AssignSupervisor(qaHeadEmpId);
-            getEmp(Uid(16)).AssignSupervisor(qaHeadEmpId);
+            getEmp(Uid(13)).AddSupervisor(qaHeadEmpId);
+            getEmp(Uid(14)).AddSupervisor(qaHeadEmpId);
+            getEmp(Uid(15)).AddSupervisor(qaHeadEmpId);
+            getEmp(Uid(16)).AddSupervisor(qaHeadEmpId);
 
             // ===== DevOps employees → DevOps head =====
-            getEmp(Uid(18)).AssignSupervisor(devopsHeadEmpId);
-            getEmp(Uid(19)).AssignSupervisor(devopsHeadEmpId);
-            getEmp(Uid(20)).AssignSupervisor(devopsHeadEmpId);
+            getEmp(Uid(18)).AddSupervisor(devopsHeadEmpId);
+            getEmp(Uid(19)).AddSupervisor(devopsHeadEmpId);
+            getEmp(Uid(20)).AddSupervisor(devopsHeadEmpId);
 
             // ===== IT Support employees → IT Support head =====
-            getEmp(Uid(22)).AssignSupervisor(itHeadEmpId);
-            getEmp(Uid(23)).AssignSupervisor(itHeadEmpId);
-            getEmp(Uid(24)).AssignSupervisor(itHeadEmpId);
+            getEmp(Uid(22)).AddSupervisor(itHeadEmpId);
+            getEmp(Uid(23)).AddSupervisor(itHeadEmpId);
+            getEmp(Uid(24)).AddSupervisor(itHeadEmpId);
 
             // ===== Marketing employees → Marketing head =====
-            getEmp(Uid(26)).AssignSupervisor(mktHeadEmpId);
-            getEmp(Uid(27)).AssignSupervisor(mktHeadEmpId);
-            getEmp(Uid(28)).AssignSupervisor(mktHeadEmpId);
-            getEmp(Uid(29)).AssignSupervisor(mktHeadEmpId);
+            getEmp(Uid(26)).AddSupervisor(mktHeadEmpId);
+            getEmp(Uid(27)).AddSupervisor(mktHeadEmpId);
+            getEmp(Uid(28)).AddSupervisor(mktHeadEmpId);
+            getEmp(Uid(29)).AddSupervisor(mktHeadEmpId);
 
             // ===== Accounting employees → Accounting head =====
-            getEmp(Uid(31)).AssignSupervisor(accHeadEmpId);
-            getEmp(Uid(32)).AssignSupervisor(accHeadEmpId);
-            getEmp(Uid(33)).AssignSupervisor(accHeadEmpId);
+            getEmp(Uid(31)).AddSupervisor(accHeadEmpId);
+            getEmp(Uid(32)).AddSupervisor(accHeadEmpId);
+            getEmp(Uid(33)).AddSupervisor(accHeadEmpId);
 
             // ===== Recruitment employees → Recruitment head =====
-            getEmp(Uid(35)).AssignSupervisor(recHeadEmpId);
-            getEmp(Uid(36)).AssignSupervisor(recHeadEmpId);
+            getEmp(Uid(35)).AddSupervisor(recHeadEmpId);
+            getEmp(Uid(36)).AddSupervisor(recHeadEmpId);
 
             // ===== Legal employees → Legal head =====
-            getEmp(Uid(38)).AssignSupervisor(legalHeadEmpId);
-            getEmp(Uid(39)).AssignSupervisor(legalHeadEmpId);
-            getEmp(Uid(40)).AssignSupervisor(legalHeadEmpId);
+            getEmp(Uid(38)).AddSupervisor(legalHeadEmpId);
+            getEmp(Uid(39)).AddSupervisor(legalHeadEmpId);
+            getEmp(Uid(40)).AddSupervisor(legalHeadEmpId);
 
             // ===== Operations employees → Operations head =====
-            getEmp(Uid(42)).AssignSupervisor(opsHeadEmpId);
-            getEmp(Uid(43)).AssignSupervisor(opsHeadEmpId);
-            getEmp(Uid(44)).AssignSupervisor(opsHeadEmpId);
-            getEmp(Uid(45)).AssignSupervisor(opsHeadEmpId);
+            getEmp(Uid(42)).AddSupervisor(opsHeadEmpId);
+            getEmp(Uid(43)).AddSupervisor(opsHeadEmpId);
+            getEmp(Uid(44)).AddSupervisor(opsHeadEmpId);
+            getEmp(Uid(45)).AddSupervisor(opsHeadEmpId);
 
             // ===== Əlavə Backend employees → Engineering/Backend head =====
-            getEmp(Uid(46)).AssignSupervisor(emp2EmpId);
-            getEmp(Uid(47)).AssignSupervisor(emp2EmpId);
-            getEmp(Uid(48)).AssignSupervisor(emp2EmpId);
-            getEmp(Uid(49)).AssignSupervisor(emp2EmpId);
-            getEmp(Uid(50)).AssignSupervisor(emp2EmpId);
+            getEmp(Uid(46)).AddSupervisor(emp2EmpId);
+            getEmp(Uid(47)).AddSupervisor(emp2EmpId);
+            getEmp(Uid(48)).AddSupervisor(emp2EmpId);
+            getEmp(Uid(49)).AddSupervisor(emp2EmpId);
+            getEmp(Uid(50)).AddSupervisor(emp2EmpId);
 
             // ===== Əlavə Frontend employees → Frontend head =====
-            getEmp(Uid(51)).AssignSupervisor(emp3EmpId);
-            getEmp(Uid(52)).AssignSupervisor(emp3EmpId);
-            getEmp(Uid(53)).AssignSupervisor(emp3EmpId);
-            getEmp(Uid(54)).AssignSupervisor(emp3EmpId);
-            getEmp(Uid(55)).AssignSupervisor(emp3EmpId);
+            getEmp(Uid(51)).AddSupervisor(emp3EmpId);
+            getEmp(Uid(52)).AddSupervisor(emp3EmpId);
+            getEmp(Uid(53)).AddSupervisor(emp3EmpId);
+            getEmp(Uid(54)).AddSupervisor(emp3EmpId);
+            getEmp(Uid(55)).AddSupervisor(emp3EmpId);
 
             // ===== Əlavə Sales employees → Sales head =====
-            getEmp(Uid(56)).AssignSupervisor(emp6EmpId);
-            getEmp(Uid(57)).AssignSupervisor(emp6EmpId);
-            getEmp(Uid(58)).AssignSupervisor(emp6EmpId);
+            getEmp(Uid(56)).AddSupervisor(emp6EmpId);
+            getEmp(Uid(57)).AddSupervisor(emp6EmpId);
+            getEmp(Uid(58)).AddSupervisor(emp6EmpId);
 
             // ===== Əlavə Finance employees → Finance head =====
-            getEmp(Uid(59)).AssignSupervisor(emp1EmpId);
-            getEmp(Uid(60)).AssignSupervisor(emp1EmpId);
+            getEmp(Uid(59)).AddSupervisor(emp1EmpId);
+            getEmp(Uid(60)).AddSupervisor(emp1EmpId);
 
             // ===== Əlavə HR employee → HR head =====
-            getEmp(Uid(61)).AssignSupervisor(emp9EmpId);
+            getEmp(Uid(61)).AddSupervisor(emp9EmpId);
 
             logger?.LogInformation("Assigned supervisors for all 62 employees");
         }

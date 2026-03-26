@@ -7,7 +7,10 @@ using Microsoft.Extensions.Logging;
 
 namespace ChatApp.Modules.Identity.Application.Commands.Employees
 {
-    public record RemoveSupervisorFromEmployeeCommand(Guid UserId) : IRequest<Result>;
+    public record RemoveSupervisorFromEmployeeCommand(
+        Guid UserId,
+        Guid SupervisorId
+    ) : IRequest<Result>;
 
     public class RemoveSupervisorFromEmployeeCommandValidator : AbstractValidator<RemoveSupervisorFromEmployeeCommand>
     {
@@ -15,6 +18,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
         {
             RuleFor(x => x.UserId)
                 .NotEmpty().WithMessage("User ID is required");
+
+            RuleFor(x => x.SupervisorId)
+                .NotEmpty().WithMessage("Supervisor ID is required");
         }
     }
 
@@ -28,9 +34,8 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
         {
             try
             {
-                // Validate user exists and has employee record
                 var user = await unitOfWork.Users
-                    .Include(u => u.Employee)
+                    .Include(u => u.Employee!.SupervisorLinks)
                     .FirstOrDefaultAsync(u => u.Id == command.UserId, cancellationToken);
 
                 if (user == null)
@@ -39,15 +44,26 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
                 if (user.Employee == null)
                     return Result.Failure("User does not have an employee record");
 
-                if (user.Employee.SupervisorId == null)
-                    return Result.Failure("Employee does not have a supervisor assigned");
+                // Silinəcək rəhbərin Employee ID-sini tap
+                var supervisorUser = await unitOfWork.Users
+                    .Include(u => u.Employee)
+                    .FirstOrDefaultAsync(u => u.Id == command.SupervisorId, cancellationToken);
 
-                // Remove supervisor
-                user.Employee.RemoveSupervisor();
+                if (supervisorUser?.Employee == null)
+                    return Result.Failure("Supervisor not found");
+
+                var hasLink = user.Employee.SupervisorLinks
+                    .Any(s => s.SupervisorEmployeeId == supervisorUser.Employee.Id);
+
+                if (!hasLink)
+                    return Result.Failure("This supervisor is not assigned to the employee");
+
+                user.Employee.RemoveSupervisor(supervisorUser.Employee.Id);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
 
                 logger.LogInformation(
-                    "Supervisor removed from employee {UserId}",
+                    "Supervisor {SupervisorId} removed from employee {UserId}",
+                    command.SupervisorId,
                     command.UserId);
 
                 return Result.Success();
@@ -56,7 +72,8 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
             {
                 logger.LogError(
                     ex,
-                    "Error removing supervisor from employee {UserId}",
+                    "Error removing supervisor {SupervisorId} from employee {UserId}",
+                    command.SupervisorId,
                     command.UserId);
                 return Result.Failure("An error occurred while removing supervisor");
             }

@@ -36,9 +36,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
         {
             try
             {
-                // Validate user exists and has employee record
+                // SupervisorLinks include lazımdır ki, AddSupervisor idempotency düzgün işləsin
                 var user = await unitOfWork.Users
-                    .Include(u => u.Employee)
+                    .Include(u => u.Employee!.SupervisorLinks)
                     .FirstOrDefaultAsync(u => u.Id == command.UserId, cancellationToken);
 
                 if (user == null)
@@ -54,20 +54,6 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
                 if (department == null)
                     return Result.Failure("Department not found");
 
-                // Validate supervisor if provided
-                if (command.SupervisorId.HasValue)
-                {
-                    var supervisor = await unitOfWork.Employees
-                        .FirstOrDefaultAsync(e => e.Id == command.SupervisorId.Value, cancellationToken);
-
-                    if (supervisor == null)
-                        return Result.Failure("Supervisor not found");
-
-                    // Check if supervisor is in the same department
-                    if (supervisor.DepartmentId != command.DepartmentId)
-                        return Result.Failure("Supervisor must be in the same department");
-                }
-
                 // Validate head of department if provided
                 if (command.HeadOfDepartmentId.HasValue)
                 {
@@ -78,11 +64,20 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
                         return Result.Failure("Head of department not found");
                 }
 
-                // Assign to department
-                user.Employee.AssignToDepartment(
-                    command.DepartmentId,
-                    command.SupervisorId,
-                    command.HeadOfDepartmentId);
+                user.Employee.AssignToDepartment(command.DepartmentId, command.HeadOfDepartmentId);
+
+                // SupervisorId verilmişsə many-to-many cədvələ əlavə et
+                if (command.SupervisorId.HasValue)
+                {
+                    var supervisorUser = await unitOfWork.Users
+                        .Include(u => u.Employee)
+                        .FirstOrDefaultAsync(u => u.Id == command.SupervisorId.Value, cancellationToken);
+
+                    if (supervisorUser?.Employee == null)
+                        return Result.Failure("Supervisor not found");
+
+                    user.Employee.AddSupervisor(supervisorUser.Employee.Id);
+                }
 
                 await unitOfWork.SaveChangesAsync(cancellationToken);
 

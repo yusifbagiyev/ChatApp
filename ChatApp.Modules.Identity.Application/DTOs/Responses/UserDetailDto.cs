@@ -1,11 +1,8 @@
 namespace ChatApp.Modules.Identity.Application.DTOs.Responses
 {
     /// <summary>
-    /// Complete user information for detail views and profile pages
-    /// Includes all user data, organizational structure, and permissions
-    /// </summary>
-    /// <summary>
     /// İstifadəçi detalları. Role field-indən isAdmin/isSuperAdmin derive olunur.
+    /// Supervisors — many-to-many siyahısı (köhnə single SupervisorId əvəzinə).
     /// </summary>
     public record UserDetailDto(
         Guid Id,
@@ -25,10 +22,7 @@ namespace ChatApp.Modules.Identity.Application.DTOs.Responses
         bool IsActive,
         Guid? DepartmentId,
         string? DepartmentName,
-        Guid? SupervisorId,
-        string? SupervisorName,
-        string? SupervisorAvatarUrl,
-        string? SupervisorPosition,
+        List<SupervisorDto> Supervisors,
         bool IsHeadOfDepartment,
         string? HeadOfDepartmentName,
         List<SubordinateDto> Subordinates,
@@ -39,6 +33,13 @@ namespace ChatApp.Modules.Identity.Application.DTOs.Responses
     {
         public string FullName => $"{FirstName} {LastName}";
     };
+
+    public record SupervisorDto(
+        Guid UserId,
+        string FullName,
+        string? AvatarUrl,
+        string? Position,
+        DateTime AssignedAtUtc);
 
     public record SubordinateDto(
         Guid Id,

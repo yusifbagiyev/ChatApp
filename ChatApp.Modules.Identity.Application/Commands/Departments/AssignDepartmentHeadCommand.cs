@@ -51,8 +51,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Departments
                 if (!user.IsActive)
                     return Result.Failure("Cannot assign inactive user as department head");
 
-                // Get the new head's employee record
+                // SupervisorLinks include — AddSupervisor idempotency üçün
                 var headEmployee = await unitOfWork.Employees
+                    .Include(e => e.SupervisorLinks)
                     .FirstOrDefaultAsync(e => e.UserId == command.UserId, cancellationToken);
 
                 if (headEmployee == null)
@@ -101,16 +102,17 @@ namespace ChatApp.Modules.Identity.Application.Commands.Departments
                 }
 
                 if (headSupervisorId != null)
-                    headEmployee.AssignSupervisor(headSupervisorId.Value);
+                    headEmployee.AddSupervisor(headSupervisorId.Value);
 
                 // 2. All department members (except the new head) get the new head as supervisor
                 var deptEmployees = await unitOfWork.Employees
+                    .Include(e => e.SupervisorLinks)
                     .Where(e => e.DepartmentId == command.DepartmentId && e.UserId != command.UserId)
                     .ToListAsync(cancellationToken);
 
                 foreach (var emp in deptEmployees)
                 {
-                    emp.AssignSupervisor(headEmployee.Id);
+                    emp.AddSupervisor(headEmployee.Id);
                 }
 
                 // 3. Subdepartment heads get the new head as supervisor
@@ -121,9 +123,10 @@ namespace ChatApp.Modules.Identity.Application.Commands.Departments
                 foreach (var subDept in subDepts)
                 {
                     var subHeadEmp = await unitOfWork.Employees
+                        .Include(e => e.SupervisorLinks)
                         .FirstOrDefaultAsync(e => e.UserId == subDept.HeadOfDepartmentId, cancellationToken);
                     if (subHeadEmp != null)
-                        subHeadEmp.AssignSupervisor(headEmployee.Id);
+                        subHeadEmp.AddSupervisor(headEmployee.Id);
                 }
 
                 await unitOfWork.SaveChangesAsync(cancellationToken);

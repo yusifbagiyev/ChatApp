@@ -598,7 +598,7 @@ namespace ChatApp.Modules.Identity.Api.Controllers
         /// <summary>
         /// Removes a supervisor from an employee
         /// </summary>
-        [HttpDelete("{userId:guid}/supervisor")]
+        [HttpDelete("{userId:guid}/supervisors/{supervisorId:guid}")]
         [RequirePermission("Users.Update")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -607,9 +607,10 @@ namespace ChatApp.Modules.Identity.Api.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> RemoveSupervisorFromEmployee(
             [FromRoute] Guid userId,
+            [FromRoute] Guid supervisorId,
             CancellationToken cancellationToken)
         {
-            var command = new RemoveSupervisorFromEmployeeCommand(userId);
+            var command = new RemoveSupervisorFromEmployeeCommand(userId, supervisorId);
             var result = await _mediator.Send(command, cancellationToken);
 
             if (result.IsFailure)
