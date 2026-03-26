@@ -79,11 +79,11 @@
 - [ ] DepartmentVisibility entity and endpoints
 - [ ] Department management panel UI
 
-### Department Management Panel (Frontend)
-- [ ] Department tree view, CRUD, head assignment
+### Department Management Panel (Frontend) — COMPLETE ✅
+- [x] Department tree view, CRUD, head assignment
 
-### Position Management Panel (Frontend)
-- [ ] Position list, CRUD
+### Position Management Panel (Frontend) — COMPLETE ✅
+- [x] Position list, CRUD
 
 ### Feed System (New Module)
 - [ ] Backend: posts, likes, comments module
