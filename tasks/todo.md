@@ -35,25 +35,41 @@
 - [x] Login/RefreshToken — Company included when loading User
 - [x] Migrations (AddCompanySlugAndFileCompanyId, AddFileCompanyId)
 
-### 4.2 Supervisor/Subordinate Refactor (Backend)
-- [ ] EmployeeSupervisor junction table (many-to-many)
-- [ ] Remove single SupervisorId from Employee
-- [ ] Endpoints: add/remove/list supervisors and subordinates
-- [ ] Update organization hierarchy query
-- [ ] Migration
+### 4.1c Channel & DM Company Isolation (Backend) — COMPLETE ✅
+- [x] CompanyId added to Channel entity
+- [x] Channel name uniqueness: global → per-company composite index
+- [x] AddMemberCommand: same-company validation
+- [x] StartConversationCommand: cross-company DM blocked
+- [x] Migration (AddChannelCompanyId)
 
-### 4.3 Company Management Panel (Frontend)
-- [ ] Company list page (Super Admin only)
-- [ ] Company CRUD form (name, logo, description)
-- [ ] Activate/Deactivate company
-- [ ] Assign Company Admin
+### 4.2 Supervisor/Subordinate Refactor (Backend) — COMPLETE ✅
+- [x] EmployeeSupervisor junction table (many-to-many)
+- [x] Remove single SupervisorId from Employee
+- [x] AssignSupervisor/RemoveSupervisor commands refactored
+- [x] UserDetailDto: List<SupervisorDto> + List<SubordinateDto>
+- [x] GetUserQuery / GetCurrentUserQuery updated
+- [x] Migration (AddEmployeeSupervisorTable) with data migration
 
-### 4.4 User Management Panel (Frontend)
-- [ ] User list with search/filter/sort
-- [ ] User create/edit form
-- [ ] Supervisor assignment UI (many-to-many)
-- [ ] Role management (Super Admin assigns Admin, Admin assigns User)
-- [ ] Activate/deactivate user
+### 4.3 Company Management Panel (Frontend) — COMPLETE ✅
+- [x] Company list with search, pagination, status badges
+- [x] Company CRUD form (name, logo, description) — right-side slide panel
+- [x] Activate/Deactivate company
+- [x] Assign Company Admin
+
+### 4.4 User Management Panel (Frontend) — COMPLETE ✅
+- [x] User list with search/filter (department, status)/sort
+- [x] User create/edit form — right-side slide panel
+- [x] Supervisor assignment UI (many-to-many) — Supervisors tab
+- [x] Role management (SuperAdmin → Admin/User, Admin → User only)
+- [x] Activate/deactivate user, Reset password
+
+### 4.5 Admin Panel CSS — Design Review Fixes — COMPLETE ✅
+- [x] admin-shared.css created (shared keyframes)
+- [x] Header border, nav left accent, role badge shape/colors
+- [x] Form panels: centered modal → right-side slide panel
+- [x] Pulse animation on active status dots
+- [x] Table header font-weight inversion
+- [x] Focus outline rings (WCAG 2.1 AA)
 
 ---
 
