@@ -5,17 +5,18 @@
 
 /* Toolbar */
 .hi-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-.hi-title { font-size: 18px; font-weight: 700; color: var(--gray-800); margin: 0; }
+.hi-title-wrap { display: flex; align-items: center; gap: 10px; }
+.hi-title { font-size: 20px; font-weight: 700; color: var(--gray-800); margin: 0; }
 .hi-search-wrap { position: relative; display: flex; align-items: center; }
 .hi-search-icon { position: absolute; left: 10px; color: var(--gray-400); pointer-events: none; }
 .hi-search {
   padding: 8px 12px 8px 32px;
   border: 1px solid var(--gray-200); border-radius: 8px;
-  font-size: 13px; width: 240px;
+  font-size: 13px; width: 280px;
   background: var(--white); color: var(--gray-700);
   transition: border-color var(--transition-fast);
 }
-.hi-search:focus { outline: none; border-color: var(--primary-color); }
+.hi-search:focus { outline: 2px solid rgba(47,198,246,0.25); outline-offset: -1px; border-color: var(--primary-color); }
 
 /* Tree */
 .hi-tree { display: flex; flex-direction: column; gap: 8px; }
@@ -28,33 +29,32 @@
   overflow: hidden;
 }
 .hi-company-header {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 12px;
   padding: 12px 16px; cursor: pointer;
   transition: background 150ms; user-select: none;
 }
-.hi-company-header:hover { background: var(--gray-50); }
-.hi-company-name { font-size: 15px; font-weight: 700; color: var(--gray-800); flex: 1; }
+.hi-company-header:hover { background: #f8fafc; }
+.hi-company-name { font-size: 16px; font-weight: 700; color: var(--gray-800); flex: 1; }
 .hi-company-logo {
-  width: 32px; height: 32px; border-radius: 8px;
+  width: 36px; height: 36px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: var(--white);
+  font-size: 13px; font-weight: 700; color: var(--white);
   overflow: hidden; flex-shrink: 0;
 }
 .hi-company-logo img { width: 100%; height: 100%; object-fit: cover; }
 .hi-children { border-top: 1px solid var(--gray-100); }
 
-/* Dept node */
-.hi-dept-node { border-bottom: 1px solid var(--gray-100); }
-.hi-dept-node:last-child { border-bottom: none; }
+/* Dept header */
 .hi-dept-header {
   display: flex; align-items: center; gap: 8px;
-  height: 40px; cursor: pointer;
-  background: var(--gray-50);
-  transition: background 150ms; padding-right: 16px; user-select: none;
+  height: 40px; background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-100);
+  padding-right: 16px; user-select: none;
+  transition: background 150ms;
 }
 .hi-dept-header:hover { background: #f0f9ff; }
 .hi-dept-name { font-size: 13px; font-weight: 600; color: var(--gray-800); flex: 1; }
-.hi-dept-head-hint { font-size: 11px; color: var(--gray-400); }
+.hi-dept-head-hint { font-size: 12px; color: var(--gray-400); white-space: nowrap; }
 .hi-dept-icon { color: var(--gray-400); flex-shrink: 0; }
 
 /* User row */
@@ -83,16 +83,32 @@
 .hi-position { font-size: 11px; color: var(--gray-400); white-space: nowrap; }
 
 /* Badges */
-.hi-count-badge { font-size: 11px; font-weight: 600; color: var(--gray-500); background: var(--gray-100); padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
-.hi-head-badge { font-size: 11px; font-weight: 600; color: var(--primary-color); white-space: nowrap; }
-.hi-role-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
-.hi-role-badge--admin { background: #ede9fe; color: #7c3aed; }
-.hi-role-badge--user { background: var(--gray-100); color: var(--gray-500); }
-.hi-role-badge--superadmin { background: #fef3c7; color: #d97706; }
+.hi-count-badge { font-size: 11px; font-weight: 600; color: var(--gray-500); background: var(--gray-100); padding: 2px 8px; border-radius: 10px; margin-left: auto; white-space: nowrap; }
+.hi-head-badge { font-size: 11px; font-weight: 600; color: var(--primary-color); white-space: nowrap; margin-left: 6px; }
+
+/* Role badges — 3 fərqli rəng */
+.hi-role-badge { font-size: 10px; font-weight: 600; padding: 1px 8px; border-radius: 4px; white-space: nowrap; }
+.hi-role-badge--admin { background: rgba(47,198,246,0.15); color: var(--primary-color); }
+.hi-role-badge--user { background: var(--gray-100); color: var(--gray-500); font-weight: 500; padding: 1px 7px; }
+.hi-role-badge--superadmin { background: rgba(139,92,246,0.12); color: #7c3aed; }
 
 /* Chevron */
-.hi-chevron { font-size: 10px; color: var(--gray-400); transition: transform 200ms; flex-shrink: 0; display: inline-block; }
+.hi-chevron { font-size: 10px; color: var(--gray-400); transition: transform 200ms ease; flex-shrink: 0; display: inline-block; }
 .hi-chevron--open { transform: rotate(90deg); }
+.hi-chevron-spacer { width: 10px; flex-shrink: 0; display: inline-block; }
+
+/* No department section */
+.hi-no-dept-section { border-top: 2px dashed var(--gray-200); margin-top: 2px; }
+.hi-no-dept-label {
+  height: 36px; display: flex; align-items: center;
+  padding-left: 16px; padding-right: 16px;
+  font-size: 11px; font-weight: 600; color: var(--gray-400);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  background: var(--gray-50); border-bottom: 1px solid var(--gray-100);
+}
+
+/* Search highlight */
+.hi-highlight { background: rgba(47,198,246,0.15); border-radius: 3px; padding: 0 2px; }
 
 /* Skeleton */
 .hi-skeleton { display: flex; flex-direction: column; gap: 12px; }

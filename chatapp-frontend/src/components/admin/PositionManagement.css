@@ -6,7 +6,7 @@
 /* Header row */
 .pm-toolbar-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pm-toolbar-left { display: flex; align-items: center; gap: 10px; }
-.pm-section-title { font-size: 18px; font-weight: 700; color: var(--gray-800); margin: 0; }
+.pm-section-title { font-size: 20px; font-weight: 700; color: var(--gray-800); margin: 0; }
 .pm-count { background: var(--gray-100); color: var(--gray-500); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
 
 /* Filter toolbar */

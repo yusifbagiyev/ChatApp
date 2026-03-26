@@ -1,3 +1,5 @@
+@import './admin-shared.css';
+
 /* ─── CompanyManagement ──────────────────────────────────────────────────── */
 .cm-root { display: flex; flex-direction: column; gap: 16px; }
 
@@ -11,7 +13,7 @@
 }
 .cm-toolbar-left { display: flex; align-items: center; gap: 10px; }
 .cm-toolbar-right { display: flex; align-items: center; gap: 10px; }
-.cm-section-title { font-size: 18px; font-weight: 700; color: var(--gray-800); margin: 0; }
+.cm-section-title { font-size: 20px; font-weight: 700; color: var(--gray-800); margin: 0; }
 .cm-count {
   background: var(--gray-100);
   color: var(--gray-500);
@@ -68,6 +70,7 @@
   background: var(--white);
   border-radius: 10px;
   border: 1px solid var(--gray-200);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   overflow: visible;
 }
 .cm-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
@@ -233,6 +236,39 @@
   border-color: var(--primary-color);
 }
 .cm-form-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+
+/* Detail panel */
+.cm-detail-panel {
+  position: fixed; right: 0; top: 0;
+  width: 380px; height: 100vh;
+  background: var(--white);
+  box-shadow: -4px 0 20px rgba(0,0,0,0.10);
+  overflow-y: auto;
+  animation: ap-panel-in 200ms ease;
+  z-index: 1001;
+}
+.cm-detail-body { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
+.cm-detail-logo-row { display: flex; align-items: center; gap: 14px; }
+.cm-detail-logo {
+  width: 56px; height: 56px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; flex-shrink: 0;
+}
+.cm-detail-logo img { width: 100%; height: 100%; object-fit: cover; }
+.cm-detail-logo-initials { font-size: 16px; font-weight: 700; color: var(--white); }
+.cm-detail-name { font-size: 16px; font-weight: 700; color: var(--gray-800); margin-bottom: 6px; }
+.cm-detail-divider { border: none; border-top: 1px solid var(--gray-100); margin: 0; }
+.cm-detail-stats { display: flex; gap: 12px; }
+.cm-detail-stat-card {
+  flex: 1; background: var(--gray-50); border: 1px solid var(--gray-200);
+  border-radius: 8px; padding: 12px 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.cm-detail-stat-num { font-size: 22px; font-weight: 700; color: var(--gray-800); }
+.cm-detail-stat-label { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.04em; }
+.cm-detail-admin { display: flex; align-items: center; gap: 8px; }
+.cm-detail-admin-name { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+.cm-detail-desc { font-size: 13px; color: var(--gray-600); margin: 0; line-height: 1.5; }
 
 /* User picker list */
 .cm-user-list { max-height: 260px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: 8px; }

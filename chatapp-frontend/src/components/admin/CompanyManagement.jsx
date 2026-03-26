@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, memo } from "react";
-import { getCompanies, createCompany, updateCompany, deleteCompany, assignCompanyAdmin, getUsers, apiUpload, apiPut } from "../../services/api";
+import { getCompanies, getCompany, createCompany, updateCompany, deleteCompany, assignCompanyAdmin, getUsers, apiUpload, apiPut } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import { getFileUrl } from "../../services/api";
 import { getInitials, getAvatarColor } from "../../utils/chatUtils";
@@ -179,13 +179,15 @@ const AssignAdminModal = memo(({ company, onSave, onClose }) => {
 // ─── CompanyManagement ────────────────────────────────────────────────────────
 function CompanyManagement() {
   const { showToast } = useToast();
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
+  const [companies, setCompanies]     = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState("");
+  const [formOpen, setFormOpen]       = useState(false);
   const [editCompany, setEditCompany] = useState(null);
   const [assignModal, setAssignModal] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(null);
+  const [menuOpen, setMenuOpen]       = useState(null);
+  const [detail, setDetail]           = useState(null);   // CompanyDetailDto
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -197,6 +199,16 @@ function CompanyManagement() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const openDetail = useCallback(async (company) => {
+    setDetail({ ...company });
+    setDetailLoading(true);
+    try {
+      const full = await getCompany(company.id);
+      setDetail(full);
+    } catch { /* list datası ilə qalır */ }
+    finally { setDetailLoading(false); }
+  }, []);
 
   const handleDeactivate = async (company) => {
     setMenuOpen(null);
@@ -247,7 +259,12 @@ function CompanyManagement() {
             ) : filtered.length === 0 ? (
               <tr><td colSpan={4} className="cm-empty-cell">No companies found</td></tr>
             ) : filtered.map((c) => (
-              <tr key={c.id} className={!c.isActive ? "cm-row-inactive" : ""}>
+              <tr
+                key={c.id}
+                className={!c.isActive ? "cm-row-inactive" : ""}
+                onClick={() => openDetail(c)}
+                style={{ cursor: "pointer" }}
+              >
                 <td>
                   <div className="cm-company-cell">
                     <div className="cm-company-logo" style={{ background: c.logoUrl ? "transparent" : getAvatarColor(c.name) }}>
@@ -262,7 +279,7 @@ function CompanyManagement() {
                     {c.isActive ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="cm-actions-cell">
+                <td className="cm-actions-cell" onClick={e => e.stopPropagation()}>
                   <div className="cm-menu-wrap">
                     <button className="cm-menu-btn" onClick={() => setMenuOpen(menuOpen === c.id ? null : c.id)}>•••</button>
                     {menuOpen === c.id && (
@@ -299,6 +316,86 @@ function CompanyManagement() {
           onSave={() => { setAssignModal(null); load(); }}
           onClose={() => setAssignModal(null)}
         />
+      )}
+
+      {/* Detail Panel */}
+      {detail && (
+        <>
+          <div className="cm-form-overlay" onClick={() => setDetail(null)} />
+          <div className="cm-detail-panel">
+            <div className="cm-form-header">
+              <h3 className="cm-form-title">{detail.name}</h3>
+              <button className="cm-form-close" onClick={() => setDetail(null)} aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div className="cm-detail-body">
+              {/* Logo + status */}
+              <div className="cm-detail-logo-row">
+                <div className="cm-detail-logo" style={{ background: detail.logoUrl ? "transparent" : getAvatarColor(detail.name) }}>
+                  {detail.logoUrl
+                    ? <img src={getFileUrl(detail.logoUrl)} alt="" className="cm-form-logo-img" />
+                    : <span className="cm-detail-logo-initials">{getInitials(detail.name)}</span>}
+                </div>
+                <div>
+                  <div className="cm-detail-name">{detail.name}</div>
+                  <span className={`cm-status-badge ${detail.isActive ? "active" : "inactive"}`}>
+                    {detail.isActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </div>
+
+              <hr className="cm-detail-divider" />
+
+              {/* Stats */}
+              {!detailLoading && (
+                <div className="cm-detail-stats">
+                  <div className="cm-detail-stat-card">
+                    <span className="cm-detail-stat-num">{detail.userCount ?? 0}</span>
+                    <span className="cm-detail-stat-label">Users</span>
+                  </div>
+                  <div className="cm-detail-stat-card">
+                    <span className="cm-detail-stat-num">{detail.departmentCount ?? "—"}</span>
+                    <span className="cm-detail-stat-label">Departments</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Company Admin */}
+              {(detail.headOfCompanyName || detail.adminName) && (
+                <div className="cm-form-field">
+                  <label className="cm-form-label">Company Admin</label>
+                  <div className="cm-detail-admin">
+                    <div className="cm-user-avatar" style={{ background: getAvatarColor(detail.headOfCompanyName ?? detail.adminName ?? "") }}>
+                      {getInitials(detail.headOfCompanyName ?? detail.adminName ?? "")}
+                    </div>
+                    <span className="cm-detail-admin-name">{detail.headOfCompanyName ?? detail.adminName}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              <div className="cm-form-field">
+                <label className="cm-form-label">Description</label>
+                <p className="cm-detail-desc">
+                  {detail.description || <span className="cm-muted">(not set)</span>}
+                </p>
+              </div>
+
+              {/* Edit button */}
+              <div className="cm-form-actions">
+                <button
+                  className="cm-btn cm-btn-primary"
+                  onClick={() => { setDetail(null); setEditCompany(detail); setFormOpen(true); }}
+                >
+                  Edit Company
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
