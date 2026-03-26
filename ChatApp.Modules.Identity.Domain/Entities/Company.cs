@@ -1,4 +1,5 @@
 using ChatApp.Shared.Kernel.Common;
+using System.Text.RegularExpressions;
 
 namespace ChatApp.Modules.Identity.Domain.Entities
 {
@@ -10,6 +11,7 @@ namespace ChatApp.Modules.Identity.Domain.Entities
     public class Company : Entity
     {
         public string Name { get; private set; } = null!;
+        public string Slug { get; private set; } = null!;
         public string? LogoUrl { get; private set; }
         public string? Description { get; private set; }
         public bool IsActive { get; private set; } = true;
@@ -33,6 +35,7 @@ namespace ChatApp.Modules.Identity.Domain.Entities
                 throw new ArgumentException("Company name cannot be empty", nameof(name));
 
             Name = name;
+            Slug = GenerateSlug(name);
             HeadOfCompanyId = headOfCompanyId;
             LogoUrl = logoUrl;
             Description = description;
@@ -45,7 +48,26 @@ namespace ChatApp.Modules.Identity.Domain.Entities
                 throw new ArgumentException("Company name cannot be empty", nameof(newName));
 
             Name = newName;
+            Slug = GenerateSlug(newName);
             UpdateTimestamp();
+        }
+
+        public void UpdateSlug(string slug)
+        {
+            if (string.IsNullOrWhiteSpace(slug))
+                throw new ArgumentException("Slug cannot be empty", nameof(slug));
+
+            Slug = slug.ToLowerInvariant().Trim('-');
+            UpdateTimestamp();
+        }
+
+        private static string GenerateSlug(string name)
+        {
+            var slug = name.ToLowerInvariant().Trim();
+            slug = Regex.Replace(slug, @"[^a-z0-9\s-]", "");
+            slug = Regex.Replace(slug, @"\s+", "-");
+            slug = Regex.Replace(slug, @"-+", "-");
+            return slug.Trim('-');
         }
 
         public void UpdateLogo(string? logoUrl)

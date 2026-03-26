@@ -49,6 +49,9 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Configurations
                 .HasColumnName("uploaded_by")
                 .IsRequired();
 
+            builder.Property(f => f.CompanyId)
+                .HasColumnName("company_id");
+
             builder.Property(f => f.IsDeleted)
                 .HasColumnName("is_deleted")
                 .IsRequired()
@@ -86,6 +89,9 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Configurations
             // Indexes for performance
             builder.HasIndex(f => f.UploadedBy)
                 .HasDatabaseName("ix_file_metadata_uploaded_by");
+
+            builder.HasIndex(f => f.CompanyId)
+                .HasDatabaseName("ix_file_metadata_company_id");
 
             builder.HasIndex(f => f.FileType)
                 .HasDatabaseName("ix_file_metadata_file_type");

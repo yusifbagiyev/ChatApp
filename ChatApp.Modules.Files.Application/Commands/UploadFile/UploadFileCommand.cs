@@ -20,12 +20,14 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
     public record UploadFileCommand(
         IFormFile File,
         Guid UploadedBy,
-        Guid? ChannelId=null,
-        Guid? ConversationId=null,
-        bool IsProfilePicture=false,
-        bool IsChannelAvatar=false,
-        Guid? ChannelAvatarTargetId=null
-    ):IRequest<Result<FileUploadResult>>;
+        Guid? CompanyId = null,
+        string? CompanySlug = null,
+        Guid? ChannelId = null,
+        Guid? ConversationId = null,
+        bool IsProfilePicture = false,
+        bool IsChannelAvatar = false,
+        Guid? ChannelAvatarTargetId = null
+    ) : IRequest<Result<FileUploadResult>>;
 
 
 
@@ -108,7 +110,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                     request.IsProfilePicture,
                     request.IsChannelAvatar,
                     request.ChannelAvatarTargetId,
-                    fileType);
+                    fileType,
+                    request.CompanySlug);
 
                 _logger?.LogInformation(
                     "Determined storage directory: {Directory} for file {FileName}",
@@ -166,7 +169,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                     request.File.Length,
                     fileType,
                     tempStoragePath,
-                    request.UploadedBy);
+                    request.UploadedBy,
+                    request.CompanyId);
 
                 // Şəkil: sıxılma + ölçü saxlama
                 if (fileType == FileType.Image || request.IsProfilePicture)
@@ -274,28 +278,34 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             bool isProfilePicture,
             bool isChannelAvatar,
             Guid? channelAvatarTargetId,
-            FileType fileType)
+            FileType fileType,
+            string? companySlug)
         {
+            string path;
+
             // Avatarlar — dəyişməz struktur
             if (isProfilePicture)
-                return $"avatars/conversations/{uploadedBy}";
-
-            if (isChannelAvatar && channelAvatarTargetId.HasValue)
-                return $"avatars/channels/{channelAvatarTargetId.Value}";
-
-            // İstifadəçi + fayl tipi əsaslı struktur:
-            // files/{userId}/images/, files/{userId}/documents/ və s.
-            var typeFolder = fileType switch
+                path = $"avatars/users/{uploadedBy}";
+            else if (isChannelAvatar && channelAvatarTargetId.HasValue)
+                path = $"avatars/channels/{channelAvatarTargetId.Value}";
+            else
             {
-                FileType.Image    => "images",
-                FileType.Document => "documents",
-                FileType.Video    => "videos",
-                FileType.Audio    => "audio",
-                FileType.Archive  => "archives",
-                _                 => "other"
-            };
+                // İstifadəçi + fayl tipi əsaslı struktur
+                var typeFolder = fileType switch
+                {
+                    FileType.Image    => "images",
+                    FileType.Document => "documents",
+                    FileType.Video    => "videos",
+                    FileType.Audio    => "audio",
+                    FileType.Archive  => "archives",
+                    _                 => "other"
+                };
+                path = $"files/{uploadedBy}/{typeFolder}";
+            }
 
-            return $"files/{uploadedBy}/{typeFolder}";
+            // SuperAdmin (şirkətsiz) fayllar "system/" qovluğuna gedir
+            var prefix = !string.IsNullOrEmpty(companySlug) ? companySlug : "system";
+            return $"{prefix}/{path}";
         }
     }
 }

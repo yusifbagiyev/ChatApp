@@ -86,6 +86,7 @@ namespace ChatApp.Modules.Identity.Application.Commands.Login
         {
             return await unitOfWork.Users
                 .Include(u => u.UserPermissions)
+                .Include(u => u.Company)
                 .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
         }
 

@@ -63,10 +63,14 @@ namespace ChatApp.Modules.Files.Api.Controllers
             if (userId == Guid.Empty)
                 return Unauthorized();
 
+            var (companyId, companySlug) = GetCompanyClaims();
+
             var result = await _mediator.Send(
                 new UploadFileCommand(
                     request.File,
                     userId,
+                    companyId,
+                    companySlug,
                     request.ChannelId,
                     request.ConversationId),
                 cancellationToken);
@@ -124,13 +128,17 @@ namespace ChatApp.Modules.Files.Api.Controllers
                 }
             }
 
+            var (companyId, companySlug) = GetCompanyClaims();
+
             var result = await _mediator.Send(
                 new UploadFileCommand(
                     request.File,
-                    uploadForUserId,  // Use target user's ID for folder
+                    uploadForUserId,
+                    companyId,
+                    companySlug,
                     null,
                     null,
-                    true),  // Special flag for profile pictures
+                    true),  // IsProfilePicture
                 cancellationToken);
 
             if (result.IsFailure)
@@ -170,10 +178,14 @@ namespace ChatApp.Modules.Files.Api.Controllers
                 return BadRequest(new { error = "Only image files are allowed for channel avatars" });
             }
 
+            var (companyId, companySlug) = GetCompanyClaims();
+
             var result = await _mediator.Send(
                 new UploadFileCommand(
                     request.File,
                     currentUserId,
+                    companyId,
+                    companySlug,
                     null,
                     null,
                     false,
@@ -345,6 +357,14 @@ namespace ChatApp.Modules.Files.Api.Controllers
             }
 
             return userId;
+        }
+
+        private (Guid? CompanyId, string? CompanySlug) GetCompanyClaims()
+        {
+            var companyIdValue = User.FindFirst("companyId")?.Value;
+            Guid? companyId = Guid.TryParse(companyIdValue, out var parsed) ? parsed : null;
+            var companySlug = User.FindFirst("companySlug")?.Value;
+            return (companyId, string.IsNullOrEmpty(companySlug) ? null : companySlug);
         }
 
 

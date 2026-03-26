@@ -12,6 +12,7 @@ namespace ChatApp.Modules.Files.Domain.Entities
         public FileType FileType { get; private set; }
         public string StoragePath { get; private set; } = string.Empty;
         public Guid UploadedBy { get; private set; }
+        public Guid? CompanyId { get; private set; }
         public bool IsDeleted { get; private set; }
         public DateTime? DeletedAtUtc { get; private set; }
         public string? DeletedBy { get; private set; }
@@ -31,7 +32,8 @@ namespace ChatApp.Modules.Files.Domain.Entities
             long fileSizeInBytes,
             FileType fileType,
             string storagePath,
-            Guid uploadedBy)
+            Guid uploadedBy,
+            Guid? companyId = null)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentException("File name cannot be empty", nameof(fileName));
@@ -53,8 +55,9 @@ namespace ChatApp.Modules.Files.Domain.Entities
             ContentType = contentType;
             FileSizeInBytes = fileSizeInBytes;
             FileType = fileType;
-            StoragePath= storagePath;
-            UploadedBy= uploadedBy;
+            StoragePath = storagePath;
+            UploadedBy = uploadedBy;
+            CompanyId = companyId;
             IsDeleted = false;
         }
 

@@ -33,7 +33,8 @@ namespace ChatApp.Modules.Identity.Infrastructure.Services
                 new(JwtRegisteredClaimNames.Name, user.FullName),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new("role", user.Role.ToString()),
-                new("companyId", user.CompanyId?.ToString() ?? "")
+                new("companyId", user.CompanyId?.ToString() ?? ""),
+                new("companySlug", user.Company?.Slug ?? "")
             };
 
             if (permissions is not null)

@@ -78,6 +78,7 @@ namespace ChatApp.Modules.Identity.Application.Commands.RefreshToken
         {
             return await unitOfWork.Users
                 .Include(u => u.UserPermissions)
+                .Include(u => u.Company)
                 .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         }
 
