@@ -72,6 +72,7 @@ namespace ChatApp.Modules.Identity.Application.Queries.GetUser
                 user.LastName,
                 user.Email,
                 user.Role.ToString(),
+                user.CompanyId,
                 user.Employee?.Position?.Name,
                 user.Employee?.PositionId,
                 user.AvatarUrl,

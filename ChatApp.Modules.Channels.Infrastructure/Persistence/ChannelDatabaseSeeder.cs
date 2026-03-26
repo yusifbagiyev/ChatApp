@@ -61,8 +61,9 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence
         {
             logger.LogInformation("Seeding default channels...");
 
-            // Get the admin user ID (from Identity module seed)
+            // Identity module seed-indəki sabit GUID-lər
             var adminUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+            var companyId = Guid.Parse("20000000-0000-0000-0000-000000000001");
 
             var defaultChannels = new[]
             {
@@ -71,7 +72,8 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence
                     "General",
                     "Company-wide announcements and general discussions",
                     ChannelType.Public,
-                    adminUserId)
+                    adminUserId,
+                    companyId)
                 { Id = Guid.Parse("10000000-0000-0000-0000-000000000001") },
 
                 // Random channel for casual conversations
@@ -79,7 +81,8 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence
                     "Random",
                     "Off-topic conversations and casual chat",
                     ChannelType.Public,
-                    adminUserId)
+                    adminUserId,
+                    companyId)
                 { Id = Guid.Parse("10000000-0000-0000-0000-000000000002") },
 
                 // IT Support channel
@@ -87,7 +90,8 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence
                     "IT Support",
                     "Technical support and IT-related questions",
                     ChannelType.Public,
-                    adminUserId)
+                    adminUserId,
+                    companyId)
                 { Id = Guid.Parse("10000000-0000-0000-0000-000000000003") },
 
                 // HR channel
@@ -95,7 +99,8 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence
                     "Human Resources",
                     "HR announcements, policies, and employee resources",
                     ChannelType.Public,
-                    adminUserId)
+                    adminUserId,
+                    companyId)
                 { Id = Guid.Parse("10000000-0000-0000-0000-000000000004") },
 
                 // Development team private channel
@@ -103,7 +108,8 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence
                     "Development Team",
                     "Private channel for development team discussions",
                     ChannelType.Private,
-                    adminUserId)
+                    adminUserId,
+                    companyId)
                 { Id = Guid.Parse("10000000-0000-0000-0000-000000000005") },
             };
 

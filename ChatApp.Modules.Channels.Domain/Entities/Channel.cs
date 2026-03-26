@@ -9,6 +9,7 @@ namespace ChatApp.Modules.Channels.Domain.Entities
         public string? Description { get; private set; }
         public ChannelType Type { get; private set; }
         public Guid CreatedBy { get; private set; }
+        public Guid CompanyId { get; private set; }
         public string? AvatarUrl { get; private set; }
 
         // Navigation properties
@@ -24,7 +25,8 @@ namespace ChatApp.Modules.Channels.Domain.Entities
             string name,
             string? description,
             ChannelType type,
-            Guid createdBy) : base()
+            Guid createdBy,
+            Guid companyId) : base()
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Channel name cannot be empty", nameof(name));
@@ -32,10 +34,14 @@ namespace ChatApp.Modules.Channels.Domain.Entities
             if (name.Length > 100)
                 throw new ArgumentException("Channel name cannot exceed 100 characters", nameof(name));
 
+            if (companyId == Guid.Empty)
+                throw new ArgumentException("Company ID cannot be empty", nameof(companyId));
+
             Name = name;
             Description = description;
             Type = type;
             CreatedBy = createdBy;
+            CompanyId = companyId;
 
             // Creator automatically becomes owner
             var ownerMember = new ChannelMember(Id, createdBy, MemberRole.Owner);

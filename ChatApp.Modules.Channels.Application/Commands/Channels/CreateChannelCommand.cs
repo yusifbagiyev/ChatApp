@@ -17,6 +17,7 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
         string? Description,
         ChannelType Type,
         Guid CreatedBy,
+        Guid CompanyId,
         List<Guid>? MemberIds = null
     ) : IRequest<Result<object>>;
 
@@ -74,14 +75,15 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
                 _logger?.LogInformation("Creating channel: {ChannelName}", request.Name);
                 var channelName = ChannelName.Create(request.Name);
 
-                // Check if channel name already exists
-                var existingChannel = await _unitOfWork.Channels.GetByNameAsync(
+                // Şirkət daxilində kanal adı unikal olmalıdır
+                var existingChannel = await _unitOfWork.Channels.GetByNameAndCompanyAsync(
                     channelName,
+                    request.CompanyId,
                     cancellationToken);
 
                 if (existingChannel != null)
                 {
-                    _logger?.LogWarning("Channel name {ChannelName} already exists", request.Name);
+                    _logger?.LogWarning("Channel name {ChannelName} already exists in company {CompanyId}", request.Name, request.CompanyId);
                     return Result.Failure<object>("A channel with this name already exists");
                 }
 
@@ -92,7 +94,8 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
                     channelName,
                     request.Description,
                     request.Type,
-                    request.CreatedBy);
+                    request.CreatedBy,
+                    request.CompanyId);
 
                 await _unitOfWork.Channels.AddAsync(channel, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);

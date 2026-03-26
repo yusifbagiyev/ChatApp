@@ -90,6 +90,12 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                 .FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
         }
 
+        public async Task<Channel?> GetByNameAndCompanyAsync(string name, Guid companyId, CancellationToken cancellationToken = default)
+        {
+            return await _context.Channels
+                .FirstOrDefaultAsync(c => c.Name == name && c.CompanyId == companyId, cancellationToken);
+        }
+
         public async Task<List<ChannelDto>> GetUserChannelsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             return await _context.Channels

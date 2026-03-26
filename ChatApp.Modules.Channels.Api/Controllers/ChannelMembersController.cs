@@ -3,6 +3,7 @@ using ChatApp.Modules.Channels.Application.Commands.Channels;
 using ChatApp.Modules.Channels.Application.DTOs.Requests;
 using ChatApp.Modules.Channels.Application.DTOs.Responses;
 using ChatApp.Modules.Channels.Application.Queries.GetChannelMembers;
+using ChatApp.Modules.Identity.Application.Queries.GetUser;
 using ChatApp.Shared.Infrastructure.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -71,8 +72,15 @@ namespace ChatApp.Modules.Channels.Api.Controllers
             if (currentUserId == Guid.Empty)
                 return Unauthorized();
 
+            // Əlavə olunacaq istifadəçinin şirkətini yoxla
+            var userResult = await _mediator.Send(new GetUserQuery(request.UserId), cancellationToken);
+            if (userResult.IsFailure || userResult.Value is null)
+                return NotFound(new { error = "User not found" });
+
+            var userCompanyId = userResult.Value.CompanyId ?? Guid.Empty;
+
             var result = await _mediator.Send(
-                new AddMemberCommand(channelId, request.UserId, currentUserId, request.ShowChatHistory),
+                new AddMemberCommand(channelId, request.UserId, currentUserId, userCompanyId, request.ShowChatHistory),
                 cancellationToken);
 
             if (result.IsFailure)

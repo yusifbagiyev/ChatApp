@@ -34,6 +34,10 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Configurations
                 .HasColumnName("created_by")
                 .IsRequired();
 
+            builder.Property(c => c.CompanyId)
+                .HasColumnName("company_id")
+                .IsRequired();
+
             builder.Property(c => c.AvatarUrl)
                 .HasColumnName("avatar_url")
                 .HasMaxLength(500);
@@ -49,9 +53,13 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Configurations
                 .IsRequired();
 
             // Indexes
-            builder.HasIndex(c => c.Name)
+            // Kanal adı şirkət daxilində unikal olmalıdır (qlobal deyil)
+            builder.HasIndex(c => new { c.CompanyId, c.Name })
                 .IsUnique()
-                .HasDatabaseName("ix_channels_name");
+                .HasDatabaseName("ix_channels_company_name");
+
+            builder.HasIndex(c => c.CompanyId)
+                .HasDatabaseName("ix_channels_company_id");
 
             builder.HasIndex(c => c.Type)
                 .HasDatabaseName("ix_channels_type");

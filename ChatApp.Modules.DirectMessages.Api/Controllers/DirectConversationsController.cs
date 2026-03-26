@@ -2,6 +2,7 @@
 using ChatApp.Modules.DirectMessages.Application.DTOs.Request;
 using ChatApp.Modules.DirectMessages.Application.DTOs.Response;
 using ChatApp.Modules.DirectMessages.Application.Queries;
+using ChatApp.Modules.Identity.Application.Queries.GetUser;
 using ChatApp.Shared.Infrastructure.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -69,8 +70,18 @@ namespace ChatApp.Modules.DirectMessages.Api.Controllers
             if (userId == Guid.Empty)
                 return Unauthorized();
 
+            var user1CompanyIdClaim = User.FindFirst("companyId")?.Value;
+            Guid.TryParse(user1CompanyIdClaim, out var user1CompanyId);
+
+            // User2-nin şirkətini yoxla
+            var user2Result = await _mediator.Send(new GetUserQuery(request.OtherUserId), cancellationToken);
+            if (user2Result.IsFailure || user2Result.Value is null)
+                return NotFound(new { error = "User not found" });
+
+            var user2CompanyId = user2Result.Value.CompanyId ?? Guid.Empty;
+
             var result = await _mediator.Send(
-                new StartConversationCommand(userId, request.OtherUserId),
+                new StartConversationCommand(userId, request.OtherUserId, user1CompanyId, user2CompanyId),
                 cancellationToken);
 
             if (result.IsFailure)

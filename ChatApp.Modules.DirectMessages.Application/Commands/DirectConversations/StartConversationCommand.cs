@@ -7,11 +7,12 @@ using Microsoft.Extensions.Logging;
 
 namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectConversations
 {
-    public record StartConversationCommand
-        (
+    public record StartConversationCommand(
         Guid User1Id,
-        Guid User2Id
-    ):IRequest<Result<Guid>>;
+        Guid User2Id,
+        Guid User1CompanyId,
+        Guid User2CompanyId
+    ) : IRequest<Result<Guid>>;
 
 
     public class StartConversationValidator : AbstractValidator<StartConversationCommand>
@@ -27,6 +28,10 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectConversation
             RuleFor(x => x)
                 .Must(x => x.User1Id != x.User2Id)
                 .WithMessage("Cannot start conversation with yourself");
+
+            RuleFor(x => x)
+                .Must(x => x.User1CompanyId == x.User2CompanyId)
+                .WithMessage("Cannot start a conversation with a user from a different company");
         }
     }
 

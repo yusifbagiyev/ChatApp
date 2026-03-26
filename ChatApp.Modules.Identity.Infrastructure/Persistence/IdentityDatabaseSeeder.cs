@@ -91,7 +91,7 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence
 
             logger?.LogInformation("Seeding default company...");
 
-            var company = new Company("166 Logistics");
+            var company = new Company("166 Logistics") { Id = Guid.Parse("20000000-0000-0000-0000-000000000001") };
             await context.Companies.AddAsync(company);
 
             logger?.LogInformation("Seeded company: 166 Logistics");

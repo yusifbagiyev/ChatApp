@@ -13,6 +13,7 @@ namespace ChatApp.Modules.Identity.Application.DTOs.Responses
         string LastName,
         string Email,
         string Role,
+        Guid? CompanyId,
         string? Position,
         Guid? PositionId,
         string? AvatarUrl,
