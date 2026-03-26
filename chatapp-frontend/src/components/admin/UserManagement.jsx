@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, memo, useContext } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import {
-  getUsers, createUser, updateUser, deleteUser,
+  getUsers, createUser, updateUser,
   activateUser, deactivateUser, adminChangePassword,
   getDepartments, getPositionsByDepartment,
   getSupervisors, addSupervisor, removeSupervisor,
@@ -8,13 +8,11 @@ import {
 } from "../../services/api";
 import { getInitials, getAvatarColor } from "../../utils/chatUtils";
 import { useToast } from "../../context/ToastContext";
-import { AuthContext } from "../../context/AuthContext";
 import "./UserManagement.css";
 
 // ─── UserForm — Create/Edit slide panel ──────────────────────────────────────
 const UserForm = memo(({ user: editUser, isSuperAdmin, onSave, onClose }) => {
   const { showToast } = useToast();
-  const { user: currentUser } = useContext(AuthContext);
   const isNew = !editUser;
 
   const [firstName, setFirstName]     = useState(editUser?.firstName || "");
@@ -313,7 +311,6 @@ function UserManagement({ isSuperAdmin }) {
   const [editUser, setEditUser] = useState(null);
   const [resetPwUser, setResetPwUser] = useState(null);
   const [supervisorUser, setSupervisorUser] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const PAGE_SIZE = 30;
@@ -339,7 +336,6 @@ function UserManagement({ isSuperAdmin }) {
   useEffect(() => { load(1); }, [load]);
 
   const handleToggleActive = async (u) => {
-    setMenuOpen(null);
     try {
       u.isActive ? await deactivateUser(u.id) : await activateUser(u.id);
       showToast(`User ${u.isActive ? "deactivated" : "activated"}`, "success");
@@ -396,7 +392,7 @@ function UserManagement({ isSuperAdmin }) {
             ) : users.length === 0 ? (
               <tr><td colSpan={6} className="um-empty-cell">No users found</td></tr>
             ) : users.map((u) => (
-              <tr key={u.id} className={!u.isActive ? "um-row-inactive" : ""}>
+              <tr key={u.id} className={`um-row${!u.isActive ? " um-row-inactive" : ""}`}>
                 <td>
                   <div className="um-user-cell">
                     <div className="um-avatar" style={{ background: u.avatarUrl ? "transparent" : getAvatarColor(u.fullName) }}>
@@ -419,21 +415,19 @@ function UserManagement({ isSuperAdmin }) {
                   </span>
                 </td>
                 <td className="um-actions-cell">
-                  <div className="um-menu-wrap">
-                    <button className="um-menu-btn" onClick={() => setMenuOpen(menuOpen === u.id ? null : u.id)}>•••</button>
-                    {menuOpen === u.id && (
-                      <>
-                        <div className="um-menu-overlay" onClick={() => setMenuOpen(null)} />
-                        <div className="um-menu">
-                          <button className="um-menu-item" onClick={() => { setMenuOpen(null); setEditUser(u); setFormOpen(true); }}>Edit</button>
-                          <button className="um-menu-item" onClick={() => { setMenuOpen(null); setResetPwUser(u); }}>Reset Password</button>
-                          <button className="um-menu-item" onClick={() => { setMenuOpen(null); setSupervisorUser(u); }}>Supervisors</button>
-                          <button className={`um-menu-item ${u.isActive ? "danger" : ""}`} onClick={() => handleToggleActive(u)}>
-                            {u.isActive ? "Deactivate" : "Activate"}
-                          </button>
-                        </div>
-                      </>
-                    )}
+                  <div className="um-row-actions">
+                    <button className="um-action-btn" title="Edit" onClick={() => { setEditUser(u); setFormOpen(true); }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button className="um-action-btn" title="Supervisors" onClick={() => setSupervisorUser(u)}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </button>
+                    <button className="um-action-btn" title="Reset Password" onClick={() => setResetPwUser(u)}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="15" r="5"/><line x1="11.54" y1="11.54" x2="18" y2="5"/><line x1="15" y1="5" x2="20" y2="10"/></svg>
+                    </button>
+                    <button className={`um-action-btn${u.isActive ? " danger" : ""}`} title={u.isActive ? "Deactivate" : "Activate"} onClick={() => handleToggleActive(u)}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+                    </button>
                   </div>
                 </td>
               </tr>

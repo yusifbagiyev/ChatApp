@@ -355,32 +355,24 @@ function CompanyManagement() {
         <>
           <div className="cm-form-overlay" onClick={() => setDetail(null)} />
           <div className="cm-detail-panel">
-            <div className="cm-form-header">
-              <h3 className="cm-form-title">{detail.name}</h3>
-              <button className="cm-form-close" onClick={() => setDetail(null)} aria-label="Close">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
+            {/* Hero */}
+            <div className="cm-detail-hero">
+              <button className="cm-detail-hero-close" onClick={() => setDetail(null)}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
-            </div>
-            <div className="cm-detail-body">
-              {/* Logo + status */}
-              <div className="cm-detail-logo-row">
-                <div className="cm-detail-logo" style={{ background: detail.logoUrl ? "transparent" : getAvatarColor(detail.name) }}>
-                  {detail.logoUrl
-                    ? <img src={getFileUrl(detail.logoUrl)} alt="" className="cm-form-logo-img" />
-                    : <span className="cm-detail-logo-initials">{getInitials(detail.name)}</span>}
-                </div>
-                <div>
-                  <div className="cm-detail-name">{detail.name}</div>
-                  <span className={`cm-status-badge ${detail.isActive ? "active" : "inactive"}`}>
-                    {detail.isActive ? "Active" : "Inactive"}
-                  </span>
-                </div>
+              <div className="cm-detail-hero-logo" style={{ background: detail.logoUrl ? "transparent" : getAvatarColor(detail.name) }}>
+                {detail.logoUrl
+                  ? <img src={getFileUrl(detail.logoUrl)} alt="" />
+                  : getInitials(detail.name)}
               </div>
+              <h3 className="cm-detail-hero-name">{detail.name}</h3>
+              <span className={`cm-status-badge ${detail.isActive ? "active" : "inactive"}`}>
+                {detail.isActive ? "Active" : "Inactive"}
+              </span>
+            </div>
 
-              <hr className="cm-detail-divider" />
-
+            {/* Body */}
+            <div className="cm-detail-body">
               {/* Stats */}
               {!detailLoading && (
                 <div className="cm-detail-stats">
@@ -397,34 +389,39 @@ function CompanyManagement() {
 
               {/* Company Admin */}
               {(detail.headOfCompanyName || detail.adminName) && (
-                <div className="cm-form-field">
-                  <label className="cm-form-label">Company Admin</label>
-                  <div className="cm-detail-admin">
-                    <div className="cm-user-avatar" style={{ background: getAvatarColor(detail.headOfCompanyName ?? detail.adminName ?? "") }}>
+                <div>
+                  <p className="cm-detail-section-label">Company Admin</p>
+                  <div className="cm-detail-admin-card">
+                    <div className="cm-detail-admin-avatar" style={{ background: getAvatarColor(detail.headOfCompanyName ?? detail.adminName ?? "") }}>
                       {getInitials(detail.headOfCompanyName ?? detail.adminName ?? "")}
                     </div>
-                    <span className="cm-detail-admin-name">{detail.headOfCompanyName ?? detail.adminName}</span>
+                    <div className="cm-detail-admin-info">
+                      <span className="cm-detail-admin-name">{detail.headOfCompanyName ?? detail.adminName}</span>
+                      <span className="cm-detail-admin-role">Admin</span>
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Description */}
-              <div className="cm-form-field">
-                <label className="cm-form-label">Description</label>
-                <p className="cm-detail-desc">
-                  {detail.description || <span className="cm-muted">(not set)</span>}
-                </p>
-              </div>
+              {(detail.description || !detailLoading) && (
+                <div>
+                  <p className="cm-detail-section-label">Description</p>
+                  <p className="cm-detail-desc-text">
+                    {detail.description || <span style={{ color: "var(--gray-300)", fontStyle: "italic" }}>Not set</span>}
+                  </p>
+                </div>
+              )}
+            </div>
 
-              {/* Edit button */}
-              <div className="cm-form-actions">
-                <button
-                  className="cm-btn cm-btn-primary"
-                  onClick={() => { setDetail(null); openEdit(detail); }}
-                >
-                  Edit Company
-                </button>
-              </div>
+            {/* Footer */}
+            <div className="cm-detail-footer">
+              <button className="cm-btn cm-btn-ghost" onClick={() => { setDetail(null); setAssignModal(detail); }}>
+                Assign Admin
+              </button>
+              <button className="cm-btn cm-btn-primary" onClick={() => { setDetail(null); openEdit(detail); }}>
+                Edit Company
+              </button>
             </div>
           </div>
         </>

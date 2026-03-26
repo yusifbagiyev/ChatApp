@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import CompanyManagement from "../components/admin/CompanyManagement";
@@ -6,6 +6,13 @@ import HierarchyView from "../components/admin/HierarchyView";
 import DepartmentManagement from "../components/admin/DepartmentManagement";
 import PositionManagement from "../components/admin/PositionManagement";
 import "./AdminPanel.css";
+
+const SECTION_NAMES = {
+  companies: "Companies",
+  users: "Users",
+  departments: "Departments",
+  positions: "Positions",
+};
 
 function AdminPanel() {
   const { user } = useContext(AuthContext);
@@ -15,6 +22,18 @@ function AdminPanel() {
   const [activeSection, setActiveSection] = useState(
     isSuperAdmin ? "companies" : "users"
   );
+  const [sectionAnim, setSectionAnim] = useState(null); // null | 'leaving' | 'entering'
+  const contentRef = useRef(null);
+
+  const changeSection = (newSection) => {
+    if (newSection === activeSection) return;
+    setSectionAnim('leaving');
+    setTimeout(() => {
+      setActiveSection(newSection);
+      setSectionAnim('entering');
+      setTimeout(() => setSectionAnim(null), 240);
+    }, 160);
+  };
 
   return (
     <div className="ap-page">
@@ -26,7 +45,11 @@ function AdminPanel() {
           </svg>
           Back to Chat
         </button>
-        <h1 className="ap-title">Admin Panel</h1>
+        <div className="ap-breadcrumb">
+          <span className="ap-breadcrumb-root">Admin</span>
+          <span className="ap-breadcrumb-sep">›</span>
+          <span className="ap-breadcrumb-page">{SECTION_NAMES[activeSection]}</span>
+        </div>
         <span className={`ap-role-badge ${user?.role?.toLowerCase()}`}>{user?.role}</span>
       </div>
 
@@ -37,7 +60,7 @@ function AdminPanel() {
           {isSuperAdmin && (
             <button
               className={`ap-nav-item${activeSection === "companies" ? " active" : ""}`}
-              onClick={() => setActiveSection("companies")}
+              onClick={() => changeSection("companies")}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="7" width="20" height="14" rx="2" />
@@ -50,7 +73,7 @@ function AdminPanel() {
           {/* Hər iki rol */}
           <button
             className={`ap-nav-item${activeSection === "users" ? " active" : ""}`}
-            onClick={() => setActiveSection("users")}
+            onClick={() => changeSection("users")}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -65,7 +88,7 @@ function AdminPanel() {
             <>
               <button
                 className={`ap-nav-item${activeSection === "departments" ? " active" : ""}`}
-                onClick={() => setActiveSection("departments")}
+                onClick={() => changeSection("departments")}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -75,7 +98,7 @@ function AdminPanel() {
               </button>
               <button
                 className={`ap-nav-item${activeSection === "positions" ? " active" : ""}`}
-                onClick={() => setActiveSection("positions")}
+                onClick={() => changeSection("positions")}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="7" width="20" height="14" rx="2" />
@@ -90,7 +113,10 @@ function AdminPanel() {
         </nav>
 
         {/* Content */}
-        <main className="ap-content">
+        <main
+          className={`ap-content${sectionAnim ? ` section-${sectionAnim}` : ""}`}
+          ref={contentRef}
+        >
           {activeSection === "companies" && isSuperAdmin && <CompanyManagement />}
           {activeSection === "users" && <HierarchyView isSuperAdmin={isSuperAdmin} />}
           {activeSection === "departments" && !isSuperAdmin && <DepartmentManagement />}
