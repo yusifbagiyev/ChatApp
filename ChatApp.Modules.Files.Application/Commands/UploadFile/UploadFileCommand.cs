@@ -26,7 +26,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
         Guid? ConversationId = null,
         bool IsProfilePicture = false,
         bool IsChannelAvatar = false,
-        Guid? ChannelAvatarTargetId = null
+        Guid? ChannelAvatarTargetId = null,
+        bool IsCompanyAvatar = false
     ) : IRequest<Result<FileUploadResult>>;
 
 
@@ -45,6 +46,9 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
 
             RuleFor(x => x.UploadedBy)
                 .NotEmpty().WithMessage("Uploader ID is required");
+
+            RuleFor(x => x.CompanyId)
+                .NotEmpty().WithMessage("Company ID is required");
         }
     }
 
@@ -107,11 +111,14 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                 // Determine storage directory
                 var directory = DetermineStorageDirectory(
                     request.UploadedBy,
+                    request.CompanyId,
                     request.IsProfilePicture,
+                    request.IsCompanyAvatar,
                     request.IsChannelAvatar,
                     request.ChannelAvatarTargetId,
                     fileType,
-                    request.CompanySlug);
+                    request.ChannelId,
+                    request.ConversationId);
 
                 _logger?.LogInformation(
                     "Determined storage directory: {Directory} for file {FileName}",
@@ -275,37 +282,41 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
 
         private static string DetermineStorageDirectory(
             Guid uploadedBy,
+            Guid? companyId,
             bool isProfilePicture,
+            bool isCompanyAvatar,
             bool isChannelAvatar,
             Guid? channelAvatarTargetId,
             FileType fileType,
-            string? companySlug)
+            Guid? channelId,
+            Guid? conversationId)
         {
-            string path;
+            var companySegment = $"company/{companyId}";
 
-            // Avatarlar — dəyişməz struktur
+            // Şirkət avatarı: company/{companyId}/avatar/
+            if (isCompanyAvatar)
+                return $"{companySegment}/avatar";
+
+            // İstifadəçi profil şəkli: company/{companyId}/users/{userId}/avatar/
             if (isProfilePicture)
-                path = $"avatars/users/{uploadedBy}";
-            else if (isChannelAvatar && channelAvatarTargetId.HasValue)
-                path = $"avatars/channels/{channelAvatarTargetId.Value}";
-            else
-            {
-                // İstifadəçi + fayl tipi əsaslı struktur
-                var typeFolder = fileType switch
-                {
-                    FileType.Image    => "images",
-                    FileType.Document => "documents",
-                    FileType.Video    => "videos",
-                    FileType.Audio    => "audio",
-                    FileType.Archive  => "archives",
-                    _                 => "other"
-                };
-                path = $"files/{uploadedBy}/{typeFolder}";
-            }
+                return $"{companySegment}/users/{uploadedBy}/avatar";
 
-            // SuperAdmin (şirkətsiz) fayllar "system/" qovluğuna gedir
-            var prefix = !string.IsNullOrEmpty(companySlug) ? companySlug : "system";
-            return $"{prefix}/{path}";
+            // Kanal avatarı: company/{companyId}/users/{userId}/avatar/
+            if (isChannelAvatar)
+                return $"{companySegment}/users/{uploadedBy}/avatar";
+
+            // Media (şəkil/video/audio) vs fayl (sənəd/arxiv/digər)
+            var isMedia = fileType == FileType.Image || fileType == FileType.Video || fileType == FileType.Audio;
+            var typeSegment = isMedia ? "media" : "files";
+
+            if (channelId.HasValue)
+                return $"{companySegment}/users/{uploadedBy}/{typeSegment}/channel/{channelId}";
+
+            if (conversationId.HasValue)
+                return $"{companySegment}/users/{uploadedBy}/{typeSegment}/direct_messages/{conversationId}";
+
+            // Kontekstsiz fayllar → drive
+            return $"{companySegment}/users/{uploadedBy}/drive";
         }
     }
 }

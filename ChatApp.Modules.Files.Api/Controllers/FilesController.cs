@@ -154,7 +154,55 @@ namespace ChatApp.Modules.Files.Api.Controllers
 
 
         /// <summary>
-        /// Upload channel avatar (stored in /avatars/channels/{channelId}/)
+        /// Upload company avatar (stored in company/{companyId}/avatar/)
+        /// SuperAdmin only
+        /// </summary>
+        [HttpPost("upload/company-avatar/{companyId:guid}")]
+        [RequirePermission("Files.Upload")]
+        [RequestSizeLimit(100 * 1024 * 1024)]
+        [ProducesResponseType(typeof(FileUploadResult), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> UploadCompanyAvatar(
+            [FromRoute] Guid companyId,
+            [FromForm] UploadFileRequest request,
+            CancellationToken cancellationToken)
+        {
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId == Guid.Empty)
+                return Unauthorized();
+
+            if (!request.File.ContentType.StartsWith("image/"))
+                return BadRequest(new { error = "Only image files are allowed for company avatars" });
+
+            var (_, companySlug) = GetCompanyClaims();
+
+            var result = await _mediator.Send(
+                new UploadFileCommand(
+                    request.File,
+                    currentUserId,
+                    companyId,
+                    companySlug,
+                    null,
+                    null,
+                    false,
+                    false,
+                    null,
+                    IsCompanyAvatar: true),
+                cancellationToken);
+
+            if (result.IsFailure)
+                return BadRequest(new { error = result.Error });
+
+            return CreatedAtAction(
+                nameof(GetFile),
+                new { fileId = result.Value!.FileId },
+                result.Value);
+        }
+
+        /// <summary>
+        /// Upload channel avatar (stored in company/{companyId}/users/{userId}/avatar/)
         /// </summary>
         [HttpPost("upload/channel-avatar/{channelId:guid}")]
         [RequirePermission("Files.Upload")]
