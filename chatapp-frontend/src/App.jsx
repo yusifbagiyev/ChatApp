@@ -16,6 +16,7 @@ import { AuthContext, AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import Chat from "./pages/Chat";
 import Login from "./pages/Login";
+import AdminPanel from "./pages/AdminPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 // ─── ProtectedRoute ───────────────────────────────────────────────────────────
@@ -24,20 +25,19 @@ import ErrorBoundary from "./components/ErrorBoundary";
 //
 // children prop — bu komponentin içinə yazılan JSX-dir.
 // Məsələn: <ProtectedRoute><Chat /></ProtectedRoute> → children = <Chat />
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, requireRole }) {
   // AuthContext-dən cari user-i və loading state-ini al
   const { user, isLoading } = useContext(AuthContext);
 
   // Auth vəziyyəti hələ yoxlanılır (app yeni açılıb, /api/users/me çağırılır)
-  // Bu zaman "Loading..." göstər — əks halda user null olduğu üçün /login-ə redirect olar
   if (isLoading) {
     return (
       <div
         style={{
-          display: "flex",        // flexbox layout
-          justifyContent: "center", // üfüqi mərkəzlə
-          alignItems: "center",   // şaquli mərkəzlə
-          height: "100vh",        // ekranın tam hündürlüyü
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
           color: "#6366F1",
           fontSize: "18px",
         }}
@@ -48,12 +48,13 @@ function ProtectedRoute({ children }) {
   }
 
   // user yoxdur (login olmayıb) → /login-ə redirect et
-  // Navigate komponenti render olaraq dərhal URL-i dəyişir
-  if (!user) {
-    return <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" />;
+
+  // requireRole var amma user-in rolu uyğun deyil → ana səhifəyə yönləndir
+  if (requireRole && !requireRole.includes(user.role)) {
+    return <Navigate to="/" />;
   }
 
-  // user var → children-i render et (yəni <Chat /> göstər)
   return children;
 }
 
@@ -72,12 +73,21 @@ function App() {
         <Route path="/login" element={<Login />} />
 
         {/* / (root) URL-i → ProtectedRoute içindəki Chat komponentini göstər */}
-        {/* ProtectedRoute: əgər user yoxdursa /login-ə yönləndir */}
         <Route
           path="/"
           element={
             <ProtectedRoute>
               <Chat />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* /admin — yalnız Admin və SuperAdmin üçün */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requireRole={["Admin", "SuperAdmin"]}>
+              <AdminPanel />
             </ProtectedRoute>
           }
         />

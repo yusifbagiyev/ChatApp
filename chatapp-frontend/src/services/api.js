@@ -366,5 +366,28 @@ function deactivateUser(userId) {
   return apiFetch(`/api/users/${userId}/deactivate`, { method: "PUT" });
 }
 
+// ─── Company API ──────────────────────────────────────────────────────────────
+function getCompanies(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  return apiGet(`/api/companies${query ? `?${query}` : ""}`);
+}
+function getCompany(companyId) { return apiGet(`/api/companies/${companyId}`); }
+function createCompany(data) { return apiPost("/api/companies", data); }
+function updateCompany(companyId, data) { return apiPut(`/api/companies/${companyId}`, data); }
+function deleteCompany(companyId) { return apiDelete(`/api/companies/${companyId}`); }
+function assignCompanyAdmin(companyId, userId) { return apiPost(`/api/companies/${companyId}/admin`, { userId }); }
+
+// ─── User Management API ──────────────────────────────────────────────────────
+function getUsers(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  return apiGet(`/api/users${query ? `?${query}` : ""}`);
+}
+function createUser(data) { return apiPost("/api/users", data); }
+function updateUser(userId, data) { return apiPut(`/api/users/${userId}`, data); }
+function deleteUser(userId) { return apiDelete(`/api/users/${userId}`); }
+function getSupervisors(userId) { return apiGet(`/api/users/${userId}/supervisors`); }
+function addSupervisor(userId, supervisorId) { return apiPost(`/api/users/${userId}/supervisors`, { supervisorId }); }
+function removeSupervisor(userId, supervisorId) { return apiDelete(`/api/users/${userId}/supervisors/${supervisorId}`); }
+
 // Named exports — başqa fayllar bunları import edə bilsin
-export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, getUserProfile, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, activateUser, deactivateUser, assignEmployeeToDepartment, scheduleRefresh, stopRefreshTimer, resetSessionExpired };
+export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, getUserProfile, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, activateUser, deactivateUser, assignEmployeeToDepartment, scheduleRefresh, stopRefreshTimer, resetSessionExpired, getCompanies, getCompany, createCompany, updateCompany, deleteCompany, assignCompanyAdmin, getUsers, createUser, updateUser, deleteUser, getSupervisors, addSupervisor, removeSupervisor };

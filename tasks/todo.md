@@ -16,18 +16,24 @@
 
 ## Phase 4: Platform Overhaul — IN PROGRESS
 
-### 4.1 Multi-Company System (Backend) — CURRENT
-- [ ] Expand Company entity (logo, description, status active/inactive)
-- [ ] Update Role enum: User=0, Admin=1, SuperAdmin=2
-- [ ] Remove IsSuperAdmin boolean from User entity
-- [ ] Add CompanyId to User/Employee (direct company link)
-- [ ] Company CRUD endpoints (Super Admin only)
-- [ ] Company-scoped queries — all data filtered by company
-- [ ] Update GetDepartmentUsersQuery — company-scoped
-- [ ] Update UnifiedConversationsController — company-scoped
-- [ ] Block cross-company DM creation
-- [ ] Block cross-company channel member addition
-- [ ] Database migrations
+### 4.1 Multi-Company System (Backend) — COMPLETE ✅
+- [x] Expand Company entity (logo, description, status, slug)
+- [x] Update Role enum: User=0, Admin=1, SuperAdmin=2
+- [x] Remove IsSuperAdmin boolean from User entity (computed from Role)
+- [x] Add CompanyId to User (direct company link)
+- [x] Company CRUD endpoints (Super Admin only)
+- [x] Company-scoped queries — all data filtered by company
+- [x] Update GetDepartmentUsersQuery — company-scoped
+- [x] Database migrations (AddMultiCompanySupport)
+
+### 4.1b File Storage Company-Scoped Paths (Backend) — COMPLETE ✅
+- [x] Company entity Slug property (auto-generated, unique)
+- [x] CompanySlug claim in JWT token
+- [x] FileMetadata.CompanyId property
+- [x] UploadFileCommand — DetermineStorageDirectory() with company prefix
+- [x] FilesController — GetCompanyClaims() helper, passes to all upload commands
+- [x] Login/RefreshToken — Company included when loading User
+- [x] Migrations (AddCompanySlugAndFileCompanyId, AddFileCompanyId)
 
 ### 4.2 Supervisor/Subordinate Refactor (Backend)
 - [ ] EmployeeSupervisor junction table (many-to-many)

@@ -30,6 +30,9 @@ import useFileUploadManager from "../hooks/useFileUploadManager"; // global uplo
 import useSidebarPanels from "../hooks/useSidebarPanels"; // sidebar panel state + məntiq
 import useChannelManagement from "../hooks/useChannelManagement"; // channel + üzv idarəsi
 
+// Routing
+import { useNavigate } from "react-router-dom";
+
 // Global auth state — user, logout
 import { AuthContext } from "../context/AuthContext";
 // Toast notification — alert() əvəzinə modern UI notification
@@ -80,6 +83,7 @@ function Chat() {
   // useContext ilə AuthContext-dən user və logout al
   const { user, logout } = useContext(AuthContext);
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   // --- STATE DEĞİŞƏNLƏRİ ---
 
@@ -3215,7 +3219,7 @@ function Chat() {
       {/* main-body — sidebar + content yan-yana */}
       <div className="main-body">
         {/* Sidebar — sol dar nav bar (logout button) */}
-        <Sidebar onLogout={logout} />
+        <Sidebar onLogout={logout} user={user} onAdminPanel={() => navigate("/admin")} />
 
         {/* main-content — söhbət siyahısı + chat paneli yan-yana */}
         <div className="main-content">
