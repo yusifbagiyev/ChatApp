@@ -11,7 +11,8 @@ namespace ChatApp.Modules.Identity.Application.Commands.Departments
     public record CreateDepartmentCommand(
         string Name,
         Guid? CallerCompanyId,
-        Guid? ParentDepartmentId
+        Guid? ParentDepartmentId,
+        string? AvatarUrl = null
     ) : IRequest<Result<Guid>>;
 
     public class CreateDepartmentCommandValidator : AbstractValidator<CreateDepartmentCommand>
@@ -64,6 +65,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Departments
                 var department = command.ParentDepartmentId.HasValue
                     ? new Department(command.Name, command.CallerCompanyId.Value, command.ParentDepartmentId.Value)
                     : new Department(command.Name, command.CallerCompanyId.Value);
+
+                if (!string.IsNullOrEmpty(command.AvatarUrl))
+                    department.SetAvatarUrl(command.AvatarUrl);
 
                 await unitOfWork.Departments.AddAsync(department, cancellationToken);
                 await unitOfWork.SaveChangesAsync(cancellationToken);

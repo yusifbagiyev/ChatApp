@@ -12,7 +12,8 @@ namespace ChatApp.Modules.Identity.Application.Commands.Departments
         string? Name,
         Guid? ParentDepartmentId,
         Guid? CallerCompanyId = null,
-        bool IsSuperAdmin = false
+        bool IsSuperAdmin = false,
+        string? AvatarUrl = null
     ) : IRequest<Result>;
 
     public class UpdateDepartmentCommandValidator : AbstractValidator<UpdateDepartmentCommand>
@@ -75,6 +76,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Departments
 
                 if (command.ParentDepartmentId.HasValue)
                     department.ChangeParentDepartment(command.ParentDepartmentId.Value);
+
+                if (command.AvatarUrl is not null)
+                    department.SetAvatarUrl(command.AvatarUrl);
 
                 await unitOfWork.SaveChangesAsync(cancellationToken);
 

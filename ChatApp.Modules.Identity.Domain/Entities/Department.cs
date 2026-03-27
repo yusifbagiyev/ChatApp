@@ -100,5 +100,13 @@ namespace ChatApp.Modules.Identity.Domain.Entities
             ParentDepartmentId = newParentDepartmentId;
             UpdateTimestamp();
         }
+
+        public string? AvatarUrl { get; private set; }
+
+        public void SetAvatarUrl(string? avatarUrl)
+        {
+            AvatarUrl = avatarUrl;
+            UpdateTimestamp();
+        }
     }
 }

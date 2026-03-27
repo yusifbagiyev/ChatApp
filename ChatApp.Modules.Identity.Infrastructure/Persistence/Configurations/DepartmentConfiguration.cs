@@ -30,6 +30,11 @@ namespace ChatApp.Modules.Identity.Infrastructure.Persistence.Configurations
             builder.Property(d => d.HeadOfDepartmentId)
                 .HasColumnName("head_of_department_id");
 
+            builder.Property(d => d.AvatarUrl)
+                .HasColumnName("avatar_url")
+                .HasMaxLength(500)
+                .IsRequired(false);
+
             builder.Property(d => d.CreatedAtUtc)
                 .IsRequired()
                 .HasColumnName("created_at_utc")

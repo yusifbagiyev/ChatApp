@@ -32,6 +32,7 @@ namespace ChatApp.Modules.Identity.Application.Queries.Departments
                         d.ParentDepartment != null ? d.ParentDepartment.Name : null,
                         d.HeadOfDepartmentId,
                         d.HeadOfDepartment != null ? d.HeadOfDepartment.FullName : null,
+                        d.AvatarUrl,
                         d.CreatedAtUtc))
                     .AsNoTracking()
                     .FirstOrDefaultAsync(cancellationToken);

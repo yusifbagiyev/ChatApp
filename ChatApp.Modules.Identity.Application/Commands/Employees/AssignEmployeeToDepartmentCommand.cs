@@ -76,6 +76,10 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
                 // Department dəyişdikdə position sıfırlanır — hər departmentin özünə uyğun positionları var
                 user.Employee.AssignToPosition(null);
 
+                // Department avatarı varsa user-in avatarını avtomatik yenilə
+                if (!string.IsNullOrEmpty(department.AvatarUrl))
+                    user.UpdateAvatarUrl(department.AvatarUrl);
+
                 // SupervisorId verilmişsə many-to-many cədvələ əlavə et
                 if (command.SupervisorId.HasValue)
                 {

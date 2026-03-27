@@ -202,6 +202,48 @@ namespace ChatApp.Modules.Files.Api.Controllers
         }
 
         /// <summary>
+        /// Upload department avatar (stored in company/{companyId}/departments/avatars/)
+        /// </summary>
+        [HttpPost("upload/department-avatar")]
+        [RequirePermission("Files.Upload")]
+        [RequestSizeLimit(100 * 1024 * 1024)]
+        [ProducesResponseType(typeof(FileUploadResult), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> UploadDepartmentAvatar(
+            [FromForm] UploadFileRequest request,
+            CancellationToken cancellationToken)
+        {
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId == Guid.Empty)
+                return Unauthorized();
+
+            if (!request.File.ContentType.StartsWith("image/"))
+                return BadRequest(new { error = "Only image files are allowed for department avatars" });
+
+            var (companyId, companySlug) = GetCompanyClaims();
+
+            var result = await _mediator.Send(
+                new UploadFileCommand(
+                    request.File,
+                    currentUserId,
+                    companyId,
+                    companySlug,
+                    IsDepartmentAvatar: true),
+                cancellationToken);
+
+            if (result.IsFailure)
+                return BadRequest(new { error = result.Error });
+
+            return CreatedAtAction(
+                nameof(GetFile),
+                new { fileId = result.Value!.FileId },
+                result.Value);
+        }
+
+
+
+        /// <summary>
         /// Upload channel avatar (stored in company/{companyId}/users/{userId}/avatar/)
         /// </summary>
         [HttpPost("upload/channel-avatar/{channelId:guid}")]

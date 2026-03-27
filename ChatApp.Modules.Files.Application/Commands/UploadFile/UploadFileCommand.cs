@@ -27,7 +27,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
         bool IsProfilePicture = false,
         bool IsChannelAvatar = false,
         Guid? ChannelAvatarTargetId = null,
-        bool IsCompanyAvatar = false
+        bool IsCompanyAvatar = false,
+        bool IsDepartmentAvatar = false
     ) : IRequest<Result<FileUploadResult>>;
 
 
@@ -118,7 +119,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                     request.ChannelAvatarTargetId,
                     fileType,
                     request.ChannelId,
-                    request.ConversationId);
+                    request.ConversationId,
+                    request.IsDepartmentAvatar);
 
                 _logger?.LogInformation(
                     "Determined storage directory: {Directory} for file {FileName}",
@@ -289,13 +291,18 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             Guid? channelAvatarTargetId,
             FileType fileType,
             Guid? channelId,
-            Guid? conversationId)
+            Guid? conversationId,
+            bool isDepartmentAvatar = false)
         {
             var companySegment = $"company/{companyId}";
 
             // Şirkət avatarı: company/{companyId}/avatar/
             if (isCompanyAvatar)
                 return $"{companySegment}/avatar";
+
+            // Department avatarı: company/{companyId}/departments/avatars/
+            if (isDepartmentAvatar)
+                return $"{companySegment}/departments/avatars";
 
             // İstifadəçi profil şəkli: company/{companyId}/users/{userId}/avatar/
             if (isProfilePicture)

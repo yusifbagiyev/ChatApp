@@ -7,5 +7,6 @@ namespace ChatApp.Modules.Identity.Application.DTOs.Responses
         string? ParentDepartmentName,
         Guid? HeadOfDepartmentId,
         string? HeadOfDepartmentName,
+        string? AvatarUrl,
         DateTime CreatedAtUtc);
 }
