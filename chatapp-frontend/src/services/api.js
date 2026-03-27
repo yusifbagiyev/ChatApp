@@ -344,9 +344,10 @@ function getUserProfile(userId) {
   return apiGet(`/api/users/${userId}`);
 }
 
-// Bütün departmentləri gətirir
-function getDepartments() {
-  return apiGet("/api/identity/departments");
+// Bütün departmentləri gətirir — SuperAdmin üçün companyId ilə filter
+function getDepartments(companyId) {
+  const qs = companyId ? `?companyId=${companyId}` : "";
+  return apiGet(`/api/identity/departments${qs}`);
 }
 
 // Departmentə görə positionları gətirir

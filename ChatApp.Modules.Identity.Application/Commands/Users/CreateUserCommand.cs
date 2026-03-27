@@ -116,6 +116,10 @@ namespace ChatApp.Modules.Identity.Application.Commands.Users
                 // SuperAdmin üçün companyId department-dan götürülür
                 var targetCompanyId = command.CallerCompanyId ?? deptCompanyId;
 
+                // SuperAdmin rolu yalnız seed datadan yaranır — API vasitəsilə qadağandır
+                if (command.Role == Role.SuperAdmin)
+                    return Result.Failure<Guid>("SuperAdmin role cannot be assigned through user creation");
+
                 // Admin yalnız User rolu verə bilər
                 if (!command.IsSuperAdmin && command.Role != Role.User)
                     return Result.Failure<Guid>("Admins can only create users with the User role");

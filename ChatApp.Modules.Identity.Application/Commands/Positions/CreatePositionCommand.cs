@@ -24,6 +24,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Positions
                 .NotEmpty().WithMessage("Position name is required")
                 .MaximumLength(150).WithMessage("Position name must not exceed 150 characters");
 
+            RuleFor(x => x.DepartmentId)
+                .NotEmpty().WithMessage("Department is required for a position");
+
             When(x => !string.IsNullOrWhiteSpace(x.Description), () =>
             {
                 RuleFor(x => x.Description)
@@ -42,6 +45,7 @@ namespace ChatApp.Modules.Identity.Application.Commands.Positions
         {
             try
             {
+                // DepartmentId həmişə məcburidir (validator tərəfindən yoxlanılır)
                 if (command.DepartmentId.HasValue)
                 {
                     var dept = await unitOfWork.Departments

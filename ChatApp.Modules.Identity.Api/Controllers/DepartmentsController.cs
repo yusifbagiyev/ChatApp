@@ -21,11 +21,16 @@ namespace ChatApp.Modules.Identity.Api.Controllers
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAllDepartments(CancellationToken cancellationToken)
+        public async Task<IActionResult> GetAllDepartments(
+            [FromQuery] Guid? companyId = null,
+            CancellationToken cancellationToken = default)
         {
-            var (companyId, isSuperAdmin) = GetCompanyClaims();
+            var (callerCompanyId, isSuperAdmin) = GetCompanyClaims();
 
-            var query = new GetAllDepartmentsQuery(companyId, isSuperAdmin);
+            // SuperAdmin spesifik şirkəti filter edə bilər; Admin öz şirkətini görür
+            var effectiveCompanyId = isSuperAdmin && companyId.HasValue ? companyId : callerCompanyId;
+
+            var query = new GetAllDepartmentsQuery(effectiveCompanyId, isSuperAdmin && !companyId.HasValue);
             var result = await mediator.Send(query, cancellationToken);
 
             if (result.IsFailure)
@@ -70,11 +75,14 @@ namespace ChatApp.Modules.Identity.Api.Controllers
             [FromBody] CreateDepartmentRequest request,
             CancellationToken cancellationToken)
         {
-            var (callerCompanyId, _) = GetCompanyClaims();
+            var (callerCompanyId, isSuperAdmin) = GetCompanyClaims();
+
+            // SuperAdmin üçün request body-dən companyId götür; Admin üçün JWT-dən
+            var effectiveCompanyId = isSuperAdmin ? request.CompanyId : callerCompanyId;
 
             var command = new CreateDepartmentCommand(
                 request.Name,
-                callerCompanyId,
+                effectiveCompanyId,
                 request.ParentDepartmentId);
 
             var result = await mediator.Send(command, cancellationToken);

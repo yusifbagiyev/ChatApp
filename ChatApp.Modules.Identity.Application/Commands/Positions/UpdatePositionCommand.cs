@@ -23,6 +23,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Positions
             RuleFor(x => x.PositionId)
                 .NotEmpty().WithMessage("Position ID is required");
 
+            RuleFor(x => x.DepartmentId)
+                .NotEmpty().WithMessage("Department is required for a position");
+
             When(x => !string.IsNullOrWhiteSpace(x.Name), () =>
             {
                 RuleFor(x => x.Name)

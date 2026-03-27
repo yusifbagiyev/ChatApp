@@ -23,8 +23,7 @@ namespace ChatApp.Modules.Identity.Application.Queries.GetPositions
             {
                 var positions = await unitOfWork.Positions
                     .Where(p => query.IsSuperAdmin
-                        || p.Department == null
-                        || p.Department.CompanyId == query.CompanyId)
+                        || p.Department!.CompanyId == query.CompanyId)
                     .OrderBy(p => p.Name)
                     .Select(p => new PositionDto(
                         p.Id,

@@ -42,9 +42,7 @@ function PositionManagement() {
       const q = search.toLowerCase();
       rows = rows.filter(p => p.name.toLowerCase().includes(q));
     }
-    if (deptFilter === "none") {
-      rows = rows.filter(p => !p.departmentId);
-    } else if (deptFilter !== "all") {
+    if (deptFilter !== "all") {
       rows = rows.filter(p => p.departmentId === deptFilter);
     }
     rows.sort((a, b) => sort === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
@@ -71,6 +69,7 @@ function PositionManagement() {
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (!formName.trim()) { setFormError("Position name is required."); return; }
+    if (!formDeptId) { setFormError("Department is required."); return; }
     setSaving(true);
     setFormError("");
     try {
@@ -133,7 +132,6 @@ function PositionManagement() {
           onChange={e => setDeptFilter(e.target.value)}
         >
           <option value="all">All Departments</option>
-          <option value="none">No Department</option>
           {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
         <button className="pm-sort-btn" onClick={toggleSort} title="Sort by name">
@@ -250,16 +248,15 @@ function PositionManagement() {
                 {formError && <span className="pm-form-error">{formError}</span>}
               </div>
               <div className="pm-form-field">
-                <label className="pm-form-label">Department</label>
+                <label className="pm-form-label pm-form-label--required">Department *</label>
                 <select
                   className="pm-form-select"
                   value={formDeptId}
                   onChange={e => setFormDeptId(e.target.value)}
                 >
-                  <option value="">No Department (company-wide)</option>
+                  <option value="">Select a department...</option>
                   {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
-                <span className="pm-form-hint">ⓘ Leave empty for company-wide positions (CEO, CTO, etc.)</span>
               </div>
               <div className="pm-form-field">
                 <label className="pm-form-label">Description</label>

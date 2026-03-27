@@ -71,9 +71,9 @@ const UserForm = memo(({ user: editUser, isSuperAdmin, onSave, onClose }) => {
     }
   };
 
-  // Role options — Admin cannot create SuperAdmin/Admin
+  // Role options — SuperAdmin yalnız seed datadan yaranır
   const roleOptions = isSuperAdmin
-    ? ["User", "Admin", "SuperAdmin"]
+    ? ["User", "Admin"]
     : ["User"];
 
   return (
