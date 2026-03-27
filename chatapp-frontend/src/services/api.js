@@ -396,13 +396,14 @@ function getUserById(userId) { return apiGet(`/api/users/${userId}`); }
 function createUser(data) { return apiPost("/api/users", data); }
 function updateUser(userId, data) { return apiPut(`/api/users/${userId}`, data); }
 function deleteUser(userId) { return apiDelete(`/api/users/${userId}`); }
-function getSupervisors(userId) { return apiGet(`/api/users/${userId}/supervisors`); }
-function addSupervisor(userId, supervisorId) { return apiPost(`/api/users/${userId}/supervisors`, { supervisorId }); }
+function addSupervisor(userId, supervisorId) { return apiPost(`/api/users/${userId}/supervisor`, { supervisorId }); }
 function removeSupervisor(userId, supervisorId) { return apiDelete(`/api/users/${userId}/supervisors/${supervisorId}`); }
 function removeUserFromDepartment(userId) { return apiDelete(`/api/users/${userId}/department`); }
-function getUserPermissions(userId) { return apiGet(`/api/users/${userId}/permissions`); }
-function toggleUserPermission(userId, permId, granted) { return apiPatch(`/api/users/${userId}/permissions/${permId}`, { granted }); }
-function resetUserPermissions(userId) { return apiPost(`/api/users/${userId}/permissions/reset`, {}); }
+// Permission management — backend: POST/DELETE /api/users/{id}/permissions
+function assignPermission(userId, permissionName) { return apiPost(`/api/users/${userId}/permissions`, { permissionName }); }
+function removePermission(userId, permissionName) { return apiDelete(`/api/users/${userId}/permissions/${permissionName}`); }
+// Bütün mövcud permission adları — backend: GET /api/users/permissions (yeni endpoint)
+function getAllPermissions() { return apiGet("/api/users/permissions"); }
 
 // ─── Files Storage API ────────────────────────────────────────────────────────
 function getUserStorageStats(userId) { return apiGet(`/api/files/storage/${userId}`); }
@@ -427,4 +428,4 @@ function updatePosition(id, data) { return apiPut(`/api/identity/positions/${id}
 function deletePosition(id) { return apiDelete(`/api/identity/positions/${id}`); }
 
 // Named exports — başqa fayllar bunları import edə bilsin
-export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, getUserProfile, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, activateUser, deactivateUser, assignEmployeeToDepartment, scheduleRefresh, stopRefreshTimer, resetSessionExpired, getCompanies, getCompany, createCompany, updateCompany, deleteCompany, setCompanyStatus, assignCompanyAdmin, getUsers, getUserById, createUser, updateUser, deleteUser, getSupervisors, addSupervisor, removeSupervisor, removeUserFromDepartment, getUserPermissions, toggleUserPermission, resetUserPermissions, getUserStorageStats, createDepartment, updateDepartment, deleteDepartment, assignDepartmentHead, removeDepartmentHead, getAllPositions, createPosition, updatePosition, deletePosition, getOrganizationHierarchy };
+export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, getUserProfile, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, activateUser, deactivateUser, assignEmployeeToDepartment, scheduleRefresh, stopRefreshTimer, resetSessionExpired, getCompanies, getCompany, createCompany, updateCompany, deleteCompany, setCompanyStatus, assignCompanyAdmin, getUsers, getUserById, createUser, updateUser, deleteUser, addSupervisor, removeSupervisor, removeUserFromDepartment, assignPermission, removePermission, getAllPermissions, getUserStorageStats, createDepartment, updateDepartment, deleteDepartment, assignDepartmentHead, removeDepartmentHead, getAllPositions, createPosition, updatePosition, deletePosition, getOrganizationHierarchy };

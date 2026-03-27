@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   getOrganizationHierarchy, getCompanies, getFileUrl,
-  activateUser, deactivateUser, deleteUser, getSupervisors,
+  activateUser, deactivateUser, deleteUser,
   createUser, createDepartment, getDepartments, getPositionsByDepartment,
 } from "../../services/api";
 import { getInitials, getAvatarColor } from "../../utils/chatUtils";
@@ -53,13 +53,8 @@ function HierarchySkeleton() {
 
 // ─── UserDetailPanel ──────────────────────────────────────────────────────────
 function UserDetailPanel({ user, companyName, deptName, closing, onClose }) {
-  const [supervisors, setSupervisors] = useState([]);
-
-  useEffect(() => {
-    getSupervisors(user.id)
-      .then(d => setSupervisors(Array.isArray(d) ? d : (d?.supervisors ?? [])))
-      .catch(() => {});
-  }, [user.id]);
+  // Supervisors data hierarchy node-dan gəlir (getUserById-dan deyil)
+  const supervisors = user.supervisors ?? [];
 
   return (
     <>
@@ -250,14 +245,14 @@ function DeptDetailPanel({ node, parentDeptName, closing, onClose }) {
 }
 
 // ─── CreateUserPanel ──────────────────────────────────────────────────────────
-function CreateUserPanel({ isSuperAdmin, onSave, onClose }) {
+function CreateUserPanel({ isSuperAdmin, defaultDeptId = "", contextLabel = null, onSave, onClose }) {
   const { showToast } = useToast();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName]   = useState("");
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
   const [role, setRole]           = useState("User");
-  const [deptId, setDeptId]       = useState("");
+  const [deptId, setDeptId]       = useState(defaultDeptId);
   const [posId, setPosId]         = useState("");
   const [depts, setDepts]         = useState([]);
   const [positions, setPositions] = useState([]);
@@ -299,10 +294,13 @@ function CreateUserPanel({ isSuperAdmin, onSave, onClose }) {
       <div className="hi-panel-backdrop" onClick={onClose} />
       <div className="hi-create-panel">
         <div className="hi-create-panel-header">
-          <span className="hi-create-panel-title">New User</span>
+          <div>
+            <span className="hi-create-panel-title">New User</span>
+            {contextLabel && <div className="hi-create-context-label">{contextLabel}</div>}
+          </div>
           <button className="hi-create-panel-close" onClick={onClose}>✕</button>
         </div>
-        <form className="hi-create-panel-body" onSubmit={handleSubmit}>
+        <form id="cu-form" className="hi-create-panel-body" onSubmit={handleSubmit}>
           <div className="hi-form-row">
             <div className="hi-form-field">
               <label className="hi-form-label">First Name *</label>
@@ -325,12 +323,14 @@ function CreateUserPanel({ isSuperAdmin, onSave, onClose }) {
             <input className="hi-form-input" type="password" value={password}
               onChange={e => setPassword(e.target.value)} placeholder="Min. 6 characters" />
           </div>
-          <div className="hi-form-field">
-            <label className="hi-form-label">Role</label>
-            <select className="hi-form-select" value={role} onChange={e => setRole(e.target.value)}>
-              {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
+          {isSuperAdmin && (
+            <div className="hi-form-field">
+              <label className="hi-form-label">Role</label>
+              <select className="hi-form-select" value={role} onChange={e => setRole(e.target.value)}>
+                {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          )}
           <div className="hi-form-row">
             <div className="hi-form-field">
               <label className="hi-form-label">Department</label>
@@ -349,25 +349,23 @@ function CreateUserPanel({ isSuperAdmin, onSave, onClose }) {
               </select>
             </div>
           </div>
-          <div className="hi-form-actions">
-            <button type="button" className="hi-btn-ghost" onClick={onClose} disabled={saving}>
-              Cancel
-            </button>
-            <button type="submit" className="hi-btn-primary" disabled={saving}>
-              {saving ? "Creating..." : "Create User"}
-            </button>
-          </div>
         </form>
+        <div className="hi-create-panel-footer">
+          <button type="button" className="hi-btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="submit" form="cu-form" className="hi-btn-primary" disabled={saving}>
+            {saving ? "Creating..." : "Create User"}
+          </button>
+        </div>
       </div>
     </>
   );
 }
 
 // ─── CreateDeptPanel ──────────────────────────────────────────────────────────
-function CreateDeptPanel({ onSave, onClose }) {
+function CreateDeptPanel({ defaultParentId = "", contextLabel = null, onSave, onClose }) {
   const { showToast } = useToast();
   const [name, setName]         = useState("");
-  const [parentId, setParentId] = useState("");
+  const [parentId, setParentId] = useState(defaultParentId);
   const [depts, setDepts]       = useState([]);
   const [saving, setSaving]     = useState(false);
 
@@ -393,10 +391,13 @@ function CreateDeptPanel({ onSave, onClose }) {
       <div className="hi-panel-backdrop" onClick={onClose} />
       <div className="hi-create-panel">
         <div className="hi-create-panel-header">
-          <span className="hi-create-panel-title">New Department</span>
+          <div>
+            <span className="hi-create-panel-title">New Department</span>
+            {contextLabel && <div className="hi-create-context-label">{contextLabel}</div>}
+          </div>
           <button className="hi-create-panel-close" onClick={onClose}>✕</button>
         </div>
-        <form className="hi-create-panel-body" onSubmit={handleSubmit}>
+        <form id="cd-form" className="hi-create-panel-body" onSubmit={handleSubmit}>
           <div className="hi-form-field">
             <label className="hi-form-label">Department Name *</label>
             <input className="hi-form-input" value={name}
@@ -409,15 +410,13 @@ function CreateDeptPanel({ onSave, onClose }) {
               {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </div>
-          <div className="hi-form-actions">
-            <button type="button" className="hi-btn-ghost" onClick={onClose} disabled={saving}>
-              Cancel
-            </button>
-            <button type="submit" className="hi-btn-primary" disabled={saving}>
-              {saving ? "Creating..." : "Create Department"}
-            </button>
-          </div>
         </form>
+        <div className="hi-create-panel-footer">
+          <button type="button" className="hi-btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="submit" form="cd-form" className="hi-btn-primary" disabled={saving}>
+            {saving ? "Creating..." : "Create Department"}
+          </button>
+        </div>
       </div>
     </>
   );
@@ -437,7 +436,7 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
   const [nodeOverrides, setNodeOverrides] = useState({}); // { [id]: partial overrides }
   const [deletingIds, setDeletingIds] = useState(new Set());
   const [deletedIds, setDeletedIds]   = useState(new Set());
-  const [createPanel, setCreatePanel] = useState(null); // null | 'user' | 'dept'
+  const [createPanel, setCreatePanel] = useState(null); // null | { type:'user', deptId?, deptName? } | { type:'dept', parentId?, parentName? }
 
   const loadHierarchy = useCallback(() => {
     setLoading(true);
@@ -659,10 +658,22 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
             <span className="hi-dept-head-sub">· {node.headOfDepartmentName}</span>
           )}
           <span className="hi-dept-count">{node.userCount ?? 0}</span>
-          <button className="hi-dept-detail-btn" title="View department details"
-            onClick={(e) => { e.stopPropagation(); openPanel("dept", node, { parentDeptName }); }}>
-            ›
-          </button>
+          <div className="hi-dept-actions" onClick={e => e.stopPropagation()}>
+            <button className="hi-dept-add-btn hi-dept-add-btn--user"
+              onClick={e => { e.stopPropagation(); setCreatePanel({ type: "user", deptId: node.id, deptName: node.name }); }}
+              title="Add user to this department">
+              + User
+            </button>
+            <button className="hi-dept-add-btn hi-dept-add-btn--dept"
+              onClick={e => { e.stopPropagation(); setCreatePanel({ type: "dept", parentId: node.id, parentName: node.name }); }}
+              title="Add sub-department">
+              + Sub-dept
+            </button>
+            <button className="hi-dept-detail-btn" title="View department details"
+              onClick={e => { e.stopPropagation(); openPanel("dept", node, { parentDeptName }); }}>
+              ›
+            </button>
+          </div>
         </div>
         {expanded && hasAny && (
           <>
@@ -695,6 +706,20 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
             <span className="hi-company-head">Head: {node.headOfDepartmentName}</span>
           )}
           <span className="hi-company-count">{node.userCount ?? 0} users</span>
+          <div className="hi-company-actions" onClick={e => e.stopPropagation()}>
+            <button className="hi-company-add-btn"
+              onClick={e => { e.stopPropagation(); setCreatePanel({ type: "user", deptName: node.name }); }}
+              title={`Add user to ${node.name}`}>
+              + New User
+            </button>
+            {!isSuperAdmin && (
+              <button className="hi-company-add-btn hi-company-add-btn--dept"
+                onClick={e => { e.stopPropagation(); setCreatePanel({ type: "dept" }); }}
+                title="Add department">
+                + New Department
+              </button>
+            )}
+          </div>
         </div>
         {expanded && (depts.length > 0 || noDeptUsers.length > 0) && (
           <div className="hi-company-children">
@@ -776,16 +801,6 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
           />
           <span className="hi-search-shortcut">⌘K</span>
         </div>
-        <div className="hi-toolbar-actions">
-          <button className="hi-btn-primary" onClick={() => setCreatePanel("user")}>
-            + New User
-          </button>
-          {!isSuperAdmin && (
-            <button className="hi-btn-secondary" onClick={() => setCreatePanel("dept")}>
-              + New Department
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Tree */}
@@ -811,15 +826,19 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
       )}
 
       {/* Create panels */}
-      {createPanel === "user" && (
+      {createPanel?.type === "user" && (
         <CreateUserPanel
           isSuperAdmin={isSuperAdmin}
+          defaultDeptId={createPanel.deptId ?? ""}
+          contextLabel={createPanel.deptName ? `→ ${createPanel.deptName}` : null}
           onSave={() => { setCreatePanel(null); loadHierarchy(); }}
           onClose={() => setCreatePanel(null)}
         />
       )}
-      {createPanel === "dept" && (
+      {createPanel?.type === "dept" && (
         <CreateDeptPanel
+          defaultParentId={createPanel.parentId ?? ""}
+          contextLabel={createPanel.parentName ? `Sub-dept of ${createPanel.parentName}` : null}
           onSave={() => { setCreatePanel(null); loadHierarchy(); }}
           onClose={() => setCreatePanel(null)}
         />

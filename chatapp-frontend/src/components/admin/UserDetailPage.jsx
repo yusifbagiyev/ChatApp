@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  getUserById, getUserStorageStats, getUserPermissions,
-  getSupervisors, addSupervisor, removeSupervisor,
+  getUserById, getUserStorageStats, getAllPermissions,
+  addSupervisor, removeSupervisor,
   getDepartments, assignEmployeeToDepartment, removeUserFromDepartment,
   getUsers, activateUser, deactivateUser, adminChangePassword,
-  toggleUserPermission, resetUserPermissions,
+  assignPermission, removePermission,
   getFileUrl,
 } from "../../services/api";
 import { getInitials, getAvatarColor } from "../../utils/chatUtils";
@@ -68,8 +68,8 @@ function OverviewTab({ user, storage, storageLoading }) {
           </div>
           <div className="ud-info-row">
             <span className="ud-info-label">Phone</span>
-            <span className={`ud-info-value${!user.phone ? " muted" : ""}`}>
-              {user.phone || "—"}
+            <span className={`ud-info-value${!user.workPhone ? " muted" : ""}`}>
+              {user.workPhone || "—"}
             </span>
           </div>
           <div className="ud-info-row">
@@ -78,10 +78,10 @@ function OverviewTab({ user, storage, storageLoading }) {
               {user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : "—"}
             </span>
           </div>
-          {user.about && (
+          {user.aboutMe && (
             <div className="ud-info-row">
               <span className="ud-info-label">About</span>
-              <span className="ud-info-value">{user.about}</span>
+              <span className="ud-info-value">{user.aboutMe}</span>
             </div>
           )}
         </div>
@@ -386,47 +386,42 @@ function OrganizationTab({ user, onUserUpdate }) {
 }
 
 // ─── Permissions Tab ──────────────────────────────────────────────────────────
-function PermissionsTab({ userId }) {
+// allPermissions: GET /api/users/permissions → [{ module, permissions: ["Users.Create",...] }]
+// userPermissions: user.permissions string[] (getUserById-dan gəlir)
+function PermissionsTab({ userId, userPermissions, onRefresh }) {
   const { showToast } = useToast();
-  const [modules, setModules]   = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [overrides, setOverrides] = useState({});
+  const [modules, setModules]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [overrides, setOverrides] = useState({}); // { [permName]: bool } — optimistic
 
   useEffect(() => {
     setLoading(true);
-    getUserPermissions(userId)
-      .then(data => {
-        // Gələn məlumat: [ { module, permissions: [{id, name, granted}] } ]
-        // ya da { modules: [...] }
-        const mods = Array.isArray(data) ? data : (data?.modules ?? []);
-        setModules(mods);
-      })
+    getAllPermissions()
+      .then(data => setModules(Array.isArray(data) ? data : []))
       .catch(() => setModules([]))
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, []);
 
-  const handleToggle = useCallback(async (permId, currentGranted) => {
-    setOverrides(prev => ({ ...prev, [permId]: !currentGranted }));
-    try {
-      await toggleUserPermission(userId, permId, !currentGranted);
-    } catch {
-      setOverrides(prev => ({ ...prev, [permId]: currentGranted }));
-    }
-  }, [userId]);
-
-  const handleReset = async () => {
-    try {
-      await resetUserPermissions(userId);
-      setOverrides({});
-      // Yenidən yüklə
-      const data = await getUserPermissions(userId);
-      const mods = Array.isArray(data) ? data : (data?.modules ?? []);
-      setModules(mods);
-      showToast("Permissions reset to role defaults", "success");
-    } catch (err) {
-      showToast(err.message || "Failed to reset permissions", "error");
-    }
+  const isGranted = (permName) => {
+    if (permName in overrides) return overrides[permName];
+    return (userPermissions ?? []).includes(permName);
   };
+
+  const handleToggle = useCallback(async (permName) => {
+    const current = isGranted(permName);
+    setOverrides(prev => ({ ...prev, [permName]: !current }));
+    try {
+      if (current) {
+        await removePermission(userId, permName);
+      } else {
+        await assignPermission(userId, permName);
+      }
+      onRefresh?.();
+    } catch {
+      setOverrides(prev => ({ ...prev, [permName]: current }));
+      showToast("Failed to update permission", "error");
+    }
+  }, [userId, userPermissions, overrides]);
 
   if (loading) {
     return (
@@ -449,20 +444,19 @@ function PermissionsTab({ userId }) {
   return (
     <div>
       {modules.map(mod => (
-        <div key={mod.module ?? mod.name} className="ud-card ud-perm-module">
-          <p className="ud-perm-module-title">{mod.module ?? mod.name}</p>
+        <div key={mod.module} className="ud-card ud-perm-module">
+          <p className="ud-perm-module-title">{mod.module}</p>
           <div className="ud-perm-grid">
-            {(mod.permissions ?? []).map(perm => {
-              const granted = overrides[perm.id] !== undefined ? overrides[perm.id] : perm.granted;
-              // permName: "Users.Create" → "Create"
-              const label = perm.name?.split(".")?.pop() ?? perm.name;
+            {(mod.permissions ?? []).map(permName => {
+              const granted = isGranted(permName);
+              const label = permName.split(".").pop();
               return (
-                <div key={perm.id ?? perm.name} className="ud-perm-item">
+                <div key={permName} className="ud-perm-item">
                   <span className="ud-perm-name">{label}</span>
                   <button
                     className={`ud-toggle ${granted ? "on" : "off"}`}
-                    onClick={() => handleToggle(perm.id, granted)}
-                    aria-label={`Toggle ${perm.name}`}
+                    onClick={() => handleToggle(permName)}
+                    aria-label={`Toggle ${permName}`}
                   >
                     <span className="ud-toggle-knob" />
                   </button>
@@ -472,11 +466,6 @@ function PermissionsTab({ userId }) {
           </div>
         </div>
       ))}
-      <div className="ud-perm-footer">
-        <button className="ud-perm-reset-btn" onClick={handleReset}>
-          Reset to Role Defaults
-        </button>
-      </div>
     </div>
   );
 }
@@ -661,7 +650,7 @@ function UserDetailPage({ userId }) {
 
         <div className="ud-hero-info">
           <div className="ud-hero-name">{name}</div>
-          {user.positionName && <div className="ud-hero-position">{user.positionName}</div>}
+          {user.position && <div className="ud-hero-position">{user.position}</div>}
           <div className="ud-hero-badges">
             <span className={`ud-badge role-${(user.role ?? "user").toLowerCase()}`}>
               {user.role ?? "User"}
@@ -720,7 +709,7 @@ function UserDetailPage({ userId }) {
         <OrganizationTab user={user} onUserUpdate={loadUser} />
       )}
       {activeTab === "permissions" && (
-        <PermissionsTab userId={userId} />
+        <PermissionsTab userId={userId} userPermissions={user.permissions ?? []} onRefresh={loadUser} />
       )}
       {activeTab === "security" && (
         <SecurityTab user={user} onUserUpdate={loadUser} />
