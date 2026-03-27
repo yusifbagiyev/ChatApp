@@ -891,7 +891,6 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
           {node.headOfDepartmentName && (
             <span className="hi-dept-head-sub">· {node.headOfDepartmentName}</span>
           )}
-          <span className="hi-dept-count">{node.userCount ?? 0}</span>
           <div className="hi-dept-actions" onClick={e => e.stopPropagation()}>
             <button className="hi-dept-add-btn hi-dept-add-btn--user"
               onClick={e => { e.stopPropagation(); setCreatePanel({ type: "user", deptId: node.id, deptName: node.name }); }}
