@@ -254,19 +254,32 @@ function CreateUserPanel({ isSuperAdmin, defaultDeptId = "", contextLabel = null
     getPositionsByDepartment(deptId).then(setPositions).catch(() => {});
   }, [deptId]);
 
+  // Backend Role enum integer dəyərləri
+  const ROLE_VALUES = { User: 0, Admin: 1, SuperAdmin: 2 };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
       showToast("First name, last name, email and password are required", "error");
       return;
     }
+    if (!deptId) {
+      showToast("Department is required", "error");
+      return;
+    }
+    if (password.length < 8)             { showToast("Password: minimum 8 characters", "error"); return; }
+    if (!/[A-Z]/.test(password))         { showToast("Password: must contain uppercase letter", "error"); return; }
+    if (!/[a-z]/.test(password))         { showToast("Password: must contain lowercase letter", "error"); return; }
+    if (!/[0-9]/.test(password))         { showToast("Password: must contain a number", "error"); return; }
+    if (!/[^a-zA-Z0-9]/.test(password))  { showToast("Password: must contain a special character", "error"); return; }
     setSaving(true);
     try {
       await createUser({
         firstName: firstName.trim(), lastName: lastName.trim(),
-        email: email.trim(), password, role,
-        ...(deptId ? { departmentId: deptId } : {}),
-        ...(posId  ? { positionId: posId }    : {}),
+        email: email.trim(), password,
+        role: ROLE_VALUES[role] ?? 0,
+        departmentId: deptId,
+        ...(posId ? { positionId: posId } : {}),
       });
       showToast("User created", "success");
       onSave();

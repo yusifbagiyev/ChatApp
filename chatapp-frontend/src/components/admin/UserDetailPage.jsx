@@ -592,7 +592,11 @@ function SecurityTab({ user, onUserUpdate }) {
     e.preventDefault();
     if (!newPwd.trim()) { setPwdError("Password is required"); return; }
     if (newPwd !== confirmPwd) { setPwdError("Passwords do not match"); return; }
-    if (newPwd.length < 6) { setPwdError("Minimum 6 characters"); return; }
+    if (newPwd.length < 8)          { setPwdError("Minimum 8 characters"); return; }
+    if (!/[A-Z]/.test(newPwd))      { setPwdError("Must contain at least one uppercase letter"); return; }
+    if (!/[a-z]/.test(newPwd))      { setPwdError("Must contain at least one lowercase letter"); return; }
+    if (!/[0-9]/.test(newPwd))      { setPwdError("Must contain at least one number"); return; }
+    if (!/[^a-zA-Z0-9]/.test(newPwd)) { setPwdError("Must contain at least one special character"); return; }
     setPwdSaving(true);
     setPwdError("");
     try {
