@@ -827,7 +827,6 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
         </div>
 
         {/* Badges */}
-        {data.isDepartmentHead && <span className="hi-head-badge">HEAD</span>}
         {data.role && (
           <span className={`hi-role-badge ${data.role.toLowerCase()}`}>{data.role}</span>
         )}
@@ -888,9 +887,6 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
             : <span className="hi-chevron-spacer" />}
           <span className="hi-dept-icon">🏗</span>
           <span className="hi-dept-name"><Highlight text={node.name} query={search} /></span>
-          {node.headOfDepartmentName && (
-            <span className="hi-dept-head-sub">· {node.headOfDepartmentName}</span>
-          )}
           <div className="hi-dept-actions" onClick={e => e.stopPropagation()}>
             <button className="hi-dept-add-btn hi-dept-add-btn--user"
               onClick={e => { e.stopPropagation(); setCreatePanel({ type: "user", deptId: node.id, deptName: node.name }); }}
