@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   getOrganizationHierarchy, getFileUrl,
   activateUser, deactivateUser, deleteUser,
   createUser, createDepartment, getDepartments, getPositionsByDepartment,
-  assignDepartmentHead, removeDepartmentHead, deleteDepartment, updateDepartment, getUsers,
+  assignDepartmentHead, removeDepartmentHead, deleteDepartment, updateDepartment, getUsers, searchUsers,
 } from "../../services/api";
 import { getInitials, getAvatarColor } from "../../utils/chatUtils";
 import { useToast } from "../../context/ToastContext";
@@ -179,6 +179,7 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
   const [headSearch, setHeadSearch]         = useState("");
   const [selectedHeadId, setSelectedHeadId] = useState(null);
   const [headSaving, setHeadSaving]         = useState(false);
+  const headDebounce                        = useRef(null);
 
   useEffect(() => {
     if (!node) return;
@@ -220,13 +221,23 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
     } finally { setSaving(false); }
   };
 
-  const openHead = () => {
-    setHeadSearch(""); setSelectedHeadId(null); setSubPanel("head");
+  // headSearch dəyişdikdə debounce ilə server-side axtarış — min 2 simvol
+  useEffect(() => {
+    if (subPanel !== "head") return;
+    const q = headSearch.trim();
+    if (q.length < 2) { setAllUsers([]); return; }
+    clearTimeout(headDebounce.current);
     setUsersLoading(true);
-    getUsers({ pageSize: 200 })
-      .then(d => setAllUsers(d?.items ?? (Array.isArray(d) ? d : [])))
-      .catch(() => setAllUsers([]))
-      .finally(() => setUsersLoading(false));
+    headDebounce.current = setTimeout(() => {
+      searchUsers(q)
+        .then(d => setAllUsers(d?.items ?? (Array.isArray(d) ? d : [])))
+        .catch(() => setAllUsers([]))
+        .finally(() => setUsersLoading(false));
+    }, 300);
+  }, [headSearch, subPanel]);
+
+  const openHead = () => {
+    setHeadSearch(""); setSelectedHeadId(null); setAllUsers([]); setSubPanel("head");
   };
 
   const handleAssignHead = async () => {
@@ -250,12 +261,6 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
     } finally { setHeadSaving(false); }
   };
 
-  const filteredUsers = headSearch.trim()
-    ? allUsers.filter(u => {
-        const n = u.fullName ?? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
-        return n.toLowerCase().includes(headSearch.toLowerCase()) || u.email?.toLowerCase().includes(headSearch.toLowerCase());
-      })
-    : allUsers;
 
   const parentOptions = allDepts.filter(d => d.id !== node.id);
 
@@ -437,10 +442,12 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
                 </div>
                 <div className="dm-user-pick-list">
                   {usersLoading ? (
-                    <div className="dm-empty">Loading users...</div>
-                  ) : filteredUsers.length === 0 ? (
+                    <div className="dm-empty">Loading...</div>
+                  ) : headSearch.trim().length < 2 ? (
+                    <div className="dm-empty">Type at least 2 characters to search</div>
+                  ) : allUsers.length === 0 ? (
                     <div className="dm-empty">No users found.</div>
-                  ) : filteredUsers.map(u => {
+                  ) : allUsers.map(u => {
                     const n = u.fullName ?? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
                     return (
                       <div key={u.id}

@@ -309,24 +309,23 @@ function DepartmentManagement() {
     closeDetailPanel();
   }, [closeDetailPanel]);
 
-  // headSearch dəyişdikdə debounce ilə axtarış et
+  // headSearch dəyişdikdə debounce ilə axtarış et — minimum 2 simvol tələb olunur
   useEffect(() => {
     if (panel !== "head") return;
+    const q = headSearch.trim();
+    if (q.length < 2) { setUsers([]); return; }
     clearTimeout(headSearchDebounce.current);
-    headSearchDebounce.current = setTimeout(
-      () => fetchHeadUsers(headSearch.trim()),
-      headSearch.trim().length >= 2 ? 300 : 0
-    );
+    headSearchDebounce.current = setTimeout(() => fetchHeadUsers(q), 300);
   }, [headSearch, panel, fetchHeadUsers]);
 
   const openHeadPanel = useCallback((dept) => {
     setActiveDept(dept);
     setHeadSearch("");
     setSelectedHeadId(null);
+    setUsers([]);
     setPanel("head");
     closeDetailPanel();
-    fetchHeadUsers("");
-  }, [closeDetailPanel, fetchHeadUsers]);
+  }, [closeDetailPanel]);
 
   const closePanel = useCallback(() => {
     setPanel(null);
@@ -618,7 +617,9 @@ function DepartmentManagement() {
                 </div>
                 <div className="dm-user-pick-list">
                   {usersLoading ? (
-                    <div className="dm-empty">Loading users...</div>
+                    <div className="dm-empty">Loading...</div>
+                  ) : headSearch.trim().length < 2 ? (
+                    <div className="dm-empty">Type at least 2 characters to search</div>
                   ) : users.length === 0 ? (
                     <div className="dm-empty">No users found.</div>
                   ) : (
