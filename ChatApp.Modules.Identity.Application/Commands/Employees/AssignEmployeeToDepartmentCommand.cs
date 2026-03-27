@@ -73,6 +73,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
 
                 user.Employee.AssignToDepartment(command.DepartmentId, command.HeadOfDepartmentId);
 
+                // Department dəyişdikdə position sıfırlanır — hər departmentin özünə uyğun positionları var
+                user.Employee.AssignToPosition(null);
+
                 // SupervisorId verilmişsə many-to-many cədvələ əlavə et
                 if (command.SupervisorId.HasValue)
                 {

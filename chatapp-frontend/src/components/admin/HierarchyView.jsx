@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  getOrganizationHierarchy, getCompanies, getFileUrl,
+  getOrganizationHierarchy, getFileUrl,
   activateUser, deactivateUser, deleteUser,
   createUser, createDepartment, getDepartments, getPositionsByDepartment,
   assignDepartmentHead, removeDepartmentHead, deleteDepartment, updateDepartment, getUsers,
@@ -683,22 +683,9 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
 
   const loadHierarchy = useCallback(() => {
     setLoading(true);
-    Promise.all([getOrganizationHierarchy(), getCompanies()])
-      .then(([hierarchy, companiesRes]) => {
-        const nodes = hierarchy ?? [];
-        // Company logoUrl-larını hierarchy-yə əlavə et
-        const logos = {};
-        (companiesRes?.items ?? companiesRes ?? []).forEach(c => {
-          if (c.logoUrl) logos[c.id] = c.logoUrl;
-        });
-        if (Object.keys(logos).length > 0) {
-          setTree(nodes.map(n => n.type === "Company" && logos[n.id]
-            ? { ...n, avatarUrl: logos[n.id] }
-            : n));
-        } else {
-          setTree(nodes);
-        }
-      })
+    // Logo hierarchy response-un içindədir (AvatarUrl: company.LogoUrl) — ayrıca getCompanies() lazım deyil
+    getOrganizationHierarchy()
+      .then(nodes => setTree(nodes ?? []))
       .finally(() => setLoading(false));
   }, []);
 

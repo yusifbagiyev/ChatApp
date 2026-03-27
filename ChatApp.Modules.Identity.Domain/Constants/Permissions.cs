@@ -35,12 +35,6 @@ namespace ChatApp.Modules.Identity.Domain.Constants
         public const string ChannelsRead = "Channels.Read";
         public const string ChannelsDelete = "Channels.Delete";
 
-        // Companies Module (SuperAdmin only)
-        public const string CompaniesCreate = "Companies.Create";
-        public const string CompaniesRead = "Companies.Read";
-        public const string CompaniesUpdate = "Companies.Update";
-        public const string CompaniesDelete = "Companies.Delete";
-
         /// <summary>
         /// Gets all available permissions in the system
         /// </summary>
@@ -55,8 +49,8 @@ namespace ChatApp.Modules.Identity.Domain.Constants
 
         /// <summary>
         /// 3 səviyyəli rol sisteminə uyğun default permissionlar.
-        /// SuperAdmin: bütün permissionlar (Companies.* daxil).
-        /// Admin: Companies.* xaric bütün permissionlar (öz şirkəti daxilində idarə edir).
+        /// SuperAdmin: rol əsasında idarə olunur, permission sistemindən kənardır.
+        /// Admin: öz şirkəti daxilində bütün permissionlar.
         /// User: əsas mesajlaşma/fayl/kanal permissionları.
         /// </summary>
         public static IEnumerable<string> GetDefaultForRole(Role role)

@@ -48,8 +48,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Employees
                 if (user.Employee.DepartmentId == null)
                     return Result.Failure("Employee is not assigned to any department");
 
-                // Remove from department
+                // Department silinəndə position da sıfırlanır
                 user.Employee.RemoveFromDepartment();
+                user.Employee.AssignToPosition(null);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
 
                 logger.LogInformation(

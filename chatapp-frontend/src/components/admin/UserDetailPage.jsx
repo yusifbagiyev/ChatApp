@@ -489,9 +489,6 @@ function OrganizationTab({ user, onUserUpdate }) {
   );
 }
 
-// CRUD əsas hüquqları — heç kimə verilə bilməz, siyahıda göstərilmir
-const HIDDEN_ACTIONS = new Set(["Create", "Update", "Read", "Delete"]);
-
 // ─── Permissions Tab ──────────────────────────────────────────────────────────
 // allPermissions: GET /api/users/permissions → [{ module, permissions: ["Users.Create",...] }]
 // userPermissions: user.permissions string[] (getUserById-dan gəlir)
@@ -551,9 +548,7 @@ function PermissionsTab({ userId, userPermissions }) {
   return (
     <div>
       {modules.map(mod => {
-        const visiblePerms = (mod.permissions ?? []).filter(
-          p => !HIDDEN_ACTIONS.has(p.split(".").pop())
-        );
+        const visiblePerms = mod.permissions ?? [];
         if (visiblePerms.length === 0) return null;
         return (
           <div key={mod.module} className="ud-card ud-perm-module">
