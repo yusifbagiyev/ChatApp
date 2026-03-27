@@ -220,7 +220,7 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
     setAvatarPreview(URL.createObjectURL(file));
     setAvatarUploading(true);
     try {
-      const result = await uploadDepartmentAvatar(file);
+      const result = await uploadDepartmentAvatar(file, node.companyId, node.id);
       setFormAvatarUrl(result.downloadUrl);
     } catch {
       setAvatarPreview(null);
@@ -302,61 +302,72 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
 
   return (
     <>
-      <div className="dm-detail-overlay" onClick={onClose} />
-      <div className={`dm-detail-panel${closing ? " closing" : ""}`}>
-        <div className="dm-detail-header">
-          <div>
-            <div className="dm-detail-title">{node.name}</div>
-            {parentDept && <div className="dm-detail-parent">↳ {parentDept.name}</div>}
+      <div className="hi-panel-backdrop" onClick={onClose} />
+      <div className={`hi-dept-detail-panel${closing ? " closing" : ""}`}>
+
+        <div className="hi-dept-detail-hero">
+          <button className="hi-detail-hero-close" onClick={onClose}>✕</button>
+          <div className="hi-dept-detail-avatar-wrap">
+            {node.avatarUrl ? (
+              <img src={getFileUrl(node.avatarUrl)} alt="" className="hi-dept-detail-avatar-img" />
+            ) : (
+              <div className="hi-dept-detail-avatar-icon">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2"/>
+                  <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+                </svg>
+              </div>
+            )}
           </div>
-          <button className="dm-detail-close" onClick={onClose}>✕</button>
+          <div className="hi-dept-detail-name">{node.name}</div>
+          {parentDept && <div className="hi-dept-detail-parent">↳ {parentDept.name}</div>}
         </div>
 
-        <div className="dm-detail-body">
-          <div className="dm-detail-section">
-            <p className="dm-detail-section-label">Head</p>
+        <div className="hi-dept-detail-body">
+          <div className="hi-detail-section">
+            <p className="hi-detail-section-label">Head of Department</p>
             {node.headOfDepartmentId ? (
-              <div className="dm-detail-head-row">
-                <div className="dm-detail-head-avatar" style={{ background: getAvatarColor(node.headOfDepartmentName ?? "") }}>
+              <div className="hi-detail-supervisor">
+                <div className="hi-dept-head-avatar" style={{ background: getAvatarColor(node.headOfDepartmentName ?? "") }}>
                   {getInitials(node.headOfDepartmentName ?? "")}
                 </div>
                 <span style={{ flex: 1, fontWeight: 500, fontSize: "13px" }}>{node.headOfDepartmentName}</span>
-                <button className="dm-change-head-btn" onClick={openHead}>Change</button>
+                <button className="hi-change-head-btn" onClick={openHead}>Change</button>
               </div>
             ) : (
-              <div className="dm-detail-head-row">
-                <span style={{ fontSize: "13px", color: "#9ca3af", flex: 1 }}>No head assigned</span>
-                <button className="dm-change-head-btn" onClick={openHead}>Assign</button>
+              <div className="hi-detail-supervisor">
+                <span style={{ flex: 1, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>No head assigned</span>
+                <button className="hi-change-head-btn" onClick={openHead}>Assign</button>
               </div>
             )}
           </div>
 
-          <div className="dm-detail-section">
-            <p className="dm-detail-section-label">Stats</p>
-            <div className="dm-detail-stats">
-              <div className="dm-detail-stat-card">
-                <div className="dm-detail-stat-num">{members.length}</div>
-                <div className="dm-detail-stat-label">Members</div>
+          <div className="hi-detail-section">
+            <p className="hi-detail-section-label">Overview</p>
+            <div className="hi-dept-stats">
+              <div className="hi-dept-stat-card">
+                <div className="hi-dept-stat-num">{members.length}</div>
+                <div className="hi-dept-stat-label">Members</div>
               </div>
-              <div className="dm-detail-stat-card">
-                <div className="dm-detail-stat-num">{subDeptCount}</div>
-                <div className="dm-detail-stat-label">Sub-depts</div>
+              <div className="hi-dept-stat-card">
+                <div className="hi-dept-stat-num">{subDeptCount}</div>
+                <div className="hi-dept-stat-label">Sub-depts</div>
               </div>
             </div>
           </div>
 
           {(membersLoading || members.length > 0) && (
-            <div className="dm-detail-section">
-              <p className="dm-detail-section-label">Members</p>
+            <div className="hi-detail-section">
+              <p className="hi-detail-section-label">Members</p>
               {membersLoading ? (
                 <div style={{ fontSize: "13px", color: "#9ca3af" }}>Loading...</div>
               ) : members.map(m => {
                 const mName = m.fullName ?? `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim();
                 return (
-                  <div key={m.id} className="dm-detail-member"
+                  <div key={m.id} className="hi-dept-member"
                     style={onOpenUser ? { cursor: "pointer" } : undefined}
                     onClick={() => onOpenUser?.(m.id, mName)}>
-                    <div className="dm-detail-member-avatar" style={{ background: getAvatarColor(mName) }}>
+                    <div className="hi-dept-member-avatar" style={{ background: getAvatarColor(mName) }}>
                       {getInitials(mName)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -365,7 +376,7 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
                         <div style={{ fontSize: "11px", color: "#6b7280" }}>{m.position ?? m.positionName}</div>
                       )}
                     </div>
-                    {m.id === node.headOfDepartmentId && <span className="dm-head-badge">HEAD</span>}
+                    {m.id === node.headOfDepartmentId && <span className="hi-head-badge">HEAD</span>}
                   </div>
                 );
               })}
@@ -373,9 +384,9 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
           )}
         </div>
 
-        <div className="dm-detail-footer">
-          <button className="dm-btn dm-btn-primary" onClick={openEdit}>Edit Department</button>
-          <button className="dm-btn-delete-outline" onClick={() => setDeleteConfirm(true)}>Delete</button>
+        <div className="hi-dept-detail-footer">
+          <button className="hi-btn-primary" onClick={openEdit}>Edit Department</button>
+          <button className="delete-btn" onClick={() => setDeleteConfirm(true)}>Delete</button>
         </div>
       </div>
 
@@ -1008,7 +1019,7 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
             {node.avatarUrl ? (
               <img src={getFileUrl(node.avatarUrl)} alt="" className="hi-dept-avatar-img" />
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="7" width="6" height="14" rx="1"/>
                 <rect x="9" y="3" width="6" height="18" rx="1"/>
                 <rect x="16" y="11" width="6" height="10" rx="1"/>

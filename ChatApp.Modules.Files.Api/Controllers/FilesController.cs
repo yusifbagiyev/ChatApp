@@ -202,16 +202,18 @@ namespace ChatApp.Modules.Files.Api.Controllers
         }
 
         /// <summary>
-        /// Upload department avatar (stored in company/{companyId}/departments/avatars/)
+        /// Upload department avatar (stored in company/{companyId}/departments/{departmentId}/)
         /// </summary>
-        [HttpPost("upload/department-avatar")]
+        [HttpPost("upload/department-avatar/{companyId:guid}")]
         [RequirePermission("Files.Upload")]
         [RequestSizeLimit(100 * 1024 * 1024)]
         [ProducesResponseType(typeof(FileUploadResult), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> UploadDepartmentAvatar(
+            [FromRoute] Guid companyId,
             [FromForm] UploadFileRequest request,
+            [FromQuery] Guid? departmentId,
             CancellationToken cancellationToken)
         {
             var currentUserId = GetCurrentUserId();
@@ -221,7 +223,7 @@ namespace ChatApp.Modules.Files.Api.Controllers
             if (!request.File.ContentType.StartsWith("image/"))
                 return BadRequest(new { error = "Only image files are allowed for department avatars" });
 
-            var (companyId, companySlug) = GetCompanyClaims();
+            var (_, companySlug) = GetCompanyClaims();
 
             var result = await _mediator.Send(
                 new UploadFileCommand(
@@ -229,7 +231,8 @@ namespace ChatApp.Modules.Files.Api.Controllers
                     currentUserId,
                     companyId,
                     companySlug,
-                    IsDepartmentAvatar: true),
+                    IsDepartmentAvatar: true,
+                    DepartmentId: departmentId),
                 cancellationToken);
 
             if (result.IsFailure)

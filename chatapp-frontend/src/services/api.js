@@ -419,11 +419,14 @@ function getAllPermissions() { return apiGet("/api/users/permissions"); }
 // ─── Files Storage API ────────────────────────────────────────────────────────
 function getUserStorageStats(userId) { return apiGet(`/api/files/storage/${userId}`); }
 
-// Department avatarı yükləyir — downloadUrl qaytarır
-async function uploadDepartmentAvatar(file) {
+// Department avatarı yükləyir — companyId mütləq, departmentId mövcud olduqda path-ə daxil edilir
+async function uploadDepartmentAvatar(file, companyId, departmentId = null) {
   const formData = new FormData();
   formData.append("file", file);
-  return apiUpload("/api/files/upload/department-avatar", formData);
+  const url = departmentId
+    ? `/api/files/upload/department-avatar/${companyId}?departmentId=${departmentId}`
+    : `/api/files/upload/department-avatar/${companyId}`;
+  return apiUpload(url, formData);
 }
 
 // ─── Organization Hierarchy API ───────────────────────────────────────────────

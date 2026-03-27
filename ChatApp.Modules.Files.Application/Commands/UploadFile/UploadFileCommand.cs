@@ -28,7 +28,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
         bool IsChannelAvatar = false,
         Guid? ChannelAvatarTargetId = null,
         bool IsCompanyAvatar = false,
-        bool IsDepartmentAvatar = false
+        bool IsDepartmentAvatar = false,
+        Guid? DepartmentId = null
     ) : IRequest<Result<FileUploadResult>>;
 
 
@@ -48,12 +49,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             RuleFor(x => x.UploadedBy)
                 .NotEmpty().WithMessage("Uploader ID is required");
 
-            // Department avatar SuperAdmin tərəfindən yüklənə bilər — companyId JWT-dan gəlmir
-            When(x => !x.IsDepartmentAvatar, () =>
-            {
-                RuleFor(x => x.CompanyId)
-                    .NotEmpty().WithMessage("Company ID is required");
-            });
+            RuleFor(x => x.CompanyId)
+                .NotEmpty().WithMessage("Company ID is required");
         }
     }
 
@@ -124,7 +121,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                     fileType,
                     request.ChannelId,
                     request.ConversationId,
-                    request.IsDepartmentAvatar);
+                    request.IsDepartmentAvatar,
+                    request.DepartmentId);
 
                 _logger?.LogInformation(
                     "Determined storage directory: {Directory} for file {FileName}",
@@ -296,7 +294,8 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             FileType fileType,
             Guid? channelId,
             Guid? conversationId,
-            bool isDepartmentAvatar = false)
+            bool isDepartmentAvatar = false,
+            Guid? departmentId = null)
         {
             var companySegment = $"company/{companyId}";
 
@@ -304,11 +303,11 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             if (isCompanyAvatar)
                 return $"{companySegment}/avatar";
 
-            // Department avatarı: company/{companyId}/departments/avatars/ (SuperAdmin üçün shared/)
+            // Department avatarı: company/{companyId}/departments/{departmentId}/ (və ya /departments/avatars/ yeni dept üçün)
             if (isDepartmentAvatar)
-                return companyId.HasValue
-                    ? $"{companySegment}/departments/avatars"
-                    : "shared/departments/avatars";
+                return departmentId.HasValue
+                    ? $"{companySegment}/departments/{departmentId}"
+                    : $"{companySegment}/departments/avatars";
 
             // İstifadəçi profil şəkli: company/{companyId}/users/{userId}/avatar/
             if (isProfilePicture)

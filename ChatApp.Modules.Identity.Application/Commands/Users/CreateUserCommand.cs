@@ -100,14 +100,16 @@ namespace ChatApp.Modules.Identity.Application.Commands.Users
                 if (await unitOfWork.Users.AnyAsync(u => u.Email == command.Email, cancellationToken))
                     return Result.Failure<Guid>("Email already exists");
 
-                // Department-in şirkətini tap — həm doğrulama, həm companyId üçün
-                var deptCompanyId = await unitOfWork.Departments
+                // Department-in şirkətini və avatarını tap — həm doğrulama, həm companyId, həm avatar üçün
+                var dept = await unitOfWork.Departments
                     .Where(d => d.Id == command.DepartmentId)
-                    .Select(d => (Guid?)d.CompanyId)
+                    .Select(d => new { d.CompanyId, d.AvatarUrl })
                     .FirstOrDefaultAsync(cancellationToken);
 
-                if (deptCompanyId == null)
+                if (dept == null)
                     return Result.Failure<Guid>("Department not found");
+
+                var deptCompanyId = (Guid?)dept.CompanyId;
 
                 // Admin: department öz şirkətinə aid olmalıdır
                 if (command.CallerCompanyId.HasValue && deptCompanyId != command.CallerCompanyId)
@@ -126,13 +128,16 @@ namespace ChatApp.Modules.Identity.Application.Commands.Users
 
                 var passwordHash = passwordHasher.Hash(command.Password);
 
+                // İstifadəçinin avatarı yoxdursa, department avatarını istifadə et
+                var avatarUrl = !string.IsNullOrEmpty(command.AvatarUrl) ? command.AvatarUrl : dept.AvatarUrl;
+
                 var user = new User(
                     command.FirstName,
                     command.LastName,
                     command.Email,
                     passwordHash,
                     command.Role,
-                    command.AvatarUrl,
+                    avatarUrl,
                     targetCompanyId);
 
                 await unitOfWork.Users.AddAsync(user, cancellationToken);

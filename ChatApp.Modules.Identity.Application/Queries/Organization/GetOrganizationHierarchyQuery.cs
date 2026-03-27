@@ -106,7 +106,8 @@ namespace ChatApp.Modules.Identity.Application.Queries.Organization
                     PositionName: null,
                     DepartmentId: null,
                     CreatedAtUtc: d.CreatedAtUtc,
-                    Children: new List<OrganizationHierarchyNodeDto>()
+                    Children: new List<OrganizationHierarchyNodeDto>(),
+                    CompanyId: d.CompanyId
                 )).ToList();
 
                 // Build user nodes

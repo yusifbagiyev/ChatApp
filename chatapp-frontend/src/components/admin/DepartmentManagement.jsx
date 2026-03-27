@@ -307,7 +307,9 @@ function DepartmentManagement() {
     setAvatarPreview(URL.createObjectURL(file));
     setAvatarUploading(true);
     try {
-      const result = await uploadDepartmentAvatar(file);
+      const companyId = activeDept?.companyId ?? depts[0]?.companyId;
+      const departmentId = activeDept?.id ?? null;
+      const result = await uploadDepartmentAvatar(file, companyId, departmentId);
       setFormAvatarUrl(result.downloadUrl);
     } catch {
       setAvatarPreview(null);
@@ -315,7 +317,7 @@ function DepartmentManagement() {
     } finally {
       setAvatarUploading(false);
     }
-  }, []);
+  }, [activeDept, depts]);
 
   const openCreatePanel = useCallback(() => {
     setFormName(""); setFormParentId(""); setFormError("");
