@@ -48,8 +48,12 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             RuleFor(x => x.UploadedBy)
                 .NotEmpty().WithMessage("Uploader ID is required");
 
-            RuleFor(x => x.CompanyId)
-                .NotEmpty().WithMessage("Company ID is required");
+            // Department avatar SuperAdmin tərəfindən yüklənə bilər — companyId JWT-dan gəlmir
+            When(x => !x.IsDepartmentAvatar, () =>
+            {
+                RuleFor(x => x.CompanyId)
+                    .NotEmpty().WithMessage("Company ID is required");
+            });
         }
     }
 
@@ -300,9 +304,11 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             if (isCompanyAvatar)
                 return $"{companySegment}/avatar";
 
-            // Department avatarı: company/{companyId}/departments/avatars/
+            // Department avatarı: company/{companyId}/departments/avatars/ (SuperAdmin üçün shared/)
             if (isDepartmentAvatar)
-                return $"{companySegment}/departments/avatars";
+                return companyId.HasValue
+                    ? $"{companySegment}/departments/avatars"
+                    : "shared/departments/avatars";
 
             // İstifadəçi profil şəkli: company/{companyId}/users/{userId}/avatar/
             if (isProfilePicture)
