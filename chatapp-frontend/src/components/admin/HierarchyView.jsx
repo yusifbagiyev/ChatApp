@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { getOrganizationHierarchy, getFileUrl } from "../../services/api";
+import {
+  getOrganizationHierarchy, getCompanies, getFileUrl,
+  activateUser, deactivateUser, deleteUser, getSupervisors,
+} from "../../services/api";
 import { getInitials, getAvatarColor } from "../../utils/chatUtils";
 import "./HierarchyView.css";
 
@@ -11,7 +14,7 @@ function Highlight({ text, query }) {
   return (
     <>
       {text.slice(0, i)}
-      <span className="hi-highlight">{text.slice(i, i + query.length)}</span>
+      <mark className="hi-highlight">{text.slice(i, i + query.length)}</mark>
       {text.slice(i + query.length)}
     </>
   );
@@ -27,6 +30,8 @@ function filterTree(nodes, query) {
   }, []);
 }
 
+const calcIndent = (level) => (level - 1) * 24 + 16;
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 function HierarchySkeleton() {
   return (
@@ -36,7 +41,7 @@ function HierarchySkeleton() {
           <div className="hi-skeleton-bar" style={{ width: "220px" }} />
           {[1, 2, 3].map(j => (
             <div key={j} className="hi-skeleton-bar"
-              style={{ width: `${180 - j * 20}px`, marginLeft: j * 12 + "px" }} />
+              style={{ width: `${180 - j * 20}px`, marginLeft: `${j * 12}px` }} />
           ))}
         </div>
       ))}
@@ -44,8 +49,203 @@ function HierarchySkeleton() {
   );
 }
 
-// level-ə görə indent (level 1 = 16px, hər level +24px)
-const calcIndent = (level) => (level - 1) * 24 + 16;
+// ─── UserDetailPanel ──────────────────────────────────────────────────────────
+function UserDetailPanel({ user, companyName, deptName, closing, onClose }) {
+  const [supervisors, setSupervisors] = useState([]);
+
+  useEffect(() => {
+    getSupervisors(user.id)
+      .then(d => setSupervisors(Array.isArray(d) ? d : (d?.supervisors ?? [])))
+      .catch(() => {});
+  }, [user.id]);
+
+  return (
+    <>
+      <div className="hi-panel-backdrop" onClick={onClose} />
+      <div className={`hi-user-detail-panel${closing ? " closing" : ""}`}>
+        <div className="hi-detail-hero">
+          <button className="hi-detail-hero-close" onClick={onClose}>✕</button>
+          <div className={`hi-detail-avatar-wrap${user.isActive ? " active" : ""}`}>
+            <div className="hi-detail-avatar"
+              style={{ background: user.avatarUrl ? "transparent" : getAvatarColor(user.name) }}>
+              {user.avatarUrl
+                ? <img src={getFileUrl(user.avatarUrl)} alt="" />
+                : getInitials(user.name)}
+            </div>
+          </div>
+          <div className="hi-detail-name">{user.name}</div>
+          {user.positionName && <div className="hi-detail-position">{user.positionName}</div>}
+          <span className={`hi-detail-role-badge ${(user.role ?? "User").toLowerCase()}`}>
+            {user.role ?? "User"}
+          </span>
+        </div>
+
+        <div className="hi-detail-body">
+          {user.email && (
+            <div className="hi-detail-section">
+              <p className="hi-detail-section-label">Contact</p>
+              <div className="hi-detail-info-row">
+                <svg className="hi-detail-info-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                {user.email}
+              </div>
+            </div>
+          )}
+
+          {(companyName || deptName) && (
+            <div className="hi-detail-section">
+              <p className="hi-detail-section-label">Organization</p>
+              {companyName && (
+                <div className="hi-detail-info-row">
+                  <svg className="hi-detail-info-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                  {companyName}
+                </div>
+              )}
+              {deptName && (
+                <div className="hi-detail-info-row">
+                  <svg className="hi-detail-info-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                  </svg>
+                  {deptName}
+                </div>
+              )}
+            </div>
+          )}
+
+          {supervisors.length > 0 && (
+            <div className="hi-detail-section">
+              <p className="hi-detail-section-label">Supervisors</p>
+              {supervisors.map((s, idx) => {
+                const name = s.fullName ?? s.name ?? "";
+                return (
+                  <div key={s.id ?? idx} className="hi-detail-supervisor">
+                    <div className="hi-avatar" style={{ background: getAvatarColor(name) }}>
+                      {s.avatarUrl
+                        ? <img src={getFileUrl(s.avatarUrl)} alt="" />
+                        : getInitials(name)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 500, fontSize: "13px" }}>{name}</div>
+                      {s.positionName && (
+                        <div style={{ fontSize: "11px", color: "var(--gray-400)" }}>{s.positionName}</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="hi-detail-footer">
+          <button className="hi-btn-primary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Edit User
+          </button>
+          <button className="hi-btn-ghost">Reset Password</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── DeptDetailPanel ──────────────────────────────────────────────────────────
+function DeptDetailPanel({ node, parentDeptName, closing, onClose }) {
+  const directUsers = node.children?.filter(n => n.type === "User") ?? [];
+  const subDepts    = node.children?.filter(n => n.type === "Department") ?? [];
+
+  return (
+    <>
+      <div className="hi-panel-backdrop" onClick={onClose} />
+      <div className={`hi-dept-detail-panel${closing ? " closing" : ""}`}>
+        <div className="hi-dept-detail-header">
+          <div>
+            <div className="hi-dept-detail-title">{node.name}</div>
+            {parentDeptName && (
+              <div style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "3px" }}>
+                ↳ {parentDeptName}
+              </div>
+            )}
+          </div>
+          <button className="hi-dept-detail-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="hi-dept-detail-body">
+          {node.headOfDepartmentName && (
+            <div className="hi-detail-section">
+              <p className="hi-detail-section-label">Head</p>
+              <div className="hi-detail-info-row">
+                <div className="hi-avatar"
+                  style={{ background: getAvatarColor(node.headOfDepartmentName) }}>
+                  {getInitials(node.headOfDepartmentName)}
+                </div>
+                <span style={{ fontWeight: 500, flex: 1 }}>{node.headOfDepartmentName}</span>
+                <button className="hi-change-head-btn">Change</button>
+              </div>
+            </div>
+          )}
+
+          <div className="hi-detail-section">
+            <p className="hi-detail-section-label">Stats</p>
+            <div className="hi-dept-stats">
+              <div className="hi-dept-stat-card">
+                <div className="hi-dept-stat-num">{directUsers.length}</div>
+                <div className="hi-dept-stat-label">Members</div>
+              </div>
+              <div className="hi-dept-stat-card">
+                <div className="hi-dept-stat-num">{subDepts.length}</div>
+                <div className="hi-dept-stat-label">Sub-depts</div>
+              </div>
+            </div>
+          </div>
+
+          {directUsers.length > 0 && (
+            <div className="hi-detail-section">
+              <p className="hi-detail-section-label">Members</p>
+              {directUsers.map(u => (
+                <div key={u.id} className="hi-dept-member">
+                  <div className="hi-avatar"
+                    style={{ background: u.avatarUrl ? "transparent" : getAvatarColor(u.name) }}>
+                    {u.avatarUrl
+                      ? <img src={getFileUrl(u.avatarUrl)} alt="" />
+                      : getInitials(u.name)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 500, fontSize: "13px" }}>{u.name}</div>
+                    {u.positionName && (
+                      <div style={{ fontSize: "11px", color: "var(--gray-400)" }}>{u.positionName}</div>
+                    )}
+                  </div>
+                  {u.isDepartmentHead && <span className="hi-head-badge">HEAD</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="hi-dept-detail-footer">
+          <button className="hi-btn-primary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Edit Department
+          </button>
+          <button className="delete-btn">Delete</button>
+        </div>
+      </div>
+    </>
+  );
+}
 
 // ─── HierarchyView ────────────────────────────────────────────────────────────
 function HierarchyView({ isSuperAdmin }) {
@@ -53,11 +253,32 @@ function HierarchyView({ isSuperAdmin }) {
   const [loading, setLoading]         = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch]           = useState("");
-  const [collapsed, setCollapsed]     = useState(new Set()); // boş = hamısı açıq
+  const [collapsed, setCollapsed]     = useState(new Set());
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [panel, setPanel]             = useState(null); // { type:"user"|"dept", data, extra }
+  const [panelClosing, setPanelClosing] = useState(false);
+  const [nodeOverrides, setNodeOverrides] = useState({}); // { [id]: partial overrides }
+  const [deletingIds, setDeletingIds] = useState(new Set());
+  const [deletedIds, setDeletedIds]   = useState(new Set());
 
   useEffect(() => {
-    getOrganizationHierarchy()
-      .then(data => setTree(data ?? []))
+    Promise.all([getOrganizationHierarchy(), getCompanies()])
+      .then(([hierarchy, companiesRes]) => {
+        const nodes = hierarchy ?? [];
+        // Company logoUrl-larını hierarchy-yə əlavə et
+        const logos = {};
+        (companiesRes?.items ?? companiesRes ?? []).forEach(c => {
+          if (c.logoUrl) logos[c.id] = c.logoUrl;
+        });
+        if (Object.keys(logos).length > 0) {
+          setTree(nodes.map(n => n.type === "Company" && logos[n.id]
+            ? { ...n, avatarUrl: logos[n.id] }
+            : n));
+        } else {
+          setTree(nodes);
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -75,36 +296,168 @@ function HierarchyView({ isSuperAdmin }) {
     });
   }, []);
 
-  // Axtarış aktiv olduqda hamısı açıq görünür
   const isExpanded = (id) => search ? true : !collapsed.has(id);
 
-  // ─── Node renderers ──────────────────────────────────────────────────────
-  const renderUserNode = (node) => (
-    <div
-      key={node.id}
-      className={`hi-user-row${node.isDepartmentHead ? " hi-user-row--head" : ""}`}
-      style={{ paddingLeft: calcIndent(node.level) }}
-    >
-      <div
-        className="hi-avatar"
-        style={{ background: node.avatarUrl ? "transparent" : getAvatarColor(node.name) }}
-      >
-        {node.avatarUrl
-          ? <img src={getFileUrl(node.avatarUrl)} alt="" />
-          : getInitials(node.name)}
-      </div>
-      <div className="hi-user-info">
-        <span className="hi-user-name"><Highlight text={node.name} query={search} /></span>
-        {node.positionName && <span className="hi-position">{node.positionName}</span>}
-      </div>
-      {node.isDepartmentHead && <span className="hi-head-badge">★ Head</span>}
-      {node.role && (
-        <span className={`hi-role-badge hi-role-badge--${node.role.toLowerCase()}`}>{node.role}</span>
-      )}
-    </div>
-  );
+  // ─── Panel ─────────────────────────────────────────────────────────────────
+  const openPanel = useCallback((type, data, extra = {}) => {
+    setPanel({ type, data, extra });
+    setPanelClosing(false);
+  }, []);
 
-  const renderDeptNode = (node) => {
+  const closePanel = useCallback(() => {
+    setPanelClosing(true);
+    setTimeout(() => { setPanel(null); setPanelClosing(false); }, 200);
+  }, []);
+
+  // ─── Partial Updates ───────────────────────────────────────────────────────
+  const handleToggle = useCallback(async (userId, currentIsActive) => {
+    setNodeOverrides(prev => ({ ...prev, [userId]: { ...prev[userId], isActive: !currentIsActive } }));
+    try {
+      currentIsActive ? await deactivateUser(userId) : await activateUser(userId);
+    } catch {
+      setNodeOverrides(prev => ({ ...prev, [userId]: { ...prev[userId], isActive: currentIsActive } }));
+    }
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async (userId) => {
+    setDeleteConfirm(null);
+    setDeletingIds(prev => new Set(prev).add(userId));
+    try {
+      await deleteUser(userId);
+      setTimeout(() => {
+        setDeletingIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
+        setDeletedIds(prev => new Set(prev).add(userId));
+      }, 320);
+    } catch {
+      setDeletingIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
+    }
+  }, []);
+
+  const getNodeData = (node) => {
+    const ov = nodeOverrides[node.id];
+    return ov ? { ...node, ...ov } : node;
+  };
+
+  // ─── User Row ──────────────────────────────────────────────────────────────
+  const renderUserRow = (node, companyName, deptName) => {
+    if (deletedIds.has(node.id)) return null;
+    const data = getNodeData(node);
+    const isDeleting  = deletingIds.has(node.id);
+    const isDeleteConf = deleteConfirm === node.id;
+    const isDropOpen  = openDropdown === node.id;
+
+    const rowClass = [
+      "hi-user-row",
+      data.isDepartmentHead ? "hi-user-row--head" : "",
+      !data.isActive        ? "hi-user-row--inactive" : "",
+      isDropOpen            ? "dropdown-open" : "",
+      isDeleting            ? "removing" : "",
+    ].filter(Boolean).join(" ");
+
+    if (isDeleteConf) {
+      return (
+        <div key={node.id} className="hi-user-row"
+          style={{ paddingLeft: `${calcIndent(node.level)}px` }}>
+          <div className="hi-delete-confirm">
+            <span className="hi-delete-label">Delete {data.name}?</span>
+            <button className="hi-delete-yes" onClick={() => handleDeleteConfirm(node.id)}>
+              Yes, delete
+            </button>
+            <button className="hi-delete-cancel" onClick={() => setDeleteConfirm(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div key={node.id} className={rowClass}
+        style={{ paddingLeft: `${calcIndent(node.level)}px` }}>
+        {/* Avatar */}
+        <div className="hi-avatar"
+          style={{ background: data.avatarUrl ? "transparent" : getAvatarColor(data.name) }}>
+          {data.avatarUrl
+            ? <img src={getFileUrl(data.avatarUrl)} alt="" />
+            : getInitials(data.name)}
+        </div>
+
+        {/* Info */}
+        <div className="hi-user-info">
+          <span className="hi-user-name"
+            onClick={() => openPanel("user", data, { companyName, deptName })}>
+            <Highlight text={data.name} query={search} />
+          </span>
+          {data.positionName && <span className="hi-user-position">{data.positionName}</span>}
+        </div>
+
+        {/* Badges */}
+        {data.isDepartmentHead && <span className="hi-head-badge">HEAD</span>}
+        {data.role && (
+          <span className={`hi-role-badge ${data.role.toLowerCase()}`}>{data.role}</span>
+        )}
+
+        {/* Actions toolbar */}
+        <div className="hi-actions">
+          {/* Edit */}
+          <button className="hi-action-btn edit" title="Edit user"
+            onClick={() => openPanel("user", data, { companyName, deptName })}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+
+          {/* Toggle active */}
+          <button
+            className={`hi-action-btn toggle ${data.isActive ? "is-active" : "is-inactive"}`}
+            title={data.isActive ? "Deactivate" : "Activate"}
+            onClick={() => handleToggle(node.id, data.isActive)}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+              <line x1="12" y1="2" x2="12" y2="12"/>
+            </svg>
+          </button>
+
+          {/* ••• Dropdown */}
+          <div className="hi-dropdown-wrap">
+            <button className="hi-action-btn more" title="More actions"
+              onClick={(e) => { e.stopPropagation(); setOpenDropdown(isDropOpen ? null : node.id); }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="1.5"/>
+                <circle cx="12" cy="12" r="1.5"/>
+                <circle cx="12" cy="19" r="1.5"/>
+              </svg>
+            </button>
+            {isDropOpen && (
+              <div className="hi-action-dropdown">
+                <button className="hi-dropdown-item"
+                  onClick={() => { setOpenDropdown(null); openPanel("user", data, { companyName, deptName }); }}>
+                  ✏ Edit
+                </button>
+                <button className="hi-dropdown-item"
+                  onClick={() => setOpenDropdown(null)}>
+                  🔑 Reset Password
+                </button>
+                <button className="hi-dropdown-item"
+                  onClick={() => { setOpenDropdown(null); handleToggle(node.id, data.isActive); }}>
+                  {data.isActive ? "✗ Deactivate" : "✓ Activate"}
+                </button>
+                <div className="hi-dropdown-divider" />
+                <button className="hi-dropdown-item danger"
+                  onClick={() => { setOpenDropdown(null); setDeleteConfirm(node.id); }}>
+                  🗑 Delete
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Dept Node ─────────────────────────────────────────────────────────────
+  const renderDeptNode = (node, companyName, parentDeptName = null) => {
     const expanded  = isExpanded(node.id);
     const subDepts  = node.children?.filter(n => n.type === "Department") ?? [];
     const deptUsers = node.children?.filter(n => n.type === "User") ?? [];
@@ -113,60 +466,64 @@ function HierarchyView({ isSuperAdmin }) {
     return (
       <div key={node.id}>
         <div
-          className="hi-dept-header"
-          style={{ paddingLeft: calcIndent(node.level) }}
+          className="hi-dept-node"
+          style={{ paddingLeft: `${calcIndent(node.level)}px`, cursor: hasAny ? "pointer" : "default" }}
           onClick={() => hasAny && toggle(node.id)}
-          style={{ paddingLeft: calcIndent(node.level), cursor: hasAny ? "pointer" : "default" }}
         >
           {hasAny
             ? <span className={`hi-chevron${expanded ? " hi-chevron--open" : ""}`}>▶</span>
-            : <span className="hi-chevron-spacer" />
-          }
-          <svg className="hi-dept-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          </svg>
+            : <span className="hi-chevron-spacer" />}
+          <span className="hi-dept-icon">🏗</span>
           <span className="hi-dept-name"><Highlight text={node.name} query={search} /></span>
           {node.headOfDepartmentName && (
-            <span className="hi-dept-head-hint">· {node.headOfDepartmentName}</span>
+            <span className="hi-dept-head-sub">· {node.headOfDepartmentName}</span>
           )}
-          <span className="hi-count-badge">{node.userCount ?? 0} users</span>
+          <span className="hi-dept-count">{node.userCount ?? 0}</span>
+          <button className="hi-dept-detail-btn" title="View department details"
+            onClick={(e) => { e.stopPropagation(); openPanel("dept", node, { parentDeptName }); }}>
+            ›
+          </button>
         </div>
         {expanded && hasAny && (
           <>
-            {subDepts.map(renderDeptNode)}
-            {deptUsers.map(renderUserNode)}
+            {subDepts.map(d => renderDeptNode(d, companyName, node.name))}
+            {deptUsers.map(u => renderUserRow(u, companyName, node.name))}
           </>
         )}
       </div>
     );
   };
 
+  // ─── Company Node ──────────────────────────────────────────────────────────
   const renderCompanyNode = (node) => {
-    const expanded   = isExpanded(node.id);
-    const depts      = node.children?.filter(n => n.type === "Department") ?? [];
+    const expanded    = isExpanded(node.id);
+    const depts       = node.children?.filter(n => n.type === "Department") ?? [];
     const noDeptUsers = node.children?.filter(n => n.type === "User") ?? [];
-    const hasAny     = depts.length + noDeptUsers.length > 0;
 
     return (
-      <div key={node.id} className="hi-company-node">
+      <div key={node.id} className={`hi-company-node${expanded ? " hi-expanded" : ""}`}>
         <div className="hi-company-header" onClick={() => toggle(node.id)}>
           <span className={`hi-chevron${expanded ? " hi-chevron--open" : ""}`}>▶</span>
-          <div className="hi-company-logo" style={{ background: getAvatarColor(node.name) }}>
+          <div className="hi-company-logo"
+            style={{ background: node.avatarUrl ? "transparent" : getAvatarColor(node.name) }}>
             {node.avatarUrl
               ? <img src={getFileUrl(node.avatarUrl)} alt="" />
               : getInitials(node.name)}
           </div>
           <span className="hi-company-name"><Highlight text={node.name} query={search} /></span>
-          <span className="hi-count-badge">{node.userCount ?? 0} users</span>
+          {node.headOfDepartmentName && (
+            <span className="hi-company-head">Head: {node.headOfDepartmentName}</span>
+          )}
+          <span className="hi-company-count">{node.userCount ?? 0} users</span>
         </div>
-        {expanded && hasAny && (
-          <div className="hi-children">
-            {depts.map(renderDeptNode)}
+        {expanded && (depts.length > 0 || noDeptUsers.length > 0) && (
+          <div className="hi-company-children">
+            {depts.map(d => renderDeptNode(d, node.name, null))}
             {noDeptUsers.length > 0 && (
-              <div className="hi-no-dept-section">
-                <div className="hi-no-dept-label">(No department)</div>
-                {noDeptUsers.map(renderUserNode)}
-              </div>
+              <>
+                <div className="hi-no-dept-header">(No department)</div>
+                {noDeptUsers.map(u => renderUserRow(u, node.name, null))}
+              </>
             )}
           </div>
         )}
@@ -174,10 +531,10 @@ function HierarchyView({ isSuperAdmin }) {
     );
   };
 
-  // ─── Data prep ───────────────────────────────────────────────────────────
+  // ─── Content ───────────────────────────────────────────────────────────────
   const adminCompany = !isSuperAdmin ? (tree[0] ?? null) : null;
-
   let content;
+
   if (loading) {
     content = <HierarchySkeleton />;
   } else if (isSuperAdmin) {
@@ -186,30 +543,24 @@ function HierarchyView({ isSuperAdmin }) {
       ? <div className="hi-empty">No users found.</div>
       : visible.map(renderCompanyNode);
   } else {
-    // Admin: company layer keçilir
     const allDepts    = adminCompany?.children?.filter(n => n.type === "Department") ?? [];
     const noDeptUsers = adminCompany?.children?.filter(n => n.type === "User") ?? [];
-
-    const visibleDepts    = search ? filterTree(allDepts, search) : allDepts;
-    const visibleNoDept   = search
+    const visDepts    = search ? filterTree(allDepts, search) : allDepts;
+    const visNoDept   = search
       ? noDeptUsers.filter(u => u.name?.toLowerCase().includes(search))
       : noDeptUsers;
 
-    if (visibleDepts.length === 0 && visibleNoDept.length === 0) {
-      content = (
-        <div className="hi-empty">
-          {search ? "No users found." : "No departments found."}
-        </div>
-      );
+    if (visDepts.length === 0 && visNoDept.length === 0) {
+      content = <div className="hi-empty">{search ? "No users found." : "No departments found."}</div>;
     } else {
       content = (
         <>
-          {visibleDepts.map(renderDeptNode)}
-          {visibleNoDept.length > 0 && (
-            <div className="hi-no-dept-section">
-              <div className="hi-no-dept-label">(No department)</div>
-              {visibleNoDept.map(renderUserNode)}
-            </div>
+          {visDepts.map(d => renderDeptNode(d, adminCompany?.name, null))}
+          {visNoDept.length > 0 && (
+            <>
+              <div className="hi-no-dept-header">(No department)</div>
+              {visNoDept.map(u => renderUserRow(u, adminCompany?.name, null))}
+            </>
           )}
         </>
       );
@@ -218,12 +569,16 @@ function HierarchyView({ isSuperAdmin }) {
 
   return (
     <div className="hi-root">
+      {/* Dropdown backdrop */}
+      {openDropdown && (
+        <div className="hi-dropdown-backdrop" onClick={() => setOpenDropdown(null)} />
+      )}
+
+      {/* Toolbar */}
       <div className="hi-toolbar">
         <div className="hi-title-wrap">
           <h2 className="hi-title">
-            {isSuperAdmin
-              ? "Users"
-              : `Users${adminCompany ? ` — ${adminCompany.name}` : ""}`}
+            {isSuperAdmin ? "Users" : `Users${adminCompany ? ` — ${adminCompany.name}` : ""}`}
           </h2>
           {!isSuperAdmin && adminCompany && (
             <span className="hi-count-badge">{adminCompany.userCount ?? 0}</span>
@@ -234,14 +589,36 @@ function HierarchyView({ isSuperAdmin }) {
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input
-            className="hi-search"
-            placeholder="Search users or departments..."
+            className="hi-search-input"
+            placeholder="Search users, departments..."
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
           />
+          <span className="hi-search-shortcut">⌘K</span>
         </div>
       </div>
+
+      {/* Tree */}
       <div className="hi-tree">{content}</div>
+
+      {/* Panels */}
+      {panel?.type === "user" && (
+        <UserDetailPanel
+          user={panel.data}
+          companyName={panel.extra.companyName}
+          deptName={panel.extra.deptName}
+          closing={panelClosing}
+          onClose={closePanel}
+        />
+      )}
+      {panel?.type === "dept" && (
+        <DeptDetailPanel
+          node={panel.data}
+          parentDeptName={panel.extra.parentDeptName}
+          closing={panelClosing}
+          onClose={closePanel}
+        />
+      )}
     </div>
   );
 }

@@ -44,6 +44,7 @@ Design Bitrix24-style UI/UX for ChatApp's remaining features (Channels, Notifica
 | User Research | `skills/USER_RESEARCH.md` | Usability, User satisfaction |
 | Wireframing | `skills/WIREFRAMING.md` | Design consistency, Design handoff quality |
 | Interaction Design | `skills/INTERACTION_DESIGN.md` | Usability, Design consistency |
+| CSS Spec Precision | `skills/CSS_SPEC_PRECISION.md` | Handoff quality — texniki CSS məhdudiyyətlər, anti-AI animasiyalar, frontend pattern-ləri |
 
 ## Required Reading (Before Every Cycle)
 

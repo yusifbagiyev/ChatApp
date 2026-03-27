@@ -204,7 +204,7 @@ namespace ChatApp.Modules.Identity.Application.Queries.Organization
                     Email: null,
                     Role: null,
                     IsActive: true,
-                    AvatarUrl: null,
+                    AvatarUrl: company.LogoUrl,
                     PositionName: null,
                     DepartmentId: null,
                     CreatedAtUtc: company.CreatedAtUtc,

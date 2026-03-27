@@ -392,6 +392,7 @@ function getUsers(params = {}) {
   const query = new URLSearchParams(params).toString();
   return apiGet(`/api/users${query ? `?${query}` : ""}`);
 }
+function getUserById(userId) { return apiGet(`/api/users/${userId}`); }
 function createUser(data) { return apiPost("/api/users", data); }
 function updateUser(userId, data) { return apiPut(`/api/users/${userId}`, data); }
 function deleteUser(userId) { return apiDelete(`/api/users/${userId}`); }
@@ -419,4 +420,4 @@ function updatePosition(id, data) { return apiPut(`/api/identity/positions/${id}
 function deletePosition(id) { return apiDelete(`/api/identity/positions/${id}`); }
 
 // Named exports — başqa fayllar bunları import edə bilsin
-export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, getUserProfile, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, activateUser, deactivateUser, assignEmployeeToDepartment, scheduleRefresh, stopRefreshTimer, resetSessionExpired, getCompanies, getCompany, createCompany, updateCompany, deleteCompany, setCompanyStatus, assignCompanyAdmin, getUsers, createUser, updateUser, deleteUser, getSupervisors, addSupervisor, removeSupervisor, createDepartment, updateDepartment, deleteDepartment, assignDepartmentHead, removeDepartmentHead, getAllPositions, createPosition, updatePosition, deletePosition, getOrganizationHierarchy };
+export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, getUserProfile, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, activateUser, deactivateUser, assignEmployeeToDepartment, scheduleRefresh, stopRefreshTimer, resetSessionExpired, getCompanies, getCompany, createCompany, updateCompany, deleteCompany, setCompanyStatus, assignCompanyAdmin, getUsers, getUserById, createUser, updateUser, deleteUser, getSupervisors, addSupervisor, removeSupervisor, createDepartment, updateDepartment, deleteDepartment, assignDepartmentHead, removeDepartmentHead, getAllPositions, createPosition, updatePosition, deletePosition, getOrganizationHierarchy };
