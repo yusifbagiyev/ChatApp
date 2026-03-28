@@ -27,6 +27,7 @@ namespace ChatApp.Modules.Identity.Application.Queries.Departments
                         && (query.IsSuperAdmin || d.CompanyId == query.CallerCompanyId))
                     .Select(d => new DepartmentDto(
                         d.Id,
+                        d.CompanyId,
                         d.Name,
                         d.ParentDepartmentId,
                         d.ParentDepartment != null ? d.ParentDepartment.Name : null,
