@@ -77,15 +77,15 @@ namespace ChatApp.Modules.Files.Application.Commands.DeleteFile
                 await _unitOfWork.Files.UpdateAsync(file, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-                // Delete physical file from storage
-                //try
-                //{
-                //    await _fileStorageService.DeleteFileAsync(file.StoragePath, cancellationToken);
-                //}
-                //catch (Exception ex)
-                //{
-                //    _logger?.LogWarning(ex, "Failed to delete physical file {StoragePath}", file.StoragePath);
-                //}
+                // Fiziki faylı diskdən sil
+                try
+                {
+                    await _fileStorageService.DeleteFileAsync(file.StoragePath, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to delete physical file {StoragePath}", file.StoragePath);
+                }
 
                 // Publish domain event
                 await _eventBus.PublishAsync(

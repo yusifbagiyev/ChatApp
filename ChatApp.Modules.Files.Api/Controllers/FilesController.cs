@@ -91,8 +91,8 @@ namespace ChatApp.Modules.Files.Api.Controllers
         /// Admins can specify targetUserId to upload for other users
         /// </summary>
         [HttpPost("upload/profile-picture")]
-        [RequirePermission("Files.Upload")]
-        [RequestSizeLimit(100 * 1024 * 1024)] // 100 MB for profile pictures
+        [RequirePermission("Avatar.Upload")]
+        [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB for profile pictures
         [ProducesResponseType(typeof(FileUploadResult), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -100,33 +100,30 @@ namespace ChatApp.Modules.Files.Api.Controllers
         public async Task<IActionResult> UploadProfilePicture(
             [FromForm] UploadFileRequest request,
             [FromQuery] Guid? targetUserId,
+            [FromQuery] string? currentAvatarUrl,
             CancellationToken cancellationToken)
         {
             var currentUserId = GetCurrentUserId();
             if (currentUserId == Guid.Empty)
                 return Unauthorized();
 
-            // Validate it's an image
             if (!request.File.ContentType.StartsWith("image/"))
-            {
                 return BadRequest(new { error = "Only image files are allowed for profile pictures" });
-            }
 
-            // Determine which user's folder to use
             var uploadForUserId = targetUserId ?? currentUserId;
 
-            // If uploading for another user, verify admin permission
             if (targetUserId.HasValue && targetUserId.Value != currentUserId)
             {
-                // Yalnız Admin/SuperAdmin başqa istifadəçilər üçün yükləyə bilər
                 var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
                 var isAdmin = roleClaim == "Admin" || roleClaim == "SuperAdmin";
 
                 if (!isAdmin)
-                {
                     return StatusCode(StatusCodes.Status403Forbidden, new { Error = "Only administrators can upload avatars for other users" });
-                }
             }
+
+            // Köhnə avatar faylını sil
+            if (!string.IsNullOrEmpty(currentAvatarUrl))
+                await CleanupOldAvatarFileAsync(currentAvatarUrl, cancellationToken);
 
             var (companyId, companySlug) = GetCompanyClaims();
 
@@ -205,8 +202,8 @@ namespace ChatApp.Modules.Files.Api.Controllers
         /// Upload department avatar (stored in company/{companyId}/departments/{departmentId}/)
         /// </summary>
         [HttpPost("upload/department-avatar/{companyId:guid}")]
-        [RequirePermission("Files.Upload")]
-        [RequestSizeLimit(100 * 1024 * 1024)]
+        [RequirePermission("Avatar.Upload")]
+        [RequestSizeLimit(10 * 1024 * 1024)]
         [ProducesResponseType(typeof(FileUploadResult), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -214,6 +211,7 @@ namespace ChatApp.Modules.Files.Api.Controllers
             [FromRoute] Guid companyId,
             [FromForm] UploadFileRequest request,
             [FromQuery] Guid? departmentId,
+            [FromQuery] string? currentAvatarUrl,
             CancellationToken cancellationToken)
         {
             var currentUserId = GetCurrentUserId();
@@ -222,6 +220,10 @@ namespace ChatApp.Modules.Files.Api.Controllers
 
             if (!request.File.ContentType.StartsWith("image/"))
                 return BadRequest(new { error = "Only image files are allowed for department avatars" });
+
+            // Köhnə department avatar faylını sil
+            if (!string.IsNullOrEmpty(currentAvatarUrl))
+                await CleanupOldAvatarFileAsync(currentAvatarUrl, cancellationToken);
 
             var (_, companySlug) = GetCompanyClaims();
 
@@ -541,6 +543,36 @@ namespace ChatApp.Modules.Files.Api.Controllers
                 return NoContent();
 
             return Ok(preview);
+        }
+
+        /// <summary>
+        /// Köhnə avatar faylını silir (disk + DB soft delete).
+        /// URL-dən filename extract edilir, FileMetadata tapılır, fiziki fayl silinir.
+        /// Uğursuz olsa upload-u bloklamır.
+        /// </summary>
+        private async Task CleanupOldAvatarFileAsync(string avatarUrl, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var fileName = avatarUrl.Split('/').Last();
+                if (string.IsNullOrEmpty(fileName)) return;
+
+                var fileMetadata = await _unitOfWork.Files.GetActiveByFileNameAsync(fileName, cancellationToken);
+                if (fileMetadata is null) return;
+
+                // Soft delete (DB)
+                fileMetadata.Delete("avatar-cleanup");
+                await _unitOfWork.Files.UpdateAsync(fileMetadata, cancellationToken);
+
+                // Fiziki fayl sil (disk)
+                await _fileStorageService.DeleteFileAsync(fileMetadata.StoragePath, cancellationToken);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to cleanup old avatar file: {AvatarUrl}", avatarUrl);
+            }
         }
     }
 

@@ -191,5 +191,12 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
 
             return (result.TotalBytes, result.FileCount, result.ImageCount, result.DocumentCount, result.OtherCount);
         }
+
+        public async Task<FileMetadata?> GetActiveByFileNameAsync(
+            string fileName, CancellationToken cancellationToken = default)
+        {
+            return await _context.FileMetadata
+                .FirstOrDefaultAsync(f => f.FileName == fileName && !f.IsDeleted, cancellationToken);
+        }
     }
 }

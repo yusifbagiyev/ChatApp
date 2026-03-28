@@ -33,5 +33,11 @@ namespace ChatApp.Modules.Files.Application.Interfaces
 
         Task<(long TotalBytes, int FileCount, int ImageCount, int DocumentCount, int OtherCount)>
             GetStorageStatsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Finds active (non-deleted) file by its unique file name.
+        /// Used for avatar cleanup — URL-dən filename extract edilib axtarılır.
+        /// </summary>
+        Task<FileMetadata?> GetActiveByFileNameAsync(string fileName, CancellationToken cancellationToken = default);
     }
 }

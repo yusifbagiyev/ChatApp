@@ -30,6 +30,9 @@ namespace ChatApp.Modules.Identity.Domain.Constants
         public const string FilesDownload = "Files.Download";
         public const string FilesDelete = "Files.Delete";
 
+        // Avatar Module
+        public const string AvatarUpload = "Avatar.Upload";
+
         // Channels Module
         public const string ChannelsCreate = "Channels.Create";
         public const string ChannelsRead = "Channels.Read";
@@ -78,6 +81,8 @@ namespace ChatApp.Modules.Identity.Domain.Constants
                     FilesUpload,
                     FilesDownload,
                     FilesDelete,
+                    // Avatar permission
+                    AvatarUpload,
                     // Channel permissions
                     ChannelsCreate,
                     ChannelsRead,
@@ -93,6 +98,7 @@ namespace ChatApp.Modules.Identity.Domain.Constants
                     FilesUpload,
                     FilesDelete,
                     FilesDownload,
+                    AvatarUpload,
                     ChannelsCreate,
                     ChannelsRead
                 ],

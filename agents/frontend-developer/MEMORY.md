@@ -20,6 +20,14 @@
 - `skills/PERFORMANCE_GUIDE.md` — Memory leaks, React re-renders, CSS performance, N+1 patterns, bundle optimization
 - Use when: reviewing components, catching performance issues, ensuring UI doesn't look AI-generated
 
+## ⛔ Kritik Qaydalar — Pozulması Qəbuledilməzdir
+
+### Tapşırıq tamamlanmadan "bitdi" demə
+- **İnsident (2026-03-28):** `file-upload-permission-frontend.md` tapşırığı verildi — `hasPermission` helper yaradılmalı, avatar upload UI-ları permission-a bağlanmalıydı. **HEÇ BİRİ EDİLMƏDİ**, tapşırıq tamamilə ignore edildi.
+- **Qayda:** Hər tapşırığın hər bəndini oxu, hər bəndini implementasiya et. Tamamlanmamış tapşırığı tamamlanmış kimi qeyd etmə.
+- **Yoxlama:** Bitirdikdən sonra hər faylı aç, dəyişikliyin orada olduğunu təsdiqlə. `grep` ilə yoxla.
+- **Bu bir daha təkrarlanmamalıdır.**
+
 ## What Doesn't Work
 <!-- Anti-patterns to avoid with evidence -->
 
