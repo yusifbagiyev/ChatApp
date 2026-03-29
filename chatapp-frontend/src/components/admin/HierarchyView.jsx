@@ -614,7 +614,7 @@ function CreateDeptPanel({ preloadedDepts = null, companyId = null, defaultParen
     setAvatarPreview(URL.createObjectURL(file));
     setAvatarUploading(true);
     try {
-      const result = await uploadDepartmentAvatar(file, companyId);
+      const result = await uploadDepartmentAvatar(file, companyId, null, null);
       setAvatarUrl(result.downloadUrl);
     } catch {
       setAvatarPreview(null);
@@ -698,6 +698,10 @@ function CreateDeptPanel({ preloadedDepts = null, companyId = null, defaultParen
 
 // ─── HierarchyView ────────────────────────────────────────────────────────────
 function HierarchyView({ isSuperAdmin, onOpenUser }) {
+  const { hasPermission } = useAuth();
+  const canCreateUser = hasPermission("Users.Create");
+  const canUpdateUser = hasPermission("Users.Update");
+  const canDeleteUser = hasPermission("Users.Delete");
   const [tree, setTree]               = useState([]);
   const [loading, setLoading]         = useState(true);
   const [searchInput, setSearchInput] = useState("");
@@ -902,8 +906,8 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
 
         {/* Actions toolbar */}
         <div className="hi-actions">
-          {/* Toggle active/inactive */}
-          <button
+          {/* Toggle active/inactive — Users.Update */}
+          {canUpdateUser && <button
             className={`hi-action-btn toggle ${data.isActive ? "is-active" : "is-inactive"}`}
             title={data.isActive ? "Deactivate" : "Activate"}
             onClick={(e) => { e.stopPropagation(); handleToggle(node.id, data.isActive); }}>
@@ -911,10 +915,10 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
               <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
               <line x1="12" y1="2" x2="12" y2="12"/>
             </svg>
-          </button>
+          </button>}
 
-          {/* Delete */}
-          <button className="hi-action-btn delete" title="Delete user"
+          {/* Delete — Users.Delete */}
+          {canDeleteUser && <button className="hi-action-btn delete" title="Delete user"
             onClick={(e) => { e.stopPropagation(); setDeleteConfirm(node.id); }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6"/>
@@ -922,7 +926,7 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
               <path d="M10 11v6M14 11v6"/>
               <path d="M9 6V4h6v2"/>
             </svg>
-          </button>
+          </button>}
 
           {/* Open detail → */}
           <button className="hi-action-btn arrow" title="View details"
@@ -971,7 +975,7 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
           </span>
           <span className="hi-dept-name"><Highlight text={node.name} query={search} /></span>
           <div className="hi-dept-actions" onClick={e => e.stopPropagation()}>
-            <button className="hi-dept-add-btn hi-dept-add-btn--user"
+            {canCreateUser && <button className="hi-dept-add-btn hi-dept-add-btn--user"
               onClick={e => { e.stopPropagation(); setCreatePanel({ type: "user", companyId, deptId: node.id, deptName: node.name }); }}
               title="New User">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -980,7 +984,7 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
                 <line x1="19" y1="8" x2="19" y2="14"/>
                 <line x1="16" y1="11" x2="22" y2="11"/>
               </svg>
-            </button>
+            </button>}
             <button className="hi-dept-add-btn hi-dept-add-btn--dept"
               onClick={e => { e.stopPropagation(); setCreatePanel({ type: "dept", companyId, parentId: node.id, parentName: node.name }); }}
               title="New Sub-department">
@@ -1037,8 +1041,8 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
             <span className="hi-company-online">{onlineUsers} online</span>
           )}
           <div className="hi-company-actions" onClick={e => e.stopPropagation()}>
-            {/* New User */}
-            <button className="hi-company-add-btn"
+            {/* New User — Users.Create */}
+            {canCreateUser && <button className="hi-company-add-btn"
               onClick={e => { e.stopPropagation(); setCreatePanel({ type: "user", companyId: node.id, deptName: node.name }); }}
               title="New User">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1047,7 +1051,7 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
                 <line x1="19" y1="8" x2="19" y2="14"/>
                 <line x1="16" y1="11" x2="22" y2="11"/>
               </svg>
-            </button>
+            </button>}
             {/* New Department */}
             <button className="hi-company-add-btn hi-company-add-btn--dept"
               onClick={e => { e.stopPropagation(); setCreatePanel({ type: "dept", companyId: node.id }); }}

@@ -4,6 +4,7 @@ using ChatApp.Shared.Kernel.Common;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ChatApp.Shared.Kernel.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace ChatApp.Modules.Identity.Application.Commands.Users
@@ -30,6 +31,7 @@ namespace ChatApp.Modules.Identity.Application.Commands.Users
 
     public class RemovePermissionFromUserCommandHandler(
         IUnitOfWork unitOfWork,
+        ISessionStore sessionStore,
         ILogger<RemovePermissionFromUserCommandHandler> logger) : IRequestHandler<RemovePermissionFromUserCommand, Result>
     {
         public async Task<Result> Handle(
@@ -55,6 +57,9 @@ namespace ChatApp.Modules.Identity.Application.Commands.Users
 
                 unitOfWork.UserPermissions.Remove(permission);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Access token invalidate — frontend 401 alıb refresh edəcək, yeni JWT-də yeni permission olacaq
+                await sessionStore.InvalidateUserAccessTokensAsync(command.UserId);
 
                 logger.LogInformation("Permission {PermissionName} removed from user {UserId}",
                     command.PermissionName, command.UserId);

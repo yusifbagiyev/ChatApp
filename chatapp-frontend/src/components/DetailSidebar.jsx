@@ -8,6 +8,7 @@ import { memo, useRef, useEffect } from "react";
 import { getInitials, getAvatarColor, getMessagePreview, highlightMatches, formatFileSize, formatSectionDate, formatRelativeDate } from "../utils/chatUtils";
 import { downloadFileByUrl, getFileUrl } from "../services/api";
 import FileTypeIcon from "./FileTypeIcon";
+import { useAuth } from "../context/AuthContext";
 import "./DetailSidebar.css";
 
 // ─── Skeleton — müasir shimmer effektli placeholder ─────────────────────────
@@ -82,6 +83,7 @@ function DetailSidebar({
   setMessageText,
   onViewProfile,
 }) {
+  const { hasPermission } = useAuth();
   const containerRef = useRef(null);
 
   // Overlay panel açıldıqda scroll sıfırla ki, panel-in header-i görünsün
@@ -148,14 +150,14 @@ function DetailSidebar({
                   <button className="ds-dropdown-item" onClick={() => { onToggleHide(selectedChat); sidebar.setShowSidebarMenu(false); sidebar.setShowSidebar(false); }}>
                     {selectedChat.isHidden ? "Unhide" : "Hide"}
                   </button>
-                  <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { setPendingDeleteConv(selectedChat); sidebar.setShowSidebarMenu(false); }}>Delete</button>
+                  {hasPermission("Channels.Delete") && <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { setPendingDeleteConv(selectedChat); sidebar.setShowSidebarMenu(false); }}>Delete</button>}
                 </>
               ) : selectedChat.type === 2 ? (
                 /* DepartmentUser — conversation yaranmayıb: hide/leave yoxdur */
                 <>
                   <button className="ds-dropdown-item" onClick={() => { onViewProfile?.(selectedChat.otherUserId || selectedChat.userId); sidebar.setShowSidebarMenu(false); }}>View profile</button>
                   <button className="ds-dropdown-item" onClick={() => { sidebar.setShowSidebarMenu(false); sidebar.handleOpenChatsWithUser(selectedChat.otherUserId || selectedChat.userId, "sidebar"); }}>Find chats with this user</button>
-                  <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { setPendingDeleteConv(selectedChat); sidebar.setShowSidebarMenu(false); }}>Delete</button>
+                  {hasPermission("Channels.Delete") && <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { setPendingDeleteConv(selectedChat); sidebar.setShowSidebarMenu(false); }}>Delete</button>}
                 </>
               ) : (
                 /* Channel (type=1) */
@@ -170,7 +172,7 @@ function DetailSidebar({
                     {selectedChat.isHidden ? "Unhide" : "Hide"}
                   </button>
                   <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { setPendingLeaveChannel(selectedChat); sidebar.setShowSidebarMenu(false); }}>Leave</button>
-                  <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { setPendingDeleteConv(selectedChat); sidebar.setShowSidebarMenu(false); }}>Delete</button>
+                  {hasPermission("Channels.Delete") && <button className="ds-dropdown-item ds-dropdown-danger" onClick={() => { setPendingDeleteConv(selectedChat); sidebar.setShowSidebarMenu(false); }}>Delete</button>}
                 </>
               )}
             </div>

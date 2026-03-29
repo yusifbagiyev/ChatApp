@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext, useAuth } from "../context/AuthContext";
 import CompanyManagement from "../components/admin/CompanyManagement";
 import HierarchyView from "../components/admin/HierarchyView";
 import DepartmentManagement from "../components/admin/DepartmentManagement";
@@ -18,6 +18,7 @@ const SECTION_LABELS = {
 
 function AdminPanel() {
   const { user } = useContext(AuthContext);
+  const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const { section: urlSection } = useParams();
   const isSuperAdmin = user?.role === "SuperAdmin";
@@ -130,7 +131,7 @@ function AdminPanel() {
                 </svg>
                 Companies
               </button>
-              <button
+              {hasPermission("Users.Read") && <button
                 className={`ap-nav-item${activeSection === "users" || activeSection === "user_detail" ? " active" : ""}`}
                 onClick={() => changeSection("users")}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -139,12 +140,12 @@ function AdminPanel() {
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
                 Users
-              </button>
+              </button>}
             </>
           ) : (
             <>
               <div className="ap-nav-group-label">People</div>
-              <button
+              {hasPermission("Users.Read") && <button
                 className={`ap-nav-item${activeSection === "users" || activeSection === "user_detail" ? " active" : ""}`}
                 onClick={() => changeSection("users")}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -153,7 +154,7 @@ function AdminPanel() {
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
                 Users
-              </button>
+              </button>}
               <div className="ap-nav-group-label">Organization</div>
               <button
                 className={`ap-nav-item${activeSection === "departments" ? " active" : ""}`}

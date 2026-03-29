@@ -45,6 +45,7 @@ function ChatInputArea({
 }) {
   const { showToast } = useToast();
   const { hasPermission } = useAuth();
+  const canSendMessages = hasPermission("Messages.Send");
   const canUploadFiles = hasPermission("Files.Upload");
   const mirrorRef = useRef(null);
   const fileInputRef = useRef(null);       // Gizli <input type="file"> referansı
@@ -300,7 +301,9 @@ function ChatInputArea({
         )}
 
         {/* Input sahəsi — Bitrix layout: attach sol yuxarı, butonlar sağ aşağı */}
-        <div className="message-input-wrapper">
+        {!canSendMessages ? (
+          <div className="message-no-permission">You don't have permission to send messages</div>
+        ) : <div className="message-input-wrapper">
           {/* Attach butonu — sol yuxarı (absolute), yalnız Files.Upload permission varsa */}
           {canUploadFiles && <button
             ref={attachBtnRef}
@@ -447,7 +450,7 @@ function ChatInputArea({
               </svg>
             </button>
           </div>
-        </div>
+        </div>}
         {/* Mention dropdown panel — @ yazıldıqda göstər */}
         {mentionOpen && (
           <MentionPanel

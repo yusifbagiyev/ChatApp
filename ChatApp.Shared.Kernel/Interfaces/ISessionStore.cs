@@ -35,4 +35,11 @@ public interface ISessionStore
     /// Removes all sessions for a user (used during login to invalidate old sessions)
     /// </summary>
     Task RemoveAllUserSessionsAsync(Guid userId);
+
+    /// <summary>
+    /// Invalidates only access tokens for all user sessions — refresh tokens remain valid.
+    /// Next request gets 401 → frontend refreshes → new JWT with updated claims.
+    /// Used when permission changes need immediate effect without forcing re-login.
+    /// </summary>
+    Task InvalidateUserAccessTokensAsync(Guid userId);
 }

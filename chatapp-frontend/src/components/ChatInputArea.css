@@ -178,6 +178,14 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
+.message-no-permission {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gray-50); border-radius: 22px;
+  padding: 16px; min-height: 56px;
+  font-size: 13px; color: var(--gray-400);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
 .input-icon-btn {
   width: 34px;
   height: 34px;

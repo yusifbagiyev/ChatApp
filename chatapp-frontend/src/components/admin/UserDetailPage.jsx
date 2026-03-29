@@ -10,6 +10,7 @@ import {
 } from "../../services/api";
 import { getInitials, getAvatarColor } from "../../utils/chatUtils";
 import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
 import "./UserDetailPage.css";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -518,12 +519,13 @@ function OrganizationTab({ user, onUserUpdate }) {
 // userPermissions: user.permissions string[] (getUserById-dan gəlir)
 function PermissionsTab({ userId, userPermissions }) {
   const { showToast } = useToast();
+  const { hasPermission } = useAuth();
+  const canAssign = hasPermission("Permissions.Assign");
   const [modules, setModules]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [overrides, setOverrides] = useState({}); // { [permName]: bool } — optimistic
 
   useEffect(() => {
-    setLoading(true);
     getAllPermissions()
       .then(data => setModules(Array.isArray(data) ? data : []))
       .catch(() => setModules([]))
@@ -535,7 +537,7 @@ function PermissionsTab({ userId, userPermissions }) {
     return (userPermissions ?? []).includes(permName);
   };
 
-  const handleToggle = useCallback(async (permName) => {
+  const handleToggle = async (permName) => {
     const current = isGranted(permName);
     setOverrides(prev => ({ ...prev, [permName]: !current }));
     try {
@@ -544,12 +546,11 @@ function PermissionsTab({ userId, userPermissions }) {
       } else {
         await assignPermission(userId, permName);
       }
-      // onRefresh çağırılmır — optimistic update kifayətdir, setLoading(true) tetiklənməsin
     } catch {
       setOverrides(prev => ({ ...prev, [permName]: current }));
       showToast("Failed to update permission", "error");
     }
-  }, [userId, userPermissions, overrides]);
+  };
 
   if (loading) {
     return (
@@ -586,7 +587,8 @@ function PermissionsTab({ userId, userPermissions }) {
                     <span className="ud-perm-name">{label}</span>
                     <button
                       className={`ud-toggle ${granted ? "on" : "off"}`}
-                      onClick={() => handleToggle(permName)}
+                      onClick={() => canAssign && handleToggle(permName)}
+                      disabled={!canAssign}
                       aria-label={`Toggle ${permName}`}
                     >
                       <span className="ud-toggle-knob" />
@@ -722,6 +724,7 @@ function SecurityTab({ user, onUserUpdate }) {
 // ─── UserDetailPage ───────────────────────────────────────────────────────────
 function UserDetailPage({ userId, onDeleted }) {
   const { showToast } = useToast();
+  const { hasPermission } = useAuth();
   const [user, setUser]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
@@ -795,7 +798,8 @@ function UserDetailPage({ userId, onDeleted }) {
   }
 
   const name = user.fullName ?? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
-  const tabs = ["overview", "organization", "permissions", "security"];
+  const allTabs = ["overview", "organization", "permissions", "security"];
+  const tabs = allTabs.filter(t => t !== "permissions" || hasPermission("Permissions.Read"));
   const tabLabels = { overview: "Overview", organization: "Organization", permissions: "Permissions", security: "Security" };
 
   return (
@@ -828,15 +832,15 @@ function UserDetailPage({ userId, onDeleted }) {
         </div>
 
         <div className="ud-hero-actions">
-          <button className="ud-btn-outline" onClick={() => setActiveTab("security")}>
+          {hasPermission("Users.Update") && <button className="ud-btn-outline" onClick={() => setActiveTab("security")}>
             Reset Password
-          </button>
-          <button className="ud-btn-outline" onClick={handleToggleStatus} disabled={toggling}>
+          </button>}
+          {hasPermission("Users.Update") && <button className="ud-btn-outline" onClick={handleToggleStatus} disabled={toggling}>
             {toggling ? "..." : user.isActive ? "Deactivate" : "Activate"}
-          </button>
-          <button className="ud-btn-danger-outline" onClick={() => setDeleteConfirm(true)}>
+          </button>}
+          {hasPermission("Users.Delete") && <button className="ud-btn-danger-outline" onClick={() => setDeleteConfirm(true)}>
             Delete
-          </button>
+          </button>}
         </div>
       </div>
 

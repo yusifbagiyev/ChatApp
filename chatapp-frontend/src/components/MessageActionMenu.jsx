@@ -2,6 +2,7 @@
 // .NET ekvivalenti: IEqualityComparer ilə dəyər müqayisəsi
 import { memo } from "react";
 import { downloadFile } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import "./MessageActionMenu.css";
 
 // MessageActionMenu komponenti — mesaj üzərindəki "⋮" menyusu
@@ -40,6 +41,8 @@ function MessageActionMenu({
   onDelete,
   onClose,
 }) {
+  const { hasPermission } = useAuth();
+
   // handleAction — callback çağır + menyu bağla
   // ...args — variadic parametr: callback-ə ötürüləcək hər hansı arqument
   // .NET: Action<T> delegate + Invoke()
@@ -85,8 +88,8 @@ function MessageActionMenu({
             </button>
           )}
 
-          {/* Edit — yalnız isOwn (öz mesajını redaktə et) */}
-          {isOwn && (
+          {/* Edit — yalnız isOwn + Messages.Edit permission */}
+          {isOwn && hasPermission("Messages.Edit") && (
             <button
               className="action-menu-item"
               onClick={() => handleAction(onEdit, msg)}
@@ -215,8 +218,8 @@ function MessageActionMenu({
             </svg>
           </button>
 
-          {/* Delete — yalnız isOwn, "delete" class ilə qırmızı rəng */}
-          {isOwn && (
+          {/* Delete — yalnız isOwn + Messages.Delete permission */}
+          {isOwn && hasPermission("Messages.Delete") && (
             <button
               className="action-menu-item delete"
               onClick={() => handleAction(onDelete, msg)}

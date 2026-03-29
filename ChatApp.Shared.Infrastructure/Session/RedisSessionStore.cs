@@ -126,6 +126,40 @@ public class RedisSessionStore : ISessionStore
         }
     }
 
+    public async Task InvalidateUserAccessTokensAsync(Guid userId)
+    {
+        try
+        {
+            var sessions = await GetUserSessionsAsync(userId);
+            if (sessions == null) return;
+
+            foreach (var sid in sessions)
+            {
+                var data = await GetSessionDataAsync(sid);
+                if (data == null) continue;
+
+                // Access token-i expire et, refresh token-i saxla
+                data.AccessTokenExpiresAt = DateTime.MinValue;
+
+                var remainingTtl = data.RefreshTokenExpiresAt - DateTime.UtcNow;
+                if (remainingTtl <= TimeSpan.Zero) continue;
+
+                var options = new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = remainingTtl
+                };
+
+                await _cache.SetStringAsync(SessionKey(sid), JsonSerializer.Serialize(data, _jsonOptions), options);
+            }
+
+            _logger.LogInformation("Invalidated access tokens for user {UserId} ({Count} sessions)", userId, sessions.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Redis unavailable — failed to invalidate access tokens for user {UserId}", userId);
+        }
+    }
+
     public async Task RemoveAllUserSessionsAsync(Guid userId)
     {
         try
