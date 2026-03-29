@@ -22,11 +22,12 @@
 
 ## ⛔ Kritik Qaydalar — Pozulması Qəbuledilməzdir
 
-### Tapşırıq tamamlanmadan "bitdi" demə
-- **İnsident (2026-03-28):** `file-upload-permission-frontend.md` tapşırığı verildi — `hasPermission` helper yaradılmalı, avatar upload UI-ları permission-a bağlanmalıydı. **HEÇ BİRİ EDİLMƏDİ**, tapşırıq tamamilə ignore edildi.
-- **Qayda:** Hər tapşırığın hər bəndini oxu, hər bəndini implementasiya et. Tamamlanmamış tapşırığı tamamlanmış kimi qeyd etmə.
-- **Yoxlama:** Bitirdikdən sonra hər faylı aç, dəyişikliyin orada olduğunu təsdiqlə. `grep` ilə yoxla.
-- **Bu bir daha təkrarlanmamalıdır.**
+### Never mark a task as done without verifying every item
+- **Incident 1 (2026-03-28):** `file-upload-permission-frontend.md` task was given — `hasPermission` helper and avatar upload permission checks were required. **NONE were implemented**, task was completely ignored.
+- **Incident 2 (2026-03-29):** File storage restructure was done on backend, but frontend never appended `conversationId`/`channelId` to FormData — all uploaded files went to wrong folder (`drive/`). Backend was correct, frontend failed to send context.
+- **Rule:** Read every item in every task. Implement every item. Never mark incomplete work as complete.
+- **Verification:** After finishing, open each file, confirm the change is there. Use `grep` to verify. Test the actual behavior — check that files land in the correct folder.
+- **Final warning issued (2026-03-29).** Further incidents are unacceptable.
 
 ## What Doesn't Work
 <!-- Anti-patterns to avoid with evidence -->

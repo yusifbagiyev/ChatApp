@@ -91,6 +91,12 @@ export default function useFileUploadManager(user, onFallbackReload, onMessageSe
       // 1. Faylı yüklə
       const formData = new FormData();
       formData.append("file", task.file);
+      // Conversation/Channel kontekstini əlavə et ki, fayl düzgün qovluğa düşsün
+      if (task.chatType === 0 || task.chatType === 2) {
+        formData.append("conversationId", task.chatId);
+      } else if (task.chatType === 1) {
+        formData.append("channelId", task.chatId);
+      }
 
       const uploadResult = await apiUpload(
         "/api/files/upload",
