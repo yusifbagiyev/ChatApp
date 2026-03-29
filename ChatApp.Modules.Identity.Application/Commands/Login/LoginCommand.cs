@@ -111,8 +111,8 @@ namespace ChatApp.Modules.Identity.Application.Commands.Login
             User user,
             CancellationToken cancellationToken)
         {
-            // SuperAdmin və Admin — bütün permissionları alır (Admin öz şirkəti daxilində)
-            if (user.Role == Role.Admin || user.Role == Role.SuperAdmin)
+            // SuperAdmin — bütün permissionları alır (hardcoded, dəyişdirilə bilməz)
+            if (user.Role == Role.SuperAdmin)
             {
                 return Task.FromResult(Permissions.GetDefaultForRole(user.Role).ToList());
             }
