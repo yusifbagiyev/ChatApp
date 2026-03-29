@@ -11,6 +11,7 @@ import {
 import { getInitials, getAvatarColor } from "../../utils/chatUtils";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
+import { getConnection } from "../../services/signalr";
 import "./UserDetailPage.css";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -733,6 +734,24 @@ function UserDetailPage({ userId, onDeleted }) {
   const [toggling, setToggling]   = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting]   = useState(false);
+  const [isOnline, setIsOnline]   = useState(false);
+
+  // SignalR ilə online status yoxla
+  useEffect(() => {
+    const conn = getConnection();
+    if (!conn || !userId) return;
+    conn.invoke("GetOnlineStatus", [userId])
+      .then((statusMap) => setIsOnline(!!statusMap?.[userId]))
+      .catch(() => {});
+    const handleOnline = (id) => { if (id === userId) setIsOnline(true); };
+    const handleOffline = (id) => { if (id === userId) setIsOnline(false); };
+    conn.on("UserOnline", handleOnline);
+    conn.on("UserOffline", handleOffline);
+    return () => {
+      conn.off("UserOnline", handleOnline);
+      conn.off("UserOffline", handleOffline);
+    };
+  }, [userId]);
 
   const loadUser = useCallback(() => {
     setLoading(true);
@@ -822,9 +841,9 @@ function UserDetailPage({ userId, onDeleted }) {
             <span className={`ud-badge role-${(user.role ?? "user").toLowerCase()}`}>
               {user.role ?? "User"}
             </span>
-            <span className={`ud-badge status-${user.isActive ? "active" : "inactive"}`}>
-              {user.isActive ? "Active" : "Inactive"}
-              {user.lastVisit && (
+            <span className={`ud-badge status-${isOnline ? "online" : user.isActive ? "active" : "inactive"}`}>
+              {isOnline ? "Online" : user.isActive ? "Active" : "Inactive"}
+              {!isOnline && user.lastVisit && (
                 <span className="ud-badge-time">· {formatRelativeTime(user.lastVisit)}</span>
               )}
             </span>

@@ -96,8 +96,8 @@ export default function useChatSignalR(
           if (matchedOptId) {
             return prev.map((m) => m.id === matchedOptId ? enrichedMsg : m);
           }
-          // Başqasının mesajı — aşağıda deyilsə programmatic scroll et
-          if (message.senderId === userId && showScrollDownRef?.current) {
+          // User aşağıdadırsa, hər yeni mesajda auto-scroll et (öz+başqasının)
+          if (!showScrollDownRef?.current) {
             setShouldScrollBottom(true);
           }
           return [enrichedMsg, ...prev];
