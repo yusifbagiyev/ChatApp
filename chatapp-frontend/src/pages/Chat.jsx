@@ -1011,7 +1011,7 @@ function Chat() {
       };
       handleSelectChat(newChat);
     } catch (err) {
-      console.error("Failed to create conversation:", err);
+      showToast(err.message || "Failed to create conversation", "error");
     }
     setSearchText("");
   }
@@ -2193,7 +2193,7 @@ function Chat() {
           ),
         );
       } catch (err) {
-        console.error("Failed to create conversation:", err);
+        showToast(err.message || "Failed to create conversation", "error");
         showToast("Söhbət yaradıla bilmədi", "error");
         return;
       }
@@ -2473,7 +2473,7 @@ function Chat() {
         return prev;
       });
     } catch (err) {
-      console.error("Failed to send message:", err);
+      showToast(err.message || "Failed to send message", "error");
       // Optimistic mesajı sil — göndərilə bilmədi
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       // ConversationList-dəki Pending statusu geri qaytar
@@ -3635,7 +3635,7 @@ function Chat() {
                         try {
                           const result = await apiPost("/api/conversations", { otherUserId: uid });
                           handleSelectChat({ id: result.conversationId, type: 0, otherUserId: uid, name: "", unreadCount: 0, lastMessage: null, lastMessageAtUtc: null });
-                        } catch (err) { console.error("Failed to open DM:", err); }
+                        } catch (err) { showToast(err.message || "Failed to open conversation", "error"); }
                       }}>Send private message</button>
                       <button className="avatar-ctx-item" onClick={() => {
                         setProfileUserId(avatarMenu.userId);
