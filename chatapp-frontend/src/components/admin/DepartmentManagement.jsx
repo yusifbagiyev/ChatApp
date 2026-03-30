@@ -86,7 +86,7 @@ const DeptDetailPanel = memo(function DeptDetailPanel({
             <p className="dm-detail-section-label">Stats</p>
             <div className="dm-detail-stats">
               <div className="dm-detail-stat-card">
-                <div className="dm-detail-stat-num">{members.length}</div>
+                <div className="dm-detail-stat-num">{members?.length ?? 0}</div>
                 <div className="dm-detail-stat-label">Members</div>
               </div>
               <div className="dm-detail-stat-card">
@@ -367,7 +367,6 @@ function DepartmentManagement() {
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (!formName.trim()) { setFormError("Department name is required."); return; }
-    if (panel === "create" && !formAvatarUrl) { setFormError("Department avatar is required."); return; }
     setSaving(true);
     setFormError("");
     try {
@@ -582,7 +581,7 @@ function DepartmentManagement() {
               {canUploadAvatar && (
                 <div className="dm-form-field">
                   <label className="dm-form-label">
-                    Department Avatar{panel === "create" && <span className="dm-required"> *</span>}
+                    Department Avatar
                   </label>
                   <div className="dm-avatar-upload-area" onClick={() => avatarInputRef.current?.click()}>
                     {avatarPreview ? (

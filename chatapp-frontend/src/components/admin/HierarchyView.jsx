@@ -239,7 +239,7 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
             <p className="hi-detail-section-label">Overview</p>
             <div className="hi-dept-stats">
               <div className="hi-dept-stat-card">
-                <div className="hi-dept-stat-num">{members.length}</div>
+                <div className="hi-dept-stat-num">{members?.length ?? 0}</div>
                 <div className="hi-dept-stat-label">Members</div>
               </div>
               <div className="hi-dept-stat-card">
@@ -627,7 +627,6 @@ function CreateDeptPanel({ preloadedDepts = null, companyId = null, defaultParen
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) { showToast("Department name is required", "error"); return; }
-    if (!avatarUrl) { showToast("Department avatar is required", "error"); return; }
     setSaving(true);
     try {
       await createDepartment({ name: name.trim(), parentDepartmentId: parentId || null, companyId: companyId || null, avatarUrl });
@@ -654,7 +653,7 @@ function CreateDeptPanel({ preloadedDepts = null, companyId = null, defaultParen
         <form id="cd-form" className="hi-create-panel-body" onSubmit={handleSubmit}>
           {canUploadAvatar && (
             <div className="hi-form-field">
-              <label className="hi-form-label">Department Avatar *</label>
+              <label className="hi-form-label">Department Avatar</label>
               <div className="dm-avatar-upload-area" onClick={() => avatarRef.current?.click()}>
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="preview" className="dm-avatar-preview" />

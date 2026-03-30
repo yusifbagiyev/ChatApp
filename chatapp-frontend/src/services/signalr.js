@@ -120,6 +120,11 @@ export async function startConnection() {
       }
     });
 
+    // Server-dən broadcast olunan event-lər üçün default handler-lər
+    // Admin səhifələrdə useChatSignalR aktiv deyil — handler olmadıqda warning yaranır
+    conn.on("UserOnline", () => {});
+    conn.on("UserOffline", () => {});
+
     await conn.start();
     retryCount = 0; // Uğurlu bağlantı — sayğacı sıfırla
     notifyConnectionState("connected");
