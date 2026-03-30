@@ -3515,6 +3515,7 @@ function Chat() {
                         lastReadTimestamp={lastReadTimestamp}
                         channelMembers={channelMembers}
                         onOpenReadersPanel={setReadersPanel}
+                        isAtBottom={!showScrollDown}
                       />
                       <div
                         ref={messagesEndRef}

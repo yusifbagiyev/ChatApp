@@ -1,13 +1,15 @@
 /* ===================================
    CHAT STATUS BAR
+   Həmişə sabit yer tutur — content yoxdursa da boşluq qalır (layout shift yoxdur)
    =================================== */
 
-/* Container — messages-area içərisində, mesajlarla birlikdə scroll edir */
+/* Container — həmişə render olunur, sabit hündürlük */
 .chat-status-bar-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  min-height: 28px;
   margin-top: 4px;
 }
 
@@ -22,6 +24,12 @@
   padding: 4px 12px;
   background: #a3bad4;
   border-radius: 10px;
+  animation: statusBarIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes statusBarIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .status-bar-typing-dots {

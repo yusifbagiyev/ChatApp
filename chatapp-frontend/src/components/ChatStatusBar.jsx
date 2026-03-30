@@ -2,9 +2,8 @@ import { useMemo, memo } from "react";
 import "./ChatStatusBar.css";
 
 // ChatStatusBar — mesaj input sahəsinin üstündə sabit yer tutan status bar
-// İki hissəsi var:
-//   1. Typing (sol) — qarşı tərəf yazarkən "is typing" göstərir
-//   2. Viewed (sağ) — öz mesajımızın oxunma statusunu göstərir
+// Həmişə render olunur (sabit hündürlük) — content yoxdursa boş yer qalır (layout shift yoxdur)
+// isAtBottom false olduqda content gizlənir — yalnız aşağıdaysa görünür
 function ChatStatusBar({
   selectedChat,
   messages,
@@ -13,6 +12,7 @@ function ChatStatusBar({
   lastReadTimestamp,
   channelMembers,
   onOpenReadersPanel,
+  isAtBottom,
 }) {
   const lastOwnMessage = useMemo(() => {
     return messages.find((m) => m.senderId === userId && !m.isDeleted);
@@ -54,9 +54,6 @@ function ChatStatusBar({
     if (selectedChat.type === 0) {
       if (lastOwnMessage.status !== 3) return null;
 
-      // SignalR event-dən gələn readTime əsasdır.
-      // Yoxdursa (conversation ilk açıldıqda), mesajın readAtUtc (server oxunma vaxtı) fallback olur.
-      // createdAtUtc əvəzinə readAtUtc istifadə edirik — dəqiq oxunma vaxtı.
       const readTime = lastReadTimestamp[selectedChat.id]
         || (lastOwnMessage.readAtUtc ? new Date(lastOwnMessage.readAtUtc) : null);
       if (!readTime) return null;
@@ -145,18 +142,18 @@ function ChatStatusBar({
     return null;
   }, [selectedChat, lastOwnMessage, isLastMessageOwn, lastReadTimestamp, channelMembers, onOpenReadersPanel]);
 
-  // Heç bir content yoxdursa heç nə render etmə (yer tutmasın)
-  if (!typingContent && !viewedContent) return null;
+  // Yuxarı scroll edilibsə — content gizlənir, amma container sabit qalır
+  const showContent = isAtBottom !== false;
 
   return (
     <div className="chat-status-bar-container">
       {/* Typing — sol tərəf */}
-      <div className={`chat-status-bar typing${typingContent ? " has-content" : ""}`}>
-        {typingContent}
+      <div className={`chat-status-bar typing${showContent && typingContent ? " has-content" : ""}`}>
+        {showContent && typingContent}
       </div>
       {/* Viewed — sağ tərəf */}
-      <div className={`chat-status-bar viewed${viewedContent ? " has-content" : ""}`}>
-        {viewedContent}
+      <div className={`chat-status-bar viewed${showContent && viewedContent ? " has-content" : ""}`}>
+        {showContent && viewedContent}
       </div>
     </div>
   );

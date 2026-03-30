@@ -1106,9 +1106,6 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
           <h2 className="hi-title">
             {isSuperAdmin ? "Users" : `Users${adminCompany ? ` — ${adminCompany.name}` : ""}`}
           </h2>
-          {!isSuperAdmin && adminCompany && (
-            <span className="hi-count-badge">{adminCompany.userCount ?? 0}</span>
-          )}
           <div className="hi-expand-controls">
             <button className="hi-expand-btn" onClick={expandAll} title="Expand all">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
