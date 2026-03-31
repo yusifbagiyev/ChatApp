@@ -1,118 +1,132 @@
-// ─── App.jsx — Router + Auth Guard ──────────────────────────────────────────
-//   1. AuthProvider — global auth state-i bütün komponentlərə verir
-//   2. Routes — URL-ə görə hansı komponentin render olacağını təyin edir
-//   3. ProtectedRoute — login olmayan istifadəçini /login-ə yönləndirir
-
-// useContext: istənilən komponentdən context-ə daxil olmaq üçün hook
-import { useContext } from "react";
-
-// Routes: bütün Route-ları əhatə edən wrapper
+// ─── App.jsx — Router + Auth Guard + Global TopNavbar + ProfilePanel ─────────
+import { useContext, useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-
-// AuthContext — global auth state (user, isLoading, login, logout)
-// AuthProvider — həmin state-i bütün child komponentlərə distribute edir
 import { AuthContext, AuthProvider } from "./context/AuthContext";
-// ToastProvider — global toast notification sistemi (alert() əvəzinə)
 import { ToastProvider } from "./context/ToastContext";
+import TopNavbar from "./components/TopNavbar";
+import UserProfilePanel from "./components/UserProfilePanel";
 import Chat from "./pages/Chat";
 import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
+import ComingSoon from "./pages/ComingSoon";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 // ─── ProtectedRoute ───────────────────────────────────────────────────────────
-// Bu bir "guard" komponentidir. Login olmayan istifadəçi Chat-a girə bilməsin deyə.
-// .NET-də: [Authorize] attribute + middleware kimi işləyir.
-//
-// children prop — bu komponentin içinə yazılan JSX-dir.
-// Məsələn: <ProtectedRoute><Chat /></ProtectedRoute> → children = <Chat />
 function ProtectedRoute({ children, requireRole }) {
-  // AuthContext-dən cari user-i və loading state-ini al
   const { user, isLoading } = useContext(AuthContext);
 
-  // Auth vəziyyəti hələ yoxlanılır (app yeni açılıb, /api/users/me çağırılır)
   if (isLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-          color: "#6366F1",
-          fontSize: "18px",
-        }}
-      >
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", color: "#2fc6f6", fontSize: "18px" }}>
         Loading...
       </div>
     );
   }
 
-  // user yoxdur (login olmayıb) → /login-ə redirect et
   if (!user) return <Navigate to="/login" />;
 
-  // requireRole var amma user-in rolu uyğun deyil → ana səhifəyə yönləndir
   if (requireRole && !requireRole.includes(user.role)) {
-    return <Navigate to="/" />;
+    return <Navigate to="/messages" />;
   }
 
   return children;
 }
 
+// ─── AuthenticatedLayout — TopNavbar + content + global ProfilePanel ─────────
+function AuthenticatedLayout({ children }) {
+  const { user } = useContext(AuthContext);
+  const [profileUserId, setProfileUserId] = useState(null);
+
+  // TopNavbar-dan "open-profile" event-i dinlə
+  useEffect(() => {
+    const handler = (e) => setProfileUserId(e.detail.userId);
+    window.addEventListener("open-profile", handler);
+    return () => window.removeEventListener("open-profile", handler);
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+      <TopNavbar />
+      <div className="app-content">
+        {children}
+      </div>
+
+      {/* Global ProfilePanel — bütün səhifələrdə işləyir */}
+      {profileUserId && user && (
+        <UserProfilePanel
+          userId={profileUserId}
+          currentUserId={user.id}
+          isOwnProfile={profileUserId === user.id}
+          onClose={() => setProfileUserId(null)}
+          onStartChat={() => setProfileUserId(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── App ─────────────────────────────────────────────────────────────────────
-// Bütün app-ın root komponentidir. main.jsx buradan başlayır.
 function App() {
   return (
-    // AuthProvider — bütün child komponentlər AuthContext-ə daxil ola bilsin deyə
-    // Bu olmasa, useContext(AuthContext) hər yerdə undefined qaytarardı
     <ErrorBoundary>
     <ToastProvider>
     <AuthProvider>
-      {/* Routes — yalnız URL-ə uyğun olan 1 Route render olunur */}
-      <Routes>
-        {/* /login URL-i → Login komponentini göstər */}
-        <Route path="/login" element={<Login />} />
-
-        {/* / (root) URL-i → ProtectedRoute içindəki Chat komponentini göstər */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Chat />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* /admin — yalnız Admin və SuperAdmin üçün */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute requireRole={["Admin", "SuperAdmin"]}>
-              <AdminPanel />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/:section"
-          element={
-            <ProtectedRoute requireRole={["Admin", "SuperAdmin"]}>
-              <AdminPanel />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/users/:userId"
-          element={
-            <ProtectedRoute requireRole={["Admin", "SuperAdmin"]}>
-              <AdminPanel />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <AppRoutes />
     </AuthProvider>
     </ToastProvider>
     </ErrorBoundary>
   );
 }
 
-// default export — başqa fayllar import App from "./App" ilə idxal edə bilər
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+
+      {/* / → /messages redirect */}
+      <Route path="/" element={<Navigate to="/messages" replace />} />
+
+      <Route path="/messages" element={
+        <ProtectedRoute>
+          <AuthenticatedLayout><Chat /></AuthenticatedLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/feed" element={
+        <ProtectedRoute>
+          <AuthenticatedLayout><ComingSoon title="Feed" /></AuthenticatedLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/drive" element={
+        <ProtectedRoute>
+          <AuthenticatedLayout><ComingSoon title="Drive" /></AuthenticatedLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <AuthenticatedLayout><ComingSoon title="Settings" /></AuthenticatedLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/admin" element={
+        <ProtectedRoute requireRole={["Admin", "SuperAdmin"]}>
+          <AuthenticatedLayout><AdminPanel /></AuthenticatedLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/:section" element={
+        <ProtectedRoute requireRole={["Admin", "SuperAdmin"]}>
+          <AuthenticatedLayout><AdminPanel /></AuthenticatedLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/users/:userId" element={
+        <ProtectedRoute requireRole={["Admin", "SuperAdmin"]}>
+          <AuthenticatedLayout><AdminPanel /></AuthenticatedLayout>
+        </ProtectedRoute>
+      } />
+    </Routes>
+  );
+}
+
 export default App;

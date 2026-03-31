@@ -17,14 +17,15 @@
 .detail-sidebar {
   width: var(--detail-sidebar-width, 350px);
   min-width: 350px;
-  height: 100vh;
   background: #eef2f4;
-  border-left: 1px solid var(--gray-200);
+  border-left: none;
   display: flex;
   flex-direction: column;
   position: relative;
   animation: detailSidebarSlideIn 0.25s ease-out;
   overflow: hidden;
+  border-radius: 0 var(--panel-radius, 12px) var(--panel-radius, 12px) 0;
+  box-shadow: var(--panel-shadow, 0 1px 4px rgba(0,0,0,0.08));
 }
 
 /* ─── Tablet: sidebar overlay — chat paneli sıxılmasın ────────────────────── */
@@ -256,7 +257,7 @@
 }
 
 .ds-avatar-notes {
-  background: var(--primary-color);
+  background: #2FC6F6;
 }
 
 .ds-name {

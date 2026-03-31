@@ -30,7 +30,7 @@
   --unread-badge: #4cc5eb;
 
   /* Sidebar */
-  --sidebar-width: 60px;
+  /* --sidebar-width silinib — TopNavbar əvəzləyir */
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -131,18 +131,28 @@
    Sidebar | Conversations | Chat
    =================================== */
 
+/* App-content — TopNavbar altında */
+.app-content {
+  flex: 1;
+  background: var(--content-bg, #eef1f5);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .main-layout {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  flex: 1;
   overflow: hidden;
-  background: var(--gray-100);
 }
 
 .main-body {
   flex: 1;
   display: flex;
   min-height: 0;
+  gap: var(--content-padding, 12px);
+  padding: var(--content-padding, 12px) var(--content-padding, 12px) 0;
 }
 
 /* ─── Connection Status Toast ─────────────────────────────────────────────── */
@@ -249,9 +259,10 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  /* Bitrix24-style gradient:
-     1) radial — mərkəzdə "günəş işığı" effekti (ağımtıl yaşılımtıl parlaq ləkə)
-     2) linear — sağa #96c6e9, aşağı #84A7ED, sağ-aşağı tündləşir */
+  border-radius: 0 var(--panel-radius, 12px) var(--panel-radius, 12px) 0;
+  box-shadow: var(--panel-shadow, 0 1px 4px rgba(0,0,0,0.08));
+  overflow: hidden;
+  /* Bitrix24-style gradient */
   background:
     radial-gradient(ellipse at 32% 32%, #d6f2ea 0%, transparent 55%),
     linear-gradient(150deg, #bee2de 0%, #96c6e9 55%, #84a7ed 100%);
@@ -581,6 +592,14 @@
   font-weight: 450;
 }
 
+/* Sidebar açıq olduqda chat-panel sağ border-radius sıfırlanır */
+.chat-panel:has(~ .detail-sidebar) {
+  border-radius: 0;
+}
+.chat-panel:has(~ .detail-sidebar-backdrop) {
+  border-radius: 0;
+}
+
 /* ===================================
    EMPTY CHAT STATE (no selected chat)
    =================================== */
@@ -591,15 +610,47 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  background: linear-gradient(180deg, #cddcec 0%, #d6dff0 50%, #dde4f3 100%);
+  gap: 12px;
+  background:
+    radial-gradient(ellipse at 30% 20%, #E0E4F3 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 80%, #DFE3ED 0%, transparent 60%),
+    linear-gradient(180deg, #E0E1E9 0%, #DFE3ED 50%, #E0E4F3 100%);
+}
+
+.chat-empty-icon {
+  margin-bottom: 8px;
 }
 
 .chat-empty h2 {
-  font-size: 18px;
-  font-weight: 450;
-  color: var(--gray-500);
+  font-size: 20px;
+  font-weight: 400;
+  color: #5c6b7a;
   margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.chat-empty-or {
+  font-size: 13px;
+  color: #8e9baa;
+  margin: 0;
+}
+
+.chat-empty-invite {
+  font-size: 14px;
+  font-weight: 500;
+  color: #3b6cb5;
+  background: none;
+  border: 1px dashed #a0b4cc;
+  border-radius: 20px;
+  padding: 8px 24px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 200ms cubic-bezier(0.4,0,0.2,1),
+              color 200ms cubic-bezier(0.4,0,0.2,1);
+}
+.chat-empty-invite:hover {
+  border-color: #3b6cb5;
+  color: #2a5a9e;
 }
 
 /* Deleted message text */
@@ -622,11 +673,10 @@
    =================================== */
 
 @media (max-width: 767px) {
-  .sidebar { display: none; }
-
   /* Mobile single panel: data-mobile-panel ilə idarə olunur */
-  .conversation-panel { width: 100%; min-width: unset; display: none; }
-  .chat-panel { display: none; }
+  .main-body { padding: 0; gap: 0; }
+  .conversation-panel { width: 100%; min-width: unset; display: none; border-radius: 0; box-shadow: none; }
+  .chat-panel { display: none; border-radius: 0; box-shadow: none; }
   [data-mobile-panel="conversations"] .conversation-panel { display: flex; }
   [data-mobile-panel="chat"] .chat-panel { display: flex; }
 

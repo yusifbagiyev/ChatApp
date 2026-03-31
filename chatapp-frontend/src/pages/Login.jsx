@@ -43,9 +43,9 @@ function Login() {
 
   // --- EARLY RETURN: Artıq login olubsa ana səhifəyə redirect et ---
   // Bu hooks-dan SONRA olmalıdır — hooks şərtli return-dan əvvəl olmalıdır (React qaydası)
-  // <Navigate to="/" /> — component render olunmadan yönləndirir
+  // <Navigate to="/messages" /> — component render olunmadan yönləndirir
   if (user) {
-    return <Navigate to="/" />;
+    return <Navigate to="/messages" />;
   }
 
   // handleSubmit — form submit olduqda çağırılır
@@ -81,7 +81,7 @@ function Login() {
       }
 
       // Login uğurlu — ana səhifəyə yönləndir
-      navigate("/");
+      navigate("/messages");
     } catch (err) {
       // Login uğursuz — xəta mesajını göstər
       // err.message — throw new Error("...") ilə gəlir (AuthContext-dən)

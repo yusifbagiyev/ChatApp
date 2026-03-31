@@ -18,7 +18,7 @@
   --transition-fast: 150ms ease;
 
   display: flex; flex-direction: column;
-  height: 100vh; background: #eef0f4;
+  flex: 1; min-height: 0; background: #eef0f4;
   font-family: inherit; overflow: hidden;
 }
 
