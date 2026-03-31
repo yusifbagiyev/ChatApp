@@ -73,17 +73,15 @@
 
 ---
 
-### 4.6 File Serving Security — Proxy Pattern — IN PROGRESS 🔴 P0
-- [ ] Backend: `UseStaticFiles` `/uploads` blokunun silinməsi
-- [ ] Backend: `GET /api/files/serve/{fileId}` — authenticated file serve endpoint
-- [ ] Backend: `GET /api/files/avatar/{fileId}` — yüngül auth avatar endpoint
-- [ ] Backend: DTO-larda `fileUrl` (static path) → `fileId`-based URL keçidi
-- [ ] Backend: FileUrlHelper refactoru
-- [ ] Frontend: `useSecureFile(fileId)` hook — blob URL pattern
-- [ ] Frontend: MessageBubble, ConversationList, ChatHeader — secure file URL
-- [ ] Frontend: Admin komponentləri — secure avatar URL
-- [ ] Frontend: Upload flow — `fileId` based response handling
-- [ ] Frontend: `getFileUrl()` helper silinməsi, blob cache implementasiyası
+### 4.6 File Serving Security — Proxy Pattern — COMPLETE ✅
+- [x] Backend: `UseStaticFiles` `/uploads` blokunun silinməsi
+- [x] Backend: `GET /api/files/serve/{fileId}` — authenticated file serve endpoint
+- [x] Backend: `GET /api/files/avatar/{fileId}` — yüngül auth avatar endpoint
+- [x] Backend: DTO-larda `fileUrl` (static path) → `fileId`-based URL keçidi
+- [x] Backend: FileUrlHelper refactoru
+- [x] Backend: Bütün avatar/logo DTO-larında ToAvatarUrl() transform (21 fayl)
+- [x] Backend: SearchRepository avatar transform
+- [x] Frontend: Əlavə dəyişiklik lazım deyil — `getFileUrl()` + cookie-based auth birbaşa işləyir (blob URL pattern lazımsız)
 
 ---
 

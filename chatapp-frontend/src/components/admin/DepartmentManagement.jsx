@@ -414,7 +414,7 @@ function DepartmentManagement() {
       const companyId = activeDept?.companyId ?? depts[0]?.companyId;
       const departmentId = activeDept?.id ?? null;
       const result = await uploadDepartmentAvatar(file, companyId, departmentId, activeDept?.avatarUrl);
-      setFormAvatarUrl(result.downloadUrl);
+      setFormAvatarUrl(result.fileUrl);
     } catch {
       setAvatarPreview(null);
       setFormAvatarUrl(null);

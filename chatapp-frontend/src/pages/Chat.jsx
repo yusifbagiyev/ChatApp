@@ -1472,9 +1472,9 @@ function Chat() {
       const formData = new FormData();
       formData.append("File", file);
       const result = await apiUpload(`/api/files/upload/channel-avatar/${selectedChat.id}`, formData);
-      if (!result?.downloadUrl) return;
-      await apiPut(`/api/channels/${selectedChat.id}`, { avatarUrl: result.downloadUrl });
-      handleChannelUpdated({ id: selectedChat.id, name: selectedChat.name, avatarUrl: result.downloadUrl });
+      if (!result?.fileUrl) return;
+      await apiPut(`/api/channels/${selectedChat.id}`, { avatarUrl: result.fileUrl });
+      handleChannelUpdated({ id: selectedChat.id, name: selectedChat.name, avatarUrl: result.fileUrl });
     } catch (err) {
       showToast(err.message || "Failed to update channel avatar", "error");
     }

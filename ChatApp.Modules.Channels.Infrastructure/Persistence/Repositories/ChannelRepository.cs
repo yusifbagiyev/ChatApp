@@ -54,7 +54,7 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                 return null;
 
             // Get members with user details
-            var members = await (from member in _context.ChannelMembers
+            var membersRaw = await (from member in _context.ChannelMembers
                                  join user in _context.Set<UserReadModel>() on member.UserId equals user.Id
                                  where member.ChannelId == id
                                  orderby member.Role descending, member.JoinedAtUtc
@@ -70,6 +70,12 @@ namespace ChatApp.Modules.Channels.Infrastructure.Persistence.Repositories
                                      member.LastReadLaterMessageId
                                  ))
                                 .ToListAsync(cancellationToken);
+
+            // Avatar URL transform — materialization sonrası
+            var members = membersRaw.Select(m => m with
+            {
+                AvatarUrl = FileUrlHelper.ToAvatarUrl(m.AvatarUrl)
+            }).ToList();
 
             return new ChannelDetailsDto(
                 channelWithCreator.Id,

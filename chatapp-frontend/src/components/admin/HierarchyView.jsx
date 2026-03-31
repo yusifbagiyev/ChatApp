@@ -115,7 +115,7 @@ function DeptDetailPanel({ node, allDepts, closing, onClose, onAfterMutation, on
     setAvatarUploading(true);
     try {
       const result = await uploadDepartmentAvatar(file, node.companyId, node.id, node.avatarUrl);
-      setFormAvatarUrl(result.downloadUrl);
+      setFormAvatarUrl(result.fileUrl);
     } catch {
       setAvatarPreview(null);
       setFormAvatarUrl(null);
@@ -599,7 +599,7 @@ function CreateDeptPanel({ preloadedDepts = null, companyId = null, defaultParen
     setAvatarUploading(true);
     try {
       const result = await uploadDepartmentAvatar(file, companyId, null, null);
-      setAvatarUrl(result.downloadUrl);
+      setAvatarUrl(result.fileUrl);
     } catch {
       setAvatarPreview(null);
       setAvatarUrl(null);

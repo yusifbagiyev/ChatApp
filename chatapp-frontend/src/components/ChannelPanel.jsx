@@ -539,9 +539,9 @@ function ChannelPanel({
           const fd = new FormData();
           fd.append("File", avatarFile);
           const uploadResult = await apiUpload(`/api/files/upload/channel-avatar/${channelId}`, fd);
-          if (uploadResult?.downloadUrl) {
-            await apiPut(`/api/channels/${channelId}`, { avatarUrl: uploadResult.downloadUrl });
-            result.avatarUrl = uploadResult.downloadUrl;
+          if (uploadResult?.fileUrl) {
+            await apiPut(`/api/channels/${channelId}`, { avatarUrl: uploadResult.fileUrl });
+            result.avatarUrl = uploadResult.fileUrl;
           }
         } catch {
           // Channel yaradılıb, avatar uğursuz olsa da davam et
@@ -571,7 +571,7 @@ function ChannelPanel({
           const fd = new FormData();
           fd.append("File", avatarFile);
           const uploadResult = await apiUpload(`/api/files/upload/channel-avatar/${channelData.id}`, fd);
-          if (uploadResult?.downloadUrl) newAvatarUrl = uploadResult.downloadUrl;
+          if (uploadResult?.fileUrl) newAvatarUrl = uploadResult.fileUrl;
         } catch {
           // Avatar upload uğursuz — digər dəyişikliklər davam edir
         }

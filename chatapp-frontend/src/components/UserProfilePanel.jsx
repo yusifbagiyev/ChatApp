@@ -456,9 +456,9 @@ function UserProfilePanel({ userId, currentUserId, isAdmin, onClose, onStartChat
 
       // Avatar URL-ni identity modulunda yenilə
       const updateEndpoint = targetId ? `/api/users/${targetId}` : "/api/users/me";
-      await apiPut(updateEndpoint, { avatarUrl: result.downloadUrl });
+      await apiPut(updateEndpoint, { avatarUrl: result.fileUrl });
 
-      setProfile((prev) => ({ ...prev, avatarUrl: result.downloadUrl }));
+      setProfile((prev) => ({ ...prev, avatarUrl: result.fileUrl }));
       setCropFile(null);
     } catch {
       // upload failed — modal açıq qalır

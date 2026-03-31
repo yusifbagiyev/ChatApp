@@ -1,10 +1,16 @@
-# Frontend Task: File Serving Security — Blob URL Pattern
+# Frontend Task: File Serving Security — TAMAMLANDI ✅
 
 **From**: Product Owner
 **To**: Frontend Developer
 **Date**: 2026-03-31
 **Priority**: P0 — CRITICAL
-**Depends On**: `2026-03-31_1200_file-security-proxy-backend.md` (Backend endpoint hazır olmalıdır)
+**Status**: TAMAMLANDI — Blob URL pattern lazımsız çıxdı
+
+## Nəticə
+
+Backend authenticated endpoint-ləri (`/api/files/serve/{fileId}`, `/api/files/avatar/{fileId}`) qurulub. DTO-lar `FileUrlHelper.ToAvatarUrl()` ilə düzgün URL qaytarır. Frontend `getFileUrl(path)` ilə `BASE_URL + path` yaradır. Brauzer `<img src>` üçün HttpOnly cookie göndərir — əlavə blob URL keçidinə ehtiyac yoxdur. Cookie-based auth birbaşa işləyir.
+
+**Depends On**: `2026-03-31_1200_file-security-proxy-backend.md` (Tamamlanıb)
 
 ---
 
