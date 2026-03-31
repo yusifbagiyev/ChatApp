@@ -2928,11 +2928,19 @@ function Chat() {
   }), [chatLoading]);
 
   // imageMessages — yalnız şəkillər, xronoloji sıra (köhnə → yeni, thumbnail strip üçün)
-  // fileMessages boş olduqda previewFiles-dan da istifadə et (sidebar preview klik üçün)
+  // Sidebar açıqdırsa fileMessages, əks halda mövcud messages-dan şəkilləri tap
   const imageMessages = useMemo(() => {
-    const source = sidebar.fileMessages.length > 0 ? sidebar.fileMessages : sidebar.previewFiles;
-    return source.filter((f) => f.isImage || f.fileContentType?.startsWith("image/")).reverse();
-  }, [sidebar.fileMessages, sidebar.previewFiles]);
+    if (sidebar.fileMessages.length > 0) {
+      return sidebar.fileMessages.filter((f) => f.isImage || f.fileContentType?.startsWith("image/")).reverse();
+    }
+    if (sidebar.previewFiles.length > 0) {
+      return sidebar.previewFiles.filter((f) => f.isImage || f.fileContentType?.startsWith("image/")).reverse();
+    }
+    // Sidebar açılmayıb — mövcud mesajlardan şəkilləri tap
+    return messages
+      .filter((m) => !m.isDeleted && m.fileId && (m.isImage || m.fileContentType?.startsWith("image/")))
+      .reverse();
+  }, [sidebar.fileMessages, sidebar.previewFiles, messages]);
 
   // handleOpenImageViewer — MessageBubble-dan çağırılır, şəkil klikləndikdə
   // Ref pattern — imageMessages dəyişəndə renderFlatItem yenidən yaranmasın
