@@ -366,23 +366,9 @@ app.UseCors("AllowFrontend");
 // Response compression middleware — statik fayllardan əvvəl olmalıdır
 app.UseResponseCompression();
 
-// Configure static files to serve uploaded files from the storage path
-var fileStoragePath = builder.Configuration.GetSection("FileStorage")["LocalPath"] ?? "D:\\ChatAppUploads";
-if (!Directory.Exists(fileStoragePath))
-{
-    Directory.CreateDirectory(fileStoragePath);
-    Log.Information("File storage path created: {Path}", fileStoragePath);
-}
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(fileStoragePath),
-    RequestPath = "/uploads",
-    OnPrepareResponse = ctx =>
-    {
-        // GUID filename = content dəyişmir, 1 il cache
-        ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
-    }
-});
+// /uploads/* artıq authenticated proxy endpoint-lər vasitəsilə serve olunur:
+// GET /api/files/serve/{fileId} — mesaj faylları (access check ilə)
+// GET /api/files/avatar/{fileId} — avatarlar (yüngül auth)
 
 app.UseRouting();
 app.UseAuthentication();

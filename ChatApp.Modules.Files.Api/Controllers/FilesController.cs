@@ -336,7 +336,50 @@ namespace ChatApp.Modules.Files.Api.Controllers
 
 
         /// <summary>
-        /// Download a file
+        /// Authenticated file serve — inline göstərmə (şəkil, video preview)
+        /// Frontend blob URL pattern ilə istifadə edir
+        /// </summary>
+        [HttpGet("serve/{fileId:guid}")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> ServeFile(
+            [FromRoute] Guid fileId,
+            CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized();
+
+            return await ServeFileInternal(fileId, userId, checkAccess: true,
+                cacheMaxAge: 86400, inline: true, cancellationToken);
+        }
+
+        /// <summary>
+        /// Authenticated avatar serve — yüngül auth, əlavə access check yoxdur
+        /// Hər authenticated istifadəçi hər avatarı görə bilər (semi-public)
+        /// </summary>
+        [HttpGet("avatar/{fileId:guid}")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> ServeAvatar(
+            [FromRoute] Guid fileId,
+            CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized();
+
+            return await ServeFileInternal(fileId, userId, checkAccess: false,
+                cacheMaxAge: 604800, inline: true, cancellationToken);
+        }
+
+        /// <summary>
+        /// Download a file (Content-Disposition: attachment)
         /// </summary>
         [HttpGet("{fileId:guid}/download")]
         [RequirePermission("Files.Download")]
@@ -352,34 +395,52 @@ namespace ChatApp.Modules.Files.Api.Controllers
             if (userId == Guid.Empty)
                 return Unauthorized();
 
-            var fileMetadata = await _unitOfWork.Files.GetByIdAsync(fileId, cancellationToken);
+            return await ServeFileInternal(fileId, userId, checkAccess: true,
+                cacheMaxAge: 0, inline: false, cancellationToken);
+        }
 
+        /// <summary>
+        /// Ortaq fayl serving logic — serve, avatar və download endpoint-ləri tərəfindən istifadə olunur
+        /// </summary>
+        private async Task<IActionResult> ServeFileInternal(
+            Guid fileId, Guid userId, bool checkAccess,
+            int cacheMaxAge, bool inline, CancellationToken cancellationToken)
+        {
+            var fileMetadata = await _unitOfWork.Files.GetByIdAsync(fileId, cancellationToken);
             if (fileMetadata == null)
                 return NotFound(new { error = $"File with ID {fileId} not found" });
 
-            // Check if user has permission to download file (uploader, conversation participant, or channel member)
-            var hasPermission = await CheckFileAccessPermissionAsync(fileId, userId, cancellationToken);
-
-            if (!hasPermission)
+            if (checkAccess)
             {
-                _logger?.LogWarning(
-                    "User {UserId} attempted to access file {FileId} without permission",
-                    userId,
-                    fileId);
-                return Forbid();
+                // Artıq yüklənmiş fileMetadata-dan istifadə et — ikiqat DB sorğusu yoxdur
+                var hasPermission = fileMetadata.UploadedBy == userId
+                    || await _unitOfWork.Files.IsFileUsedInUserChannelsAsync(fileId, userId, cancellationToken)
+                    || await _unitOfWork.Files.IsFileUsedInUserConversationsAsync(fileId, userId, cancellationToken);
+
+                if (!hasPermission)
+                {
+                    _logger?.LogWarning("User {UserId} attempted to access file {FileId} without permission",
+                        userId, fileId);
+                    return Forbid();
+                }
             }
 
             try
             {
                 var fileStream = await _fileStorageService.GetFileStreamAsync(
-                    fileMetadata.StoragePath,
-                    cancellationToken);
+                    fileMetadata.StoragePath, cancellationToken);
 
-                return File(
-                    fileStream,
-                    fileMetadata.ContentType,
-                    fileMetadata.OriginalFileName,
-                    enableRangeProcessing: true);
+                if (cacheMaxAge > 0)
+                    Response.Headers.CacheControl = $"private, max-age={cacheMaxAge}";
+
+                if (inline)
+                {
+                    Response.Headers.ContentDisposition = $"inline; filename=\"{fileMetadata.OriginalFileName}\"";
+                    return File(fileStream, fileMetadata.ContentType, enableRangeProcessing: true);
+                }
+
+                return File(fileStream, fileMetadata.ContentType,
+                    fileMetadata.OriginalFileName, enableRangeProcessing: true);
             }
             catch (FileNotFoundException)
             {
@@ -491,44 +552,6 @@ namespace ChatApp.Modules.Files.Api.Controllers
             return (companyId, string.IsNullOrEmpty(companySlug) ? null : companySlug);
         }
 
-
-        /// <summary>
-        /// Check if user has permission to access a file
-        /// User has access if:
-        /// 1. They uploaded the file
-        /// 2. File is used in a channel they're a member of
-        /// 3. File is used in a conversation they're part of
-        /// </summary>
-        private async Task<bool> CheckFileAccessPermissionAsync(
-            Guid fileId,
-            Guid userId,
-            CancellationToken cancellationToken)
-        {
-            var file = await _unitOfWork.Files.GetByIdAsync(fileId, cancellationToken);
-
-            if (file == null) return false;
-
-            // Check 1: User is the uploader
-            if (file.UploadedBy == userId)
-                return true;
-
-            // Check 2: File is used in a channel where user is member
-            var isInChannel = await _unitOfWork.Files.IsFileUsedInUserChannelsAsync(
-                fileId,
-                userId,
-                cancellationToken);
-
-            if(isInChannel)
-                return true;
-
-            // Check 3: File is used in a conversation where user is participant
-            var isInConversation = await _unitOfWork.Files.IsFileUsedInUserConversationsAsync(
-                fileId,
-                userId,
-                cancellationToken);
-
-            return isInConversation;
-        }
 
         /// <summary>
         /// Get link preview metadata for a URL

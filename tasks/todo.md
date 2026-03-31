@@ -73,6 +73,20 @@
 
 ---
 
+### 4.6 File Serving Security — Proxy Pattern — IN PROGRESS 🔴 P0
+- [ ] Backend: `UseStaticFiles` `/uploads` blokunun silinməsi
+- [ ] Backend: `GET /api/files/serve/{fileId}` — authenticated file serve endpoint
+- [ ] Backend: `GET /api/files/avatar/{fileId}` — yüngül auth avatar endpoint
+- [ ] Backend: DTO-larda `fileUrl` (static path) → `fileId`-based URL keçidi
+- [ ] Backend: FileUrlHelper refactoru
+- [ ] Frontend: `useSecureFile(fileId)` hook — blob URL pattern
+- [ ] Frontend: MessageBubble, ConversationList, ChatHeader — secure file URL
+- [ ] Frontend: Admin komponentləri — secure avatar URL
+- [ ] Frontend: Upload flow — `fileId` based response handling
+- [ ] Frontend: `getFileUrl()` helper silinməsi, blob cache implementasiyası
+
+---
+
 ## Phase 5: Future Features
 
 ### Department Visibility (Backend + Frontend)

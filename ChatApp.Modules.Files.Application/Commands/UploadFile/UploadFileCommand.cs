@@ -9,7 +9,7 @@ using ChatApp.Shared.Kernel.Interfaces;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
+
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -62,7 +62,6 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
         private readonly IFileStorageService _fileStorageService;
         private readonly IVirusScanningService _virusScanningService;
         private readonly IEventBus _eventBus;
-        private readonly IConfiguration _configuration;
         private readonly ILogger<UploadFileCommandHandler> _logger;
 
         public UploadFileCommandHandler(
@@ -70,14 +69,12 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
             IFileStorageService fileStorageService,
             IVirusScanningService virusScanningService,
             IEventBus eventBus,
-            IConfiguration configuration,
             ILogger<UploadFileCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _fileStorageService= fileStorageService;
             _virusScanningService = virusScanningService;
             _eventBus = eventBus;
-            _configuration = configuration;
             _logger = logger;
         }
 
@@ -221,15 +218,18 @@ namespace ChatApp.Modules.Files.Application.Commands.UploadFile
                     "File {FileId} uploaded succesfully",
                     fileMetadata.Id);
 
-                // Download URL — /uploads/ prefix ilə
-                var apiBaseUrl = _configuration["ApiBaseUrl"] ?? "http://localhost:7000";
-                var downloadUrl = $"{apiBaseUrl.TrimEnd('/')}/uploads/{relativePath}";
+                // Authenticated serve URL — avatar və ya ümumi fayl endpoint-i
+                var isAvatar = request.IsProfilePicture || request.IsCompanyAvatar
+                    || request.IsChannelAvatar || request.IsDepartmentAvatar;
+                var serveUrl = isAvatar
+                    ? $"/api/files/avatar/{fileMetadata.Id}"
+                    : $"/api/files/serve/{fileMetadata.Id}";
 
                 var result = new FileUploadResult(
                     fileMetadata.Id,
                     uniqueFileName,
                     fileMetadata.FileSizeInBytes,
-                    downloadUrl);
+                    serveUrl);
 
                 return Result.Success(result);
             }

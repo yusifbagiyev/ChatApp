@@ -1,55 +1,40 @@
 namespace ChatApp.Shared.Kernel.Common;
 
 /// <summary>
-/// StoragePath-i statik URL-ə çevirmək üçün helper.
-/// Həm relative path (yeni format), həm full path (köhnə format) dəstəkləyir.
-/// Məsələn:
-///   "generic/conversation_xxx/images/file.jpg" → "/uploads/generic/conversation_xxx/images/file.jpg"
-///   "D:\ChatAppUploads\generic\conversation_xxx\images\file.jpg" → "/uploads/generic/conversation_xxx/images/file.jpg"
+/// fileId-dən authenticated serve/avatar URL yaradır.
+/// Frontend bu URL-lərdən authenticated fetch + blob URL pattern ilə istifadə edir.
 /// </summary>
 public static class FileUrlHelper
 {
-    private const string UploadsPrefix = "/uploads/";
-
-    public static string? ToUrl(string? storagePath)
+    public static string? ToServeUrl(Guid? fileId)
     {
-        if (string.IsNullOrEmpty(storagePath))
+        if (!fileId.HasValue || fileId == Guid.Empty)
             return null;
 
-        // Full path-dirsə (absolute), relative hissəni çıxar
-        // Windows: "D:\ChatAppUploads\generic\..." → "generic/..."
-        // Linux: "/var/uploads/generic/..." → "generic/..."
-        var relativePath = storagePath;
+        return $"/api/files/serve/{fileId}";
+    }
 
-        if (Path.IsPathRooted(storagePath))
-        {
-            // Full path-dən fayl adını və directory strukturunu çıxar
-            // "D:\ChatAppUploads\generic\conv\images\file.jpg" kimi path-lərdə
-            // base directory-dən sonrakı hissəni tapırıq
-            var normalized = storagePath.Replace('\\', '/');
+    public static string? ToServeUrl(string? fileId)
+    {
+        if (string.IsNullOrEmpty(fileId))
+            return null;
 
-            // Known base path markers - "ChatAppUploads/" və ya "uploads/" sonrasını götür
-            var markers = new[] { "ChatAppUploads/", "uploads/" };
-            foreach (var marker in markers)
-            {
-                var idx = normalized.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-                if (idx >= 0)
-                {
-                    relativePath = normalized[(idx + marker.Length)..];
-                    break;
-                }
-            }
+        return $"/api/files/serve/{fileId}";
+    }
 
-            // Heç bir marker tapılmadısa, son directory + fayl adını istifadə et
-            if (relativePath == storagePath)
-            {
-                relativePath = normalized;
-            }
-        }
+    public static string? ToAvatarUrl(Guid? fileId)
+    {
+        if (!fileId.HasValue || fileId == Guid.Empty)
+            return null;
 
-        // Backslash-ları forward slash-a çevir
-        relativePath = relativePath.Replace('\\', '/');
+        return $"/api/files/avatar/{fileId}";
+    }
 
-        return $"{UploadsPrefix}{relativePath}";
+    public static string? ToAvatarUrl(string? fileId)
+    {
+        if (string.IsNullOrEmpty(fileId))
+            return null;
+
+        return $"/api/files/avatar/{fileId}";
     }
 }
