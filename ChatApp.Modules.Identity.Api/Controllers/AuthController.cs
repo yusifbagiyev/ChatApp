@@ -101,13 +101,21 @@ namespace ChatApp.Modules.Identity.Api.Controllers
             if (string.IsNullOrEmpty(refreshToken))
                 return BadRequest(new { error = "Session expired" });
 
-            var result = await _mediator.Send(new RefreshTokenCommand(refreshToken), cancellationToken);
+            var result = await _mediator.Send(new RefreshTokenCommand(refreshToken), CancellationToken.None);
 
             if (result.IsFailure)
             {
-                // Session is invalid — clear it
-                await _sessionStore.RemoveSessionAsync(sessionId);
-                ClearSessionCookie();
+                var isTokenInvalid = result.Error!.Contains("Invalid or expired")
+                    || result.Error.Contains("User not found");
+
+                if (isTokenInvalid)
+                {
+                    // Token-in özü keçərsizdir — session-u sil
+                    await _sessionStore.RemoveSessionAsync(sessionId);
+                    ClearSessionCookie();
+                }
+
+                // Keçici xətalarda (DB timeout, cancel) session saxlanılır — retry mümkün olsun
                 return BadRequest(new { error = result.Error });
             }
 

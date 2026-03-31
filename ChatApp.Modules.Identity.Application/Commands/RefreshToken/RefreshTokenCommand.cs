@@ -116,8 +116,10 @@ namespace ChatApp.Modules.Identity.Application.Commands.RefreshToken
                 newRefreshTokenValue,
                 DateTime.UtcNow.AddDays(GetRefreshTokenExpirationDays()));
 
-            await unitOfWork.RefreshTokens.AddAsync(newRefreshToken, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.RefreshTokens.AddAsync(newRefreshToken, CancellationToken.None);
+            // Token rotation atomik olmalıdır — request cancel olsa belə tamamlanmalıdır,
+            // əks halda köhnə token revoke olub yenisi yazılmamış qalar
+            await unitOfWork.SaveChangesAsync(CancellationToken.None);
 
             return (newAccessToken, newRefreshTokenValue);
         }
