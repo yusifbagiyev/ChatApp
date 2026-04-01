@@ -161,11 +161,6 @@ namespace ChatApp.Modules.Files.Api.Controllers
                     file.Delete("drive-folder-delete");
             }
 
-            // Root folder-dəki fayllar
-            var rootFiles = await unitOfWork.Files.GetFilesByFolderIdAsync(id, cancellationToken);
-            foreach (var file in rootFiles)
-                file.Delete("drive-folder-delete");
-
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return Ok(new { message = "Folder deleted" });

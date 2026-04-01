@@ -8,6 +8,7 @@ import UserProfilePanel from "./components/UserProfilePanel";
 import Chat from "./pages/Chat";
 import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
+import DrivePage from "./pages/DrivePage";
 import ComingSoon from "./pages/ComingSoon";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -148,7 +149,7 @@ function AppRoutes() {
 
       <Route path="/drive" element={
         <ProtectedRoute>
-          <AuthenticatedLayout><ComingSoon title="Drive" /></AuthenticatedLayout>
+          <AuthenticatedLayout><DrivePage /></AuthenticatedLayout>
         </ProtectedRoute>
       } />
 

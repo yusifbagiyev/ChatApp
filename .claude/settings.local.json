@@ -117,7 +117,9 @@
       "Bash(where psql:*)",
       "Read(//c/Program Files/**)",
       "Read(//c/Users/Joseph/.claude/**)",
-      "Bash(mkdir -p /c/Users/Joseph/.claude/skills/)"
+      "Bash(mkdir -p /c/Users/Joseph/.claude/skills/)",
+      "Bash(for f:*)",
+      "Read(//c/Users/ybaghiyev/Desktop/ChatApp/**)"
     ],
     "deny": [],
     "ask": []

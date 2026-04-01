@@ -450,5 +450,40 @@ function createPosition(data) { return apiPost("/api/identity/positions", data);
 function updatePosition(id, data) { return apiPut(`/api/identity/positions/${id}`, data); }
 function deletePosition(id) { return apiDelete(`/api/identity/positions/${id}`); }
 
-// Named exports — başqa fayllar bunları import edə bilsin
-export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, getUserProfile, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, activateUser, deactivateUser, assignEmployeeToDepartment, scheduleRefresh, stopRefreshTimer, resetSessionExpired, getCompanies, getCompany, createCompany, updateCompany, deleteCompany, setCompanyStatus, assignCompanyAdmin, getUsers, searchUsers, getUserById, createUser, updateUser, deleteUser, addSupervisor, removeSupervisor, removeUserFromDepartment, assignPermission, removePermission, getAllPermissions, getUserStorageStats, createDepartment, updateDepartment, deleteDepartment, assignDepartmentHead, removeDepartmentHead, getAllPositions, createPosition, updatePosition, deletePosition, getOrganizationHierarchy, uploadDepartmentAvatar };
+// ─── Drive API ────────────────────────────────────────────────────────────────
+function getDriveFolders(parentId, search) {
+  const params = new URLSearchParams();
+  if (parentId) params.set("parentId", parentId);
+  if (search) params.set("search", search);
+  return apiGet(`/api/drive/folders?${params}`);
+}
+function createDriveFolder(name, parentId) { return apiPost("/api/drive/folders", { name, parentFolderId: parentId || null }); }
+function renameDriveFolder(id, name) { return apiPut(`/api/drive/folders/${id}`, { name }); }
+function moveDriveFolder(id, targetFolderId) { return apiPut(`/api/drive/folders/${id}/move`, { targetFolderId }); }
+function deleteDriveFolder(id) { return apiDelete(`/api/drive/folders/${id}`); }
+
+function getDriveFiles(folderId, sortBy, sortOrder, search) {
+  const params = new URLSearchParams();
+  if (folderId) params.set("folderId", folderId);
+  if (sortBy) params.set("sortBy", sortBy);
+  if (sortOrder) params.set("sortOrder", sortOrder);
+  if (search) params.set("search", search);
+  return apiGet(`/api/drive/files?${params}`);
+}
+function uploadDriveFile(formData, folderId) {
+  const url = folderId ? `/api/drive/upload?folderId=${folderId}` : "/api/drive/upload";
+  return apiUpload(url, formData);
+}
+function renameDriveFile(id, name) { return apiPut(`/api/drive/files/${id}/rename`, { name }); }
+function moveDriveFile(id, targetFolderId) { return apiPut(`/api/drive/files/${id}/move`, { targetFolderId }); }
+function deleteDriveFile(id) { return apiDelete(`/api/drive/files/${id}`); }
+
+function getDriveTrash() { return apiGet("/api/drive/trash"); }
+function restoreDriveItem(id) { return apiPut(`/api/drive/trash/${id}/restore`); }
+function permanentDeleteDriveItem(id) { return apiDelete(`/api/drive/trash/${id}`); }
+function emptyDriveTrash() { return apiDelete("/api/drive/trash"); }
+
+function getDriveQuota() { return apiGet("/api/drive/quota"); }
+
+// Named exports
+export { apiGet, apiPost, apiPut, apiDelete, apiUpload, getFileUrl, downloadFile, downloadFileByUrl, getUserProfile, getDepartments, getPositionsByDepartment, getSubordinates, changePassword, adminChangePassword, activateUser, deactivateUser, assignEmployeeToDepartment, scheduleRefresh, stopRefreshTimer, resetSessionExpired, getCompanies, getCompany, createCompany, updateCompany, deleteCompany, setCompanyStatus, assignCompanyAdmin, getUsers, searchUsers, getUserById, createUser, updateUser, deleteUser, addSupervisor, removeSupervisor, removeUserFromDepartment, assignPermission, removePermission, getAllPermissions, getUserStorageStats, createDepartment, updateDepartment, deleteDepartment, assignDepartmentHead, removeDepartmentHead, getAllPositions, createPosition, updatePosition, deletePosition, getOrganizationHierarchy, uploadDepartmentAvatar, getDriveFolders, createDriveFolder, renameDriveFolder, moveDriveFolder, deleteDriveFolder, getDriveFiles, uploadDriveFile, renameDriveFile, moveDriveFile, deleteDriveFile, getDriveTrash, restoreDriveItem, permanentDeleteDriveItem, emptyDriveTrash, getDriveQuota };

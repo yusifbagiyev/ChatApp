@@ -104,6 +104,22 @@
 - Use functional updater in setState: `setState(prev => ...)` instead of relying on closure value
 - Use `requestId` pattern for async race conditions
 
+### 17. Backend-Frontend DTO Field Name Verification
+- ASP.NET Core JSON serialize-da `PascalCase` → `camelCase` çevirir: `OriginalFileName` → `originalFileName`
+- **HƏDƏF:** Frontend yazarkən **mütləq** backend DTO-nu oxu və JSON field adlarını yoxla
+- **HEÇVAXT** "fileName", "fileUrl", "totalBytes" kimi təxmini adlar yazma — backend DTO-dakı əsl property adını camelCase-ə çevir
+- `record FileUploadResult(... string DownloadUrl)` → frontend-də `res.downloadUrl` (dəyişəndə frontend də dəyişməli!)
+- **Backend DTO dəyişdiriləndə** frontend-i mütləq grep et: `grep -rn "köhnəAd" chatapp-frontend/src/`
+- FormData field adları da backend model ilə uyğun olmalıdır: backend `IFormFile File` → frontend `formData.append("File", ...)` (böyük hərf!)
+
+### 18. Cross-Layer Rename Checklist
+Backend-də bir property adı dəyişdiriləndə bu addımları izlə:
+1. Backend DTO-dakı yeni adı müəyyən et
+2. Frontend-də köhnə adı grep et: `grep -rn "köhnəCamelCase" chatapp-frontend/src/`
+3. **BÜTÜN** tapılan yerləri dəyiş — bir yer belə buraxma
+4. SignalR event DTO-larını da yoxla
+5. Test et — upload, display, download hamısı işləməlidir
+
 ## Anti-Patterns (Never Do These)
 
 | Anti-Pattern | Why | Do Instead |
@@ -118,3 +134,6 @@
 | `git push --force` to main | Loses team work | Create branch + PR |
 | Inline styles for permanent CSS | Hard to maintain, breaks cache | Use CSS class in component file |
 | `LogDebug` in SignalR handlers | Parse overhead on every call | Only `Warning/Error` level |
+| Frontend-də təxmini DTO field adları | Backend ilə uyuşmur, data görünmür | Backend DTO-nu oxu, camelCase-ə çevir |
+| Backend DTO rename edib frontend-i yeniləməmək | Bütün upload/display sınır | `grep -rn` ilə köhnə adı tap, hamısını dəyiş |
+| `formData.append("file", ...)` kiçik hərflə | ASP.NET model binding tapmir | Backend model-dəki property adını dəqiq istifadə et |
