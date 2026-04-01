@@ -7,13 +7,15 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { apiGet, apiPost, apiDelete } from "../services/api";
 import { getChatEndpoint } from "../utils/chatUtils";
 
-
 // ─── useSidebarPanels ────────────────────────────────────────────────────────
 // selectedChat: hansı chat açıqdır
 // channelMembers: channel üzvlərinin lookup map-i
 // setChannelMembers: channel üzvlərini yeniləmək üçün
-export default function useSidebarPanels(selectedChat, channelMembers, setChannelMembers) {
-
+export default function useSidebarPanels(
+  selectedChat,
+  channelMembers,
+  setChannelMembers,
+) {
   // ─── Core sidebar state ───────────────────────────────────────────────────
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarClosing, setSidebarClosing] = useState(false);
@@ -77,10 +79,15 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
     try {
       const data = await apiGet(`${endpoint}?pageSize=6`);
       const mapped = (data || []).map((msg) => ({
-        id: msg.id, fileId: msg.fileId, fileName: msg.fileName,
-        fileContentType: msg.fileContentType, fileSizeInBytes: msg.fileSizeInBytes,
-        fileUrl: msg.fileUrl, createdAtUtc: msg.createdAtUtc,
-        senderFullName: msg.senderFullName, senderAvatarUrl: msg.senderAvatarUrl,
+        id: msg.id,
+        fileId: msg.fileId,
+        fileName: msg.fileName,
+        fileContentType: msg.fileContentType,
+        fileSizeInBytes: msg.fileSizeInBytes,
+        fileUrl: msg.fileUrl,
+        createdAtUtc: msg.createdAtUtc,
+        senderFullName: msg.senderFullName,
+        senderAvatarUrl: msg.senderAvatarUrl,
       }));
       setPreviewFiles(mapped);
     } catch {
@@ -92,7 +99,11 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
   const loadFavoriteMessages = useCallback(async (chat) => {
     try {
       setFavoritesLoading(true);
-      const endpoint = getChatEndpoint(chat.id, chat.type, "/messages/favorites");
+      const endpoint = getChatEndpoint(
+        chat.id,
+        chat.type,
+        "/messages/favorites",
+      );
       if (!endpoint) return;
       const data = await apiGet(endpoint);
       const sorted = (data || []).sort(
@@ -100,7 +111,7 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
       );
       setFavoriteMessages(sorted);
     } catch (err) {
-      console.error("Failed to load favorite messages:", err);
+      alert("Failed to load favorite messages:", err);
       setFavoriteMessages([]);
     } finally {
       setFavoritesLoading(false);
@@ -118,15 +129,21 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
       // Hər mesajdan URL-ləri çıxar
       const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
       const results = [];
-      for (const msg of (data || [])) {
+      for (const msg of data || []) {
         if (!msg.content) continue;
         const urls = msg.content.match(urlRegex);
         if (!urls) continue;
         for (const url of urls) {
           let domain = "";
-          try { domain = new URL(url).hostname; } catch { domain = url; }
+          try {
+            domain = new URL(url).hostname;
+          } catch {
+            domain = url;
+          }
           results.push({
-            id: msg.id, url, domain,
+            id: msg.id,
+            url,
+            domain,
             senderFullName: msg.senderFullName,
             senderAvatarUrl: msg.senderAvatarUrl,
             createdAtUtc: msg.createdAtUtc,
@@ -134,8 +151,7 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
         }
       }
       setLinkMessages(results);
-    } catch (err) {
-      console.error("Failed to load link messages:", err);
+    } catch {
       setLinkMessages([]);
     } finally {
       setLinksLoading(false);
@@ -147,7 +163,8 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
   useEffect(() => {
     if (!showSidebar || !selectedChat) return;
     // Əgər favoriteMessages və previewFiles artıq cache-dən bərpa olunubsa, yenidən yükləmə
-    const hasCachedData = favoriteMessages.length > 0 || previewFiles.length > 0;
+    const hasCachedData =
+      favoriteMessages.length > 0 || previewFiles.length > 0;
     if (hasCachedData) {
       setSidebarDataLoading(false);
       // Links cache-dən bərpa olunmayıbsa, yüklə
@@ -175,13 +192,15 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
       if (!endpoint) return;
 
       // Optimistic — dərhal əlavə et
-      const optimisticFav = { ...msg, favoritedAtUtc: new Date().toISOString() };
+      const optimisticFav = {
+        ...msg,
+        favoritedAtUtc: new Date().toISOString(),
+      };
       setFavoriteMessages((prev) => [optimisticFav, ...prev]);
 
       try {
         await apiPost(endpoint);
-      } catch (err) {
-        console.error("Failed to add favorite:", err);
+      } catch {
         // Revert — sil
         setFavoriteMessages((prev) => prev.filter((m) => m.id !== msg.id));
       }
@@ -209,8 +228,7 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
 
       try {
         await apiDelete(endpoint);
-      } catch (err) {
-        console.error("Failed to remove favorite:", err);
+      } catch {
         // Revert — capture olunmuş snapshot-u bərpa et
         setFavoriteMessages(prevSnapshot);
       }
@@ -219,39 +237,47 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
   );
 
   // ─── handleOpenChatsWithUser ───────────────────────────────────────────────
-  const handleOpenChatsWithUser = useCallback(async (otherUserId, source = "sidebar") => {
-    if (!otherUserId) return;
-    setChatsWithUserSource(source);
-    setShowChatsWithUser(true);
-    try {
-      const data = await apiGet(`/api/channels/shared/${otherUserId}`);
-      setChatsWithUserData(data || []);
-    } catch {
-      setChatsWithUserData([]);
-    }
-  }, []);
+  const handleOpenChatsWithUser = useCallback(
+    async (otherUserId, source = "sidebar") => {
+      if (!otherUserId) return;
+      setChatsWithUserSource(source);
+      setShowChatsWithUser(true);
+      try {
+        const data = await apiGet(`/api/channels/shared/${otherUserId}`);
+        setChatsWithUserData(data || []);
+      } catch {
+        setChatsWithUserData([]);
+      }
+    },
+    [],
+  );
 
   // ─── loadMembersPanelPage — Members paneli paginated yükləmə ───────────────
   const membersPanelLoadingRef = useRef(false);
-  const loadMembersPanelPage = useCallback(async (channelId, skip = 0, reset = false) => {
-    if (membersPanelLoadingRef.current) return;
-    membersPanelLoadingRef.current = true;
-    setMembersPanelLoading(true);
-    try {
-      const members = await apiGet(`/api/channels/${channelId}/members?skip=${skip}&take=30`);
-      if (reset) {
-        setMembersPanelList(members);
-      } else {
-        setMembersPanelList((prev) => [...prev, ...members]);
+  const loadMembersPanelPage = useCallback(
+    async (channelId, skip = 0, reset = false) => {
+      if (membersPanelLoadingRef.current) return;
+      membersPanelLoadingRef.current = true;
+      setMembersPanelLoading(true);
+      try {
+        const members = await apiGet(
+          `/api/channels/${channelId}/members?skip=${skip}&take=30`,
+        );
+        if (reset) {
+          setMembersPanelList(members);
+        } else {
+          setMembersPanelList((prev) => [...prev, ...members]);
+        }
+        setMembersPanelHasMore(members.length === 30);
+      } catch {
+        /* ignore */
+      } finally {
+        membersPanelLoadingRef.current = false;
+        setMembersPanelLoading(false);
       }
-      setMembersPanelHasMore(members.length === 30);
-    } catch (err) {
-      console.error("Failed to load members page:", err);
-    } finally {
-      membersPanelLoadingRef.current = false;
-      setMembersPanelLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // ─── Sidebar açılanda channel members yüklə (cache yoxdursa) ────────────────
   useEffect(() => {
@@ -261,20 +287,28 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
     let cancelled = false;
     (async () => {
       try {
-        const members = await apiGet(`/api/channels/${selectedChat.id}/members?take=100`);
+        const members = await apiGet(
+          `/api/channels/${selectedChat.id}/members?take=100`,
+        );
         if (cancelled) return;
         setChannelMembers((prev) => ({
           ...prev,
           [selectedChat.id]: members.reduce((map, m) => {
-            map[m.userId] = { fullName: m.fullName, avatarUrl: m.avatarUrl, role: m.role };
+            map[m.userId] = {
+              fullName: m.fullName,
+              avatarUrl: m.avatarUrl,
+              role: m.role,
+            };
             return map;
           }, {}),
         }));
-      } catch (err) {
-        if (!cancelled) console.error("Failed to load channel members for sidebar:", err);
+      } catch {
+        /* ignore */
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSidebar, selectedChat?.id]);
 
@@ -289,52 +323,58 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
   // ─── loadFileMessages — API-dən faylları yüklə (pagination ilə) ────────────
   // Race condition qoruması: requestId ilə köhnə sorğuların cavabını ignore et
   const filesRequestIdRef = useRef(0);
-  const loadFileMessages = useCallback(async (chat, tab, existingFiles = [], beforeUtc = null) => {
-    if (!chat) return;
-    const isMedia = tab === "media";
-    const endpoint = getChatEndpoint(chat.id, chat.type, "/messages/files");
-    if (!endpoint) return;
+  const loadFileMessages = useCallback(
+    async (chat, tab, existingFiles = [], beforeUtc = null) => {
+      if (!chat) return;
+      const isMedia = tab === "media";
+      const endpoint = getChatEndpoint(chat.id, chat.type, "/messages/files");
+      if (!endpoint) return;
 
-    // Tab dəyişdikdə köhnə datanı təmizlə (stale data görünməsin)
-    if (!beforeUtc) {
-      setFileMessages([]);
-      setFilesHasMore(true);
-    }
+      // Tab dəyişdikdə köhnə datanı təmizlə (stale data görünməsin)
+      if (!beforeUtc) {
+        setFileMessages([]);
+        setFilesHasMore(true);
+      }
 
-    const requestId = ++filesRequestIdRef.current;
+      const requestId = ++filesRequestIdRef.current;
 
-    try {
-      setFilesLoading(true);
-      let url = `${endpoint}?pageSize=30&isMedia=${isMedia}`;
-      if (beforeUtc) url += `&before=${encodeURIComponent(beforeUtc)}`;
+      try {
+        setFilesLoading(true);
+        let url = `${endpoint}?pageSize=30&isMedia=${isMedia}`;
+        if (beforeUtc) url += `&before=${encodeURIComponent(beforeUtc)}`;
 
-      const data = await apiGet(url);
+        const data = await apiGet(url);
 
-      // Köhnə sorğunun cavabını ignore et (tab dəyişilibsə)
-      if (requestId !== filesRequestIdRef.current) return;
+        // Köhnə sorğunun cavabını ignore et (tab dəyişilibsə)
+        if (requestId !== filesRequestIdRef.current) return;
 
-      const mapped = (data || []).map((msg) => ({
-        id: msg.id, fileId: msg.fileId, fileName: msg.fileName,
-        fileContentType: msg.fileContentType, fileSizeInBytes: msg.fileSizeInBytes,
-        fileUrl: msg.fileUrl, isImage: msg.fileContentType?.startsWith("image/"),
-        senderFullName: msg.senderFullName,
-        senderAvatarUrl: msg.senderAvatarUrl,
-        createdAtUtc: msg.createdAtUtc,
-      }));
+        const mapped = (data || []).map((msg) => ({
+          id: msg.id,
+          fileId: msg.fileId,
+          fileName: msg.fileName,
+          fileContentType: msg.fileContentType,
+          fileSizeInBytes: msg.fileSizeInBytes,
+          fileUrl: msg.fileUrl,
+          isImage: msg.fileContentType?.startsWith("image/"),
+          senderFullName: msg.senderFullName,
+          senderAvatarUrl: msg.senderAvatarUrl,
+          createdAtUtc: msg.createdAtUtc,
+        }));
 
-      // Əvvəlki fayllarla birləşdir (loadMore üçün)
-      const merged = beforeUtc ? [...existingFiles, ...mapped] : mapped;
-      setFileMessages(merged);
-      setFilesHasMore((data || []).length >= 30);
-    } catch (err) {
-      if (requestId !== filesRequestIdRef.current) return;
-      console.error("Failed to load files:", err);
-      if (!beforeUtc) setFileMessages([]);
-      setFilesHasMore(false);
-    } finally {
-      if (requestId === filesRequestIdRef.current) setFilesLoading(false);
-    }
-  }, []);
+        // Əvvəlki fayllarla birləşdir (loadMore üçün)
+        const merged = beforeUtc ? [...existingFiles, ...mapped] : mapped;
+        setFileMessages(merged);
+        setFilesHasMore((data || []).length >= 30);
+      } catch {
+        if (requestId !== filesRequestIdRef.current) return;
+        if (!beforeUtc) setFileMessages([]);
+        setFilesHasMore(false);
+      } finally {
+        if (requestId === filesRequestIdRef.current) setFilesLoading(false);
+      }
+    },
+    [],
+  );
 
   // ─── resetSidebarPanels — handleSelectChat-da çağırılır ────────────────────
   const resetSidebarPanels = useCallback(() => {
@@ -374,35 +414,44 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
   }, []);
 
   // ─── handleNewFileMessage — yeni fayl mesajı gəldikdə panelləri real-time yenilə
-  const handleNewFileMessage = useCallback((msg) => {
-    if (!msg?.fileId) return;
-    const newFile = {
-      id: msg.id, fileId: msg.fileId, fileName: msg.fileName,
-      fileContentType: msg.fileContentType, fileSizeInBytes: msg.fileSizeInBytes,
-      fileUrl: msg.fileUrl, createdAtUtc: msg.createdAtUtc,
-      senderFullName: msg.senderFullName, senderAvatarUrl: msg.senderAvatarUrl,
-      isImage: msg.fileContentType?.startsWith("image/"),
-    };
+  const handleNewFileMessage = useCallback(
+    (msg) => {
+      if (!msg?.fileId) return;
+      const newFile = {
+        id: msg.id,
+        fileId: msg.fileId,
+        fileName: msg.fileName,
+        fileContentType: msg.fileContentType,
+        fileSizeInBytes: msg.fileSizeInBytes,
+        fileUrl: msg.fileUrl,
+        createdAtUtc: msg.createdAtUtc,
+        senderFullName: msg.senderFullName,
+        senderAvatarUrl: msg.senderAvatarUrl,
+        isImage: msg.fileContentType?.startsWith("image/"),
+      };
 
-    // Preview grid-ə əlavə et (max 6 ədəd, ən yeni əvvəl)
-    setPreviewFiles((prev) => {
-      if (prev.some((f) => f.id === msg.id)) return prev;
-      return [newFile, ...prev].slice(0, 6);
-    });
+      // Preview grid-ə əlavə et (max 6 ədəd, ən yeni əvvəl)
+      setPreviewFiles((prev) => {
+        if (prev.some((f) => f.id === msg.id)) return prev;
+        return [newFile, ...prev].slice(0, 6);
+      });
 
-    // Files & Media paneli açıqdırsa, uyğun tab-a əlavə et
-    if (showFilesMedia) {
-      const isImage = msg.fileContentType?.startsWith("image/");
-      const shouldAdd = (filesMediaTab === "media" && isImage) ||
-                        (filesMediaTab === "files" && !isImage);
-      if (shouldAdd) {
-        setFileMessages((prev) => {
-          if (prev.some((f) => f.id === msg.id)) return prev;
-          return [newFile, ...prev];
-        });
+      // Files & Media paneli açıqdırsa, uyğun tab-a əlavə et
+      if (showFilesMedia) {
+        const isImage = msg.fileContentType?.startsWith("image/");
+        const shouldAdd =
+          (filesMediaTab === "media" && isImage) ||
+          (filesMediaTab === "files" && !isImage);
+        if (shouldAdd) {
+          setFileMessages((prev) => {
+            if (prev.some((f) => f.id === msg.id)) return prev;
+            return [newFile, ...prev];
+          });
+        }
       }
-    }
-  }, [showFilesMedia, filesMediaTab]);
+    },
+    [showFilesMedia, filesMediaTab],
+  );
 
   // ─── closeSidebar — animasiyalı bağlama (200ms slide-out, sonra unmount) ──
   const closeSidebar = useCallback(() => {
@@ -451,14 +500,14 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
         dd.style.right = "auto";
       } else {
         dd.style.left = "auto";
-        dd.style.right = (viewportW - btnRect.right) + "px";
+        dd.style.right = viewportW - btnRect.right + "px";
       }
 
       // Aşağıda yer yoxdursa — yuxarıya aç
       if (btnRect.bottom + 4 + ddHeight > viewportH) {
-        dd.style.top = (btnRect.top - ddHeight - 4) + "px";
+        dd.style.top = btnRect.top - ddHeight - 4 + "px";
       } else {
-        dd.style.top = (btnRect.bottom + 4) + "px";
+        dd.style.top = btnRect.bottom + 4 + "px";
       }
     });
     return () => cancelAnimationFrame(raf);
@@ -466,42 +515,89 @@ export default function useSidebarPanels(selectedChat, channelMembers, setChanne
 
   return {
     // Core
-    showSidebar, setShowSidebar,
+    showSidebar,
+    setShowSidebar,
     sidebarClosing,
-    showSidebarMenu, setShowSidebarMenu,
+    showSidebarMenu,
+    setShowSidebarMenu,
     sidebarDataLoading,
     // Favorites
-    showFavorites, setShowFavorites,
-    favoriteMessages, setFavoriteMessages,
-    favoritesLoading, favMenuId, setFavMenuId,
-    favSearchOpen, setFavSearchOpen, favSearchText, setFavSearchText,
+    showFavorites,
+    setShowFavorites,
+    favoriteMessages,
+    setFavoriteMessages,
+    favoritesLoading,
+    favMenuId,
+    setFavMenuId,
+    favSearchOpen,
+    setFavSearchOpen,
+    favSearchText,
+    setFavSearchText,
     // Links
-    showAllLinks, setShowAllLinks,
-    linksMenuId, setLinksMenuId,
-    linksSearchOpen, setLinksSearchOpen, linksSearchText, setLinksSearchText,
-    linkMessages, setLinkMessages, linksLoading,
+    showAllLinks,
+    setShowAllLinks,
+    linksMenuId,
+    setLinksMenuId,
+    linksSearchOpen,
+    setLinksSearchOpen,
+    linksSearchText,
+    setLinksSearchText,
+    linkMessages,
+    setLinkMessages,
+    linksLoading,
     // Chats with User
-    showChatsWithUser, setShowChatsWithUser,
-    chatsWithUserData, setChatsWithUserData,
-    chatsWithUserSource, setChatsWithUserSource,
+    showChatsWithUser,
+    setShowChatsWithUser,
+    chatsWithUserData,
+    setChatsWithUserData,
+    chatsWithUserSource,
+    setChatsWithUserSource,
     // Files & Media
-    showFilesMedia, setShowFilesMedia,
-    filesMediaTab, setFilesMediaTab,
-    filesMenuId, setFilesMenuId,
-    filesSearchOpen, setFilesSearchOpen, filesSearchText, setFilesSearchText,
-    previewFiles, setPreviewFiles,
-    fileMessages, setFileMessages, filesLoading, filesHasMore,
+    showFilesMedia,
+    setShowFilesMedia,
+    filesMediaTab,
+    setFilesMediaTab,
+    filesMenuId,
+    setFilesMenuId,
+    filesSearchOpen,
+    setFilesSearchOpen,
+    filesSearchText,
+    setFilesSearchText,
+    previewFiles,
+    setPreviewFiles,
+    fileMessages,
+    setFileMessages,
+    filesLoading,
+    filesHasMore,
     // Members
-    showMembersPanel, setShowMembersPanel,
-    membersPanelDirect, setMembersPanelDirect,
-    memberMenuId, setMemberMenuId,
-    membersPanelList, membersPanelHasMore, membersPanelLoading,
+    showMembersPanel,
+    setShowMembersPanel,
+    membersPanelDirect,
+    setMembersPanelDirect,
+    memberMenuId,
+    setMemberMenuId,
+    membersPanelList,
+    membersPanelHasMore,
+    membersPanelLoading,
     // Refs
-    sidebarMenuRef, favMenuRef, linksMenuRef, filesMenuRef, memberMenuRef,
+    sidebarMenuRef,
+    favMenuRef,
+    linksMenuRef,
+    filesMenuRef,
+    memberMenuRef,
     // Functions
-    loadFavoriteMessages, handleFavoriteMessage, handleRemoveFavorite,
-    handleOpenChatsWithUser, loadMembersPanelPage, loadFileMessages, loadPreviewFiles,
-    handleNewFileMessage, loadLinkMessages, closeSidebar, resetSidebarPanels, resetChatsWithUser,
+    loadFavoriteMessages,
+    handleFavoriteMessage,
+    handleRemoveFavorite,
+    handleOpenChatsWithUser,
+    loadMembersPanelPage,
+    loadFileMessages,
+    loadPreviewFiles,
+    handleNewFileMessage,
+    loadLinkMessages,
+    closeSidebar,
+    resetSidebarPanels,
+    resetChatsWithUser,
     // Memos
     favoriteIds,
   };

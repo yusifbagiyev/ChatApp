@@ -849,8 +849,7 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack }) {
     try {
       const data = await getDriveTrash();
       setTrashItems(data || []);
-    } catch (err) {
-      console.error("Failed to load trash:", err);
+    } catch {
       showToast("Failed to load recycle bin", "error");
     } finally {
       setLoading(false);
@@ -864,8 +863,7 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack }) {
       await restoreDriveItem(item.id);
       showToast("Item restored", "success");
       loadTrash();
-    } catch (err) {
-      console.error("Failed to restore item:", err);
+    } catch {
       showToast("Failed to restore item", "error");
     }
   };
@@ -875,8 +873,7 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack }) {
       await permanentDeleteDriveItem(item.id);
       showToast("Item permanently deleted", "success");
       loadTrash();
-    } catch (err) {
-      console.error("Failed to delete item:", err);
+    } catch {
       showToast("Failed to delete permanently", "error");
     }
   };
@@ -886,8 +883,7 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack }) {
       await emptyDriveTrash();
       showToast("Recycle bin emptied", "success");
       setTrashItems([]);
-    } catch (err) {
-      console.error("Failed to empty trash:", err);
+    } catch {
       showToast("Failed to empty recycle bin", "error");
     }
   };
@@ -1037,8 +1033,7 @@ export default function DrivePage() {
       ]);
       setFolders(foldersData || []);
       setFiles(filesData || []);
-    } catch (err) {
-      console.error("Failed to load drive data:", err);
+    } catch {
       showToast("Failed to load files", "error");
     } finally {
       setLoading(false);
@@ -1051,7 +1046,7 @@ export default function DrivePage() {
   useEffect(() => {
     getDriveQuota()
       .then((data) => setQuota(data))
-      .catch((err) => console.error("Failed to load quota:", err));
+      .catch(() => {});
   }, []);
 
   // ── Naviqasiya ──
@@ -1103,8 +1098,7 @@ export default function DrivePage() {
       loadData();
       // Kvota yenilə
       getDriveQuota().then(setQuota).catch(() => {});
-    } catch (err) {
-      console.error("Failed to upload files:", err);
+    } catch {
       showToast("Failed to upload files", "error");
     }
   }, [currentFolderId, loadData, showToast]);
@@ -1117,8 +1111,7 @@ export default function DrivePage() {
       await createDriveFolder(name.trim(), currentFolderId);
       showToast("Folder created", "success");
       loadData();
-    } catch (err) {
-      console.error("Failed to create folder:", err);
+    } catch {
       showToast("Failed to create folder", "error");
     }
   }, [currentFolderId, loadData, showToast]);
@@ -1136,8 +1129,7 @@ export default function DrivePage() {
       showToast("Renamed successfully", "success");
       setRenameItem(null);
       loadData();
-    } catch (err) {
-      console.error("Failed to rename:", err);
+    } catch {
       showToast("Failed to rename", "error");
       setRenameItem(null);
     }
@@ -1156,8 +1148,7 @@ export default function DrivePage() {
       setSelectedItems(new Set());
       loadData();
       getDriveQuota().then(setQuota).catch(() => {});
-    } catch (err) {
-      console.error("Failed to delete:", err);
+    } catch {
       showToast("Failed to delete", "error");
     }
   }, [loadData, showToast]);
@@ -1174,8 +1165,7 @@ export default function DrivePage() {
       setSelectedItems(new Set());
       loadData();
       getDriveQuota().then(setQuota).catch(() => {});
-    } catch (err) {
-      console.error("Failed to bulk delete:", err);
+    } catch {
       showToast("Failed to delete items", "error");
     }
   }, [selectedItems, loadData, showToast]);
@@ -1184,8 +1174,7 @@ export default function DrivePage() {
   const handleDownload = useCallback(async (item) => {
     try {
       await downloadFile(item.id, item.originalFileName, item.serveUrl);
-    } catch (err) {
-      console.error("Failed to download:", err);
+    } catch {
       showToast("Failed to download file", "error");
     }
   }, [showToast]);
@@ -1215,8 +1204,7 @@ export default function DrivePage() {
       setMoveDialog(null);
       setSelectedItems(new Set());
       loadData();
-    } catch (err) {
-      console.error("Failed to move:", err);
+    } catch {
       showToast("Failed to move item", "error");
     }
   }, [moveDialog, loadData, showToast]);

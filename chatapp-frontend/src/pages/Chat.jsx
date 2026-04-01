@@ -979,9 +979,7 @@ function Chat() {
       );
       // data.items — paged response-dan items array
       setConversations(data.items);
-    } catch (err) {
-      console.error("Failed to load conversations:", err);
-    } finally {
+    } catch { showToast("Failed to load conversations", "error"); } finally {
       setIsLoading(false); // Yüklənmə bitdi (uğurlu olsa da olmasada)
     }
   }
@@ -998,8 +996,7 @@ function Chat() {
         (a, b) => new Date(b.pinnedAtUtc) - new Date(a.pinnedAtUtc),
       );
       setPinnedMessages(sorted);
-    } catch (err) {
-      console.error("Failed to load pinned messages:", err);
+    } catch {
       setPinnedMessages([]);
     }
   }, []);
@@ -1401,9 +1398,7 @@ function Chat() {
 
       sidebar.setShowSidebar(false);
       channel.setShowCreateChannel(true);
-    } catch (err) {
-      console.error("Failed to load channel data for editing:", err);
-    }
+    } catch { showToast("Failed to load channel details", "error"); }
   }
 
   // handleChannelCreated — channel uğurla yaradıldıqda çağırılır
@@ -1779,9 +1774,7 @@ function Chat() {
                   ...extra.filter((m) => !ids.has(m.id)),
                 ];
               }
-            } catch (err) {
-              console.error("Separator extra page failed:", err);
-            }
+            } catch { /* ignore */ }
           }
         }
         // ReadLater mode — latestForSeparator-dan əlavə səhifə
@@ -1805,9 +1798,7 @@ function Chat() {
                   ...extra.filter((m) => !ids.has(m.id)),
                 ];
               }
-            } catch (err) {
-              console.error("ReadLater separator extra page failed:", err);
-            }
+            } catch { /* ignore */ }
           }
         }
       }
@@ -1910,9 +1901,7 @@ function Chat() {
                   return next;
                 });
               }
-            } catch (err) {
-              console.error("Failed to get online status:", err);
-            }
+            } catch { /* ignore */ }
           }
         }
       } else if (chat.type === 1) {
@@ -1933,19 +1922,17 @@ function Chat() {
                 return map;
               }, {}),
             }));
-          } catch (err) {
-            console.error("Failed to load channel members:", err);
-          }
+          } catch { /* ignore */ }
         }
       }
 
       // setTimeout(..., 0) — bir sonraki event loop-da textarea-ya focus ver
       // Birbaşa çağırsaq, DOM hazır olmaya bilər
       setTimeout(() => inputRef.current?.focus(), 0);
-    } catch (err) {
+    } catch {
       if (requestId !== chatRequestIdRef.current) return;
-      console.error("Failed to load messages:", err);
       setMessages([]);
+      showToast("Failed to load chat", "error");
     } finally {
       // Yalnız cari request-in finally-si — loading catch block üçün sıfırla
       if (requestId === chatRequestIdRef.current) {
@@ -2018,8 +2005,7 @@ function Chat() {
           return data.map((m) => mergeMessageWithPrev(m, prevMap.get(m.id)));
         });
       }
-    } catch (err) {
-      console.error("Failed to forward message:", err);
+    } catch {
       showToast("Failed to forward message", "error");
     }
   }
@@ -2736,9 +2722,7 @@ function Chat() {
 
         pendingHighlightRef.current = messageId;
         setMessages(data);
-      } catch (err) {
-        console.error("Failed to load messages around target:", err);
-      }
+      } catch { showToast("Failed to jump to message", "error"); }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedChat],
@@ -3141,8 +3125,7 @@ function Chat() {
           ),
         );
         return details;
-      } catch (err) {
-        console.error("Failed to load reaction details:", err);
+      } catch {
         return null;
       }
     },
@@ -3231,21 +3214,8 @@ function Chat() {
       }
     }
     if (visibleUnreadRef.current.size > 0) {
-      console.log(
-        "[mark-as-read] detected unread in viewport:",
-        visibleUnreadRef.current.size,
-      );
       if (readBatchTimerRef.current) clearTimeout(readBatchTimerRef.current);
       readBatchTimerRef.current = setTimeout(flushReadBatch, 300);
-    } else {
-      console.log(
-        "[mark-as-read] no unread detected. bubbles:",
-        bubbles.length,
-        "flatItems:",
-        curFlatItems?.length,
-        "metadata keys:",
-        curMetadata?.msgIdToIndex?.size,
-      );
     }
 
     // Scrollbar CSS — user scroll zamanı göstər, sonra gizlət

@@ -14,8 +14,14 @@ import { apiGet, apiPost, apiPut, apiDelete } from "../services/api";
 // setChannelMembers: channel üzvlərini yeniləmək üçün
 // showMembersPanel: members paneli açıqdırsa refreshChannelMembers paneli də yeniləyir
 // loadMembersPanelPage: useSidebarPanels-dən gələn paginated yükləmə funksiyası
-export default function useChannelManagement(selectedChat, conversations, channelMembers, setChannelMembers, showMembersPanel, loadMembersPanelPage) {
-
+export default function useChannelManagement(
+  selectedChat,
+  conversations,
+  channelMembers,
+  setChannelMembers,
+  showMembersPanel,
+  loadMembersPanelPage,
+) {
   // ─── Channel yaratma/redaktə state-ləri ────────────────────────────────────
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [editChannelData, setEditChannelData] = useState(null);
@@ -44,59 +50,80 @@ export default function useChannelManagement(selectedChat, conversations, channe
 
   // ─── refreshChannelMembers ─────────────────────────────────────────────────
   // Channel members cache-ini yenilə + members paneli açıqdırsa onu da yenilə
-  const refreshChannelMembers = useCallback(async (channelId) => {
-    try {
-      const members = await apiGet(`/api/channels/${channelId}/members?take=100`);
-      setChannelMembers((prev) => ({
-        ...prev,
-        [channelId]: members.reduce((map, m) => ({ ...map, [m.userId]: m }), {}),
-      }));
-      if (showMembersPanelRef.current) {
-        loadMembersPanelPage(channelId, 0, true);
+  const refreshChannelMembers = useCallback(
+    async (channelId) => {
+      try {
+        const members = await apiGet(
+          `/api/channels/${channelId}/members?take=100`,
+        );
+        setChannelMembers((prev) => ({
+          ...prev,
+          [channelId]: members.reduce(
+            (map, m) => ({ ...map, [m.userId]: m }),
+            {},
+          ),
+        }));
+        if (showMembersPanelRef.current) {
+          loadMembersPanelPage(channelId, 0, true);
+        }
+      } catch (err) {
+        alert(err ?? "Failed to refresh channel members.");
       }
-    } catch (err) {
-      console.error("Failed to refresh channel members:", err);
-    }
-  }, [setChannelMembers, loadMembersPanelPage]);
+    },
+    [setChannelMembers, loadMembersPanelPage],
+  );
 
   // ─── handleMakeAdmin ───────────────────────────────────────────────────────
-  const handleMakeAdmin = useCallback(async (targetUserId) => {
-    const chat = selectedChatRef.current;
-    if (!chat) return;
-    setActionError(null);
-    try {
-      await apiPut(`/api/channels/${chat.id}/members/${targetUserId}/role`, { newRole: 2 });
-      await refreshChannelMembers(chat.id);
-    } catch {
-      setActionError("Admin etmək mümkün olmadı");
-    }
-  }, [refreshChannelMembers]);
+  const handleMakeAdmin = useCallback(
+    async (targetUserId) => {
+      const chat = selectedChatRef.current;
+      if (!chat) return;
+      setActionError(null);
+      try {
+        await apiPut(`/api/channels/${chat.id}/members/${targetUserId}/role`, {
+          newRole: 2,
+        });
+        await refreshChannelMembers(chat.id);
+      } catch {
+        setActionError("Admin etmək mümkün olmadı");
+      }
+    },
+    [refreshChannelMembers],
+  );
 
   // ─── handleRemoveAdmin ─────────────────────────────────────────────────────
-  const handleRemoveAdmin = useCallback(async (targetUserId) => {
-    const chat = selectedChatRef.current;
-    if (!chat) return;
-    setActionError(null);
-    try {
-      await apiPut(`/api/channels/${chat.id}/members/${targetUserId}/role`, { newRole: 1 });
-      await refreshChannelMembers(chat.id);
-    } catch {
-      setActionError("Admin statusunu silmək mümkün olmadı");
-    }
-  }, [refreshChannelMembers]);
+  const handleRemoveAdmin = useCallback(
+    async (targetUserId) => {
+      const chat = selectedChatRef.current;
+      if (!chat) return;
+      setActionError(null);
+      try {
+        await apiPut(`/api/channels/${chat.id}/members/${targetUserId}/role`, {
+          newRole: 1,
+        });
+        await refreshChannelMembers(chat.id);
+      } catch {
+        setActionError("Admin statusunu silmək mümkün olmadı");
+      }
+    },
+    [refreshChannelMembers],
+  );
 
   // ─── handleRemoveFromChat ──────────────────────────────────────────────────
-  const handleRemoveFromChat = useCallback(async (targetUserId) => {
-    const chat = selectedChatRef.current;
-    if (!chat) return;
-    setActionError(null);
-    try {
-      await apiDelete(`/api/channels/${chat.id}/members/${targetUserId}`);
-      await refreshChannelMembers(chat.id);
-    } catch {
-      setActionError("Üzvü silmək mümkün olmadı");
-    }
-  }, [refreshChannelMembers]);
+  const handleRemoveFromChat = useCallback(
+    async (targetUserId) => {
+      const chat = selectedChatRef.current;
+      if (!chat) return;
+      setActionError(null);
+      try {
+        await apiDelete(`/api/channels/${chat.id}/members/${targetUserId}`);
+        await refreshChannelMembers(chat.id);
+      } catch {
+        setActionError("Üzvü silmək mümkün olmadı");
+      }
+    },
+    [refreshChannelMembers],
+  );
 
   // ─── handleInviteMembers ───────────────────────────────────────────────────
   // Promise.all ilə paralel invite — 10 user üçün 10 ardıcıl request əvəzinə 1 batch
@@ -110,8 +137,8 @@ export default function useChannelManagement(selectedChat, conversations, channe
           apiPost(`/api/channels/${chat.id}/members`, {
             userId,
             showChatHistory: addMemberShowHistory,
-          })
-        )
+          }),
+        ),
       );
 
       const failed = results.filter((r) => r.status === "rejected");
@@ -138,15 +165,24 @@ export default function useChannelManagement(selectedChat, conversations, channe
     let cancelled = false;
     (async () => {
       try {
-        const members = await apiGet(`/api/channels/${selectedChat.id}/members?take=100`);
+        const members = await apiGet(
+          `/api/channels/${selectedChat.id}/members?take=100`,
+        );
         if (cancelled) return;
         setChannelMembers((prev) => ({
           ...prev,
-          [selectedChat.id]: members.reduce((map, m) => ({ ...map, [m.userId]: m }), {}),
+          [selectedChat.id]: members.reduce(
+            (map, m) => ({ ...map, [m.userId]: m }),
+            {},
+          ),
         }));
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddMember]);
 
@@ -160,14 +196,19 @@ export default function useChannelManagement(selectedChat, conversations, channe
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const data = await apiGet(`/api/users/search?q=${encodeURIComponent(query)}`);
+        const data = await apiGet(
+          `/api/users/search?q=${encodeURIComponent(query)}`,
+        );
         if (cancelled) return;
         setAddMemberSearchResults(data || []);
       } catch {
         if (!cancelled) setAddMemberSearchResults([]);
       }
     }, 300);
-    return () => { cancelled = true; clearTimeout(timer); };
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [addMemberSearch]);
 
   // ─── addMemberUsers memo ───────────────────────────────────────────────────
@@ -201,22 +242,37 @@ export default function useChannelManagement(selectedChat, conversations, channe
 
   return {
     // Channel create/edit
-    showCreateChannel, setShowCreateChannel,
-    editChannelData, setEditChannelData,
+    showCreateChannel,
+    setShowCreateChannel,
+    editChannelData,
+    setEditChannelData,
     // Add member
-    showAddMember, setShowAddMember,
-    addMemberSearch, setAddMemberSearch,
-    addMemberSearchActive, setAddMemberSearchActive,
-    addMemberSelected, setAddMemberSelected,
-    addMemberInviting, addMemberShowHistory, setAddMemberShowHistory,
-    addMemberSearchResults, addMemberUsers, addMemberSelectedInfo, setAddMemberSelectedInfo,
+    showAddMember,
+    setShowAddMember,
+    addMemberSearch,
+    setAddMemberSearch,
+    addMemberSearchActive,
+    setAddMemberSearchActive,
+    addMemberSelected,
+    setAddMemberSelected,
+    addMemberInviting,
+    addMemberShowHistory,
+    setAddMemberShowHistory,
+    addMemberSearchResults,
+    addMemberUsers,
+    addMemberSelectedInfo,
+    setAddMemberSelectedInfo,
     addMemberRef,
     // Error feedback
-    inviteError, setInviteError,
-    actionError, setActionError,
+    inviteError,
+    setInviteError,
+    actionError,
+    setActionError,
     // Functions
     refreshChannelMembers,
-    handleMakeAdmin, handleRemoveAdmin, handleRemoveFromChat,
+    handleMakeAdmin,
+    handleRemoveAdmin,
+    handleRemoveFromChat,
     handleInviteMembers,
     resetChannelState,
   };

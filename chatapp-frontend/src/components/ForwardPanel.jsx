@@ -61,10 +61,16 @@ function ForwardPanel({ conversations, onForward, onClose }) {
         ]);
         // Abort olunubsa nəticəni ignore et
         if (controller.signal.aborted) return;
-        const convItems = results[0].status === "fulfilled" ? (results[0].value?.items || []) : [];
-        const users = results[1].status === "fulfilled" ? (results[1].value || []) : [];
+        const convItems =
+          results[0].status === "fulfilled"
+            ? results[0].value?.items || []
+            : [];
+        const users =
+          results[1].status === "fulfilled" ? results[1].value || [] : [];
         // Mövcud conversation-ı olan user-ləri çıxar (dublikat olmasın)
-        const convOtherUserIds = new Set(convItems.map((c) => c.otherUserId).filter(Boolean));
+        const convOtherUserIds = new Set(
+          convItems.map((c) => c.otherUserId).filter(Boolean),
+        );
         const newUsers = users
           .filter((u) => !convOtherUserIds.has(u.id))
           .map((u) => ({
@@ -77,7 +83,7 @@ function ForwardPanel({ conversations, onForward, onClose }) {
         setSearchResults([...convItems, ...newUsers]);
       } catch (err) {
         if (controller.signal.aborted) return;
-        console.error("Forward search failed:", err);
+        alert(err ?? "Search failed");
         setSearchResults([]);
       }
     }, 300);
@@ -89,7 +95,8 @@ function ForwardPanel({ conversations, onForward, onClose }) {
   function getSubtitle(item) {
     if (item.isNewUser) return "User";
     if (item.type === 1) return `${item.memberCount || 0} members`;
-    if (item.type === 2) return item.positionName || item.departmentName || "User";
+    if (item.type === 2)
+      return item.positionName || item.departmentName || "User";
     return item.otherUserPosition || item.otherUserRole || "User";
   }
 
@@ -152,14 +159,40 @@ function ForwardPanel({ conversations, onForward, onClose }) {
                 >
                   <div
                     className="forward-item-avatar"
-                    style={{ background: item.isNotes ? "#2FC6F6" : item.avatarUrl ? "transparent" : getAvatarColor(item.name) }}
+                    style={{
+                      background: item.isNotes
+                        ? "#2FC6F6"
+                        : item.avatarUrl
+                          ? "transparent"
+                          : getAvatarColor(item.name),
+                    }}
                   >
                     {item.isNotes ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="white"
+                        stroke="white"
+                        strokeWidth="2"
+                      >
                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                       </svg>
                     ) : item.avatarUrl ? (
-                      <img src={getFileUrl(item.avatarUrl)} alt={item.name} className="forward-item-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(item.name); e.target.parentNode.textContent = getInitials(item.name); }} />
+                      <img
+                        src={getFileUrl(item.avatarUrl)}
+                        alt={item.name}
+                        className="forward-item-avatar-img"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          e.target.parentNode.style.background = getAvatarColor(
+                            item.name,
+                          );
+                          e.target.parentNode.textContent = getInitials(
+                            item.name,
+                          );
+                        }}
+                      />
                     ) : (
                       getInitials(item.name)
                     )}

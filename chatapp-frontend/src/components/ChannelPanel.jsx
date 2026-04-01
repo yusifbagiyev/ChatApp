@@ -64,7 +64,11 @@ function filterHierarchy(nodes, query) {
         ? filterHierarchy(node.children, query)
         : [];
       if (nameMatch || filteredChildren.length > 0) {
-        filtered.push({ ...node, children: filteredChildren.length > 0 ? filteredChildren : node.children });
+        filtered.push({
+          ...node,
+          children:
+            filteredChildren.length > 0 ? filteredChildren : node.children,
+        });
       }
     }
   }
@@ -80,7 +84,7 @@ function getAutoExpandIds(nodes, query) {
     if (node.children?.length) {
       // Uşaqlardan hər hansı biri match edirsə bu node-u expand et
       const childMatch = node.children.some(
-        (c) => c.type === "User" && c.name?.toLowerCase().includes(q)
+        (c) => c.type === "User" && c.name?.toLowerCase().includes(q),
       );
       if (childMatch) ids.add(node.id);
       // Rekursiv — alt department-lərdə də yoxla
@@ -95,7 +99,13 @@ function getAutoExpandIds(nodes, query) {
 }
 
 // ─── HierarchyNode — recursive tree node render ────────────────────────────
-const HierarchyNode = memo(function HierarchyNode({ node, selectedIds, onToggle, expandedDepts, onToggleExpand }) {
+const HierarchyNode = memo(function HierarchyNode({
+  node,
+  selectedIds,
+  onToggle,
+  expandedDepts,
+  onToggleExpand,
+}) {
   const isDept = node.type === "Department";
   const isCompany = node.type === "Company";
   const isUser = node.type === "User";
@@ -154,7 +164,14 @@ const HierarchyNode = memo(function HierarchyNode({ node, selectedIds, onToggle,
 
           {/* Department icon */}
           <div className="add-member-dept-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -169,7 +186,15 @@ const HierarchyNode = memo(function HierarchyNode({ node, selectedIds, onToggle,
 
           {/* Check icon — seçilmişdirsə */}
           {isSelected && (
-            <svg className="add-member-check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2e87bf" strokeWidth="2.5">
+            <svg
+              className="add-member-check"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2e87bf"
+              strokeWidth="2.5"
+            >
               <polyline points="20 6 9 17 4 12" />
             </svg>
           )}
@@ -203,7 +228,11 @@ const HierarchyNode = memo(function HierarchyNode({ node, selectedIds, onToggle,
         {/* User avatar */}
         <div
           className="add-member-user-avatar"
-          style={{ background: node.avatarUrl ? "transparent" : getAvatarColor(node.name) }}
+          style={{
+            background: node.avatarUrl
+              ? "transparent"
+              : getAvatarColor(node.name),
+          }}
         >
           {node.avatarUrl ? (
             <img src={node.avatarUrl} alt="" />
@@ -215,7 +244,15 @@ const HierarchyNode = memo(function HierarchyNode({ node, selectedIds, onToggle,
 
         {/* Check icon — seçilmişdirsə */}
         {isSelected && (
-          <svg className="add-member-check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2e87bf" strokeWidth="2.5">
+          <svg
+            className="add-member-check"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#2e87bf"
+            strokeWidth="2.5"
+          >
             <polyline points="20 6 9 17 4 12" />
           </svg>
         )}
@@ -393,8 +430,8 @@ function ChannelPanel({
         const raw = await apiGet("/api/identity/organization/hierarchy");
         const data = normalizeHierarchy(raw || []);
         setHierarchy(data);
-      } catch (err) {
-        console.error("Failed to load organization hierarchy:", err);
+      } catch {
+        alert("Failed to load organization hierarchy.");
       } finally {
         setHierarchyLoading(false);
       }
@@ -502,7 +539,6 @@ function ChannelPanel({
     if (creating || !nameValid) return;
     setCreating(true);
 
-
     try {
       // Members array-dan user ID-lərini topla
       // Department seçilibsə — hierarchy-dən bütün user-ləri resolve et
@@ -538,9 +574,14 @@ function ChannelPanel({
         try {
           const fd = new FormData();
           fd.append("File", avatarFile);
-          const uploadResult = await apiUpload(`/api/files/upload/channel-avatar/${channelId}`, fd);
+          const uploadResult = await apiUpload(
+            `/api/files/upload/channel-avatar/${channelId}`,
+            fd,
+          );
           if (uploadResult?.fileUrl) {
-            await apiPut(`/api/channels/${channelId}`, { avatarUrl: uploadResult.fileUrl });
+            await apiPut(`/api/channels/${channelId}`, {
+              avatarUrl: uploadResult.fileUrl,
+            });
             result.avatarUrl = uploadResult.fileUrl;
           }
         } catch {
@@ -562,7 +603,6 @@ function ChannelPanel({
     if (creating || !nameValid || !editMode || !channelData) return;
     setCreating(true);
 
-
     try {
       // 1. Avatar upload (əgər dəyişibsə)
       let newAvatarUrl = null;
@@ -570,7 +610,10 @@ function ChannelPanel({
         try {
           const fd = new FormData();
           fd.append("File", avatarFile);
-          const uploadResult = await apiUpload(`/api/files/upload/channel-avatar/${channelData.id}`, fd);
+          const uploadResult = await apiUpload(
+            `/api/files/upload/channel-avatar/${channelData.id}`,
+            fd,
+          );
           if (uploadResult?.fileUrl) newAvatarUrl = uploadResult.fileUrl;
         } catch {
           // Avatar upload uğursuz — digər dəyişikliklər davam edir
@@ -607,19 +650,32 @@ function ChannelPanel({
       }
 
       // Yeni əlavə olunanlar
-      const toAdd = [...currentUserIds].filter((id) => !originalUserIds.has(id));
+      const toAdd = [...currentUserIds].filter(
+        (id) => !originalUserIds.has(id),
+      );
       // Silinənlər
-      const toRemove = [...originalUserIds].filter((id) => !currentUserIds.has(id));
+      const toRemove = [...originalUserIds].filter(
+        (id) => !currentUserIds.has(id),
+      );
 
       // 3. Əlavə et — parallel execution
-      await Promise.all(toAdd.map((userId) =>
-        apiPost(`/api/channels/${channelData.id}/members`, { userId, showChatHistory: true }).catch(() => {})
-      ));
+      await Promise.all(
+        toAdd.map((userId) =>
+          apiPost(`/api/channels/${channelData.id}/members`, {
+            userId,
+            showChatHistory: true,
+          }).catch(() => {}),
+        ),
+      );
 
       // 4. Sil — parallel execution
-      await Promise.all(toRemove.map((userId) =>
-        apiDelete(`/api/channels/${channelData.id}/members/${userId}`).catch(() => {})
-      ));
+      await Promise.all(
+        toRemove.map((userId) =>
+          apiDelete(`/api/channels/${channelData.id}/members/${userId}`).catch(
+            () => {},
+          ),
+        ),
+      );
 
       // 5. Callback
       if (onChannelUpdated) {
@@ -649,7 +705,11 @@ function ChannelPanel({
         <div className="create-channel-top">
           <div className="create-channel-avatar" onClick={handleAvatarClick}>
             {avatarPreview ? (
-              <img src={avatarPreview} alt="Channel avatar" className="create-channel-avatar-img" />
+              <img
+                src={avatarPreview}
+                alt="Channel avatar"
+                className="create-channel-avatar-img"
+              />
             ) : (
               <svg
                 width="28"
@@ -719,7 +779,14 @@ function ChannelPanel({
                   )}
                   {member.type === "department" ? (
                     <div className="create-channel-chip-dept-icon">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                         <circle cx="9" cy="7" r="4" />
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -734,7 +801,9 @@ function ChannelPanel({
                       {getInitials(member.name)}
                     </div>
                   )}
-                  <span className="create-channel-chip-name">{member.name}</span>
+                  <span className="create-channel-chip-name">
+                    {member.name}
+                  </span>
                   {/* Admin (yaradıcı) silinə bilməz */}
                   {!member.isAdmin && (
                     <button
@@ -772,7 +841,10 @@ function ChannelPanel({
                   onChange={(e) => setSearchText(e.target.value)}
                 />
               ) : (
-                <button className="create-channel-add-btn" onClick={handleAddClick}>
+                <button
+                  className="create-channel-add-btn"
+                  onClick={handleAddClick}
+                >
                   <svg
                     width="14"
                     height="14"
@@ -790,29 +862,28 @@ function ChannelPanel({
             </div>
             {/* Hierarchy panel — input-un altında açılır */}
             {addOpen && (
-                <div className="add-member-panel">
-                  {hierarchyLoading ? (
-                    <div className="add-member-loading" />
-                  ) : filteredHierarchy.length === 0 ? (
-                    <div className="add-member-empty">No results found</div>
-                  ) : (
-                    <div className="add-member-list">
-                      {filteredHierarchy.map((node) => (
-                        <HierarchyNode
-                          key={node.id}
-                          node={node}
-                          selectedIds={selectedIds}
-                          onToggle={handleToggle}
-                          expandedDepts={expandedDepts}
-                          onToggleExpand={handleToggleExpand}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="add-member-panel">
+                {hierarchyLoading ? (
+                  <div className="add-member-loading" />
+                ) : filteredHierarchy.length === 0 ? (
+                  <div className="add-member-empty">No results found</div>
+                ) : (
+                  <div className="add-member-list">
+                    {filteredHierarchy.map((node) => (
+                      <HierarchyNode
+                        key={node.id}
+                        node={node}
+                        selectedIds={selectedIds}
+                        onToggle={handleToggle}
+                        expandedDepts={expandedDepts}
+                        onToggleExpand={handleToggleExpand}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
         </div>
 
         {/* Chat Settings — həmişə göstərilir */}
@@ -886,9 +957,9 @@ function ChannelPanel({
                 <div className="create-channel-radio-content">
                   <span className="create-channel-radio-title">Public</span>
                   <span className="create-channel-radio-desc">
-                    This chat is visible to everyone in the chat list. Anyone can
-                    join this chat. Perfect for interdepartmental communication
-                    and general conversations.
+                    This chat is visible to everyone in the chat list. Anyone
+                    can join this chat. Perfect for interdepartmental
+                    communication and general conversations.
                   </span>
                 </div>
               </label>
@@ -905,7 +976,6 @@ function ChannelPanel({
             </div>
           )}
         </div>
-
       </div>
 
       {/* Alt buttonlar */}
@@ -916,9 +986,12 @@ function ChannelPanel({
           onClick={editMode ? handleUpdateChannel : handleCreateChannel}
         >
           {creating
-            ? (editMode ? "SAVING..." : "CREATING...")
-            : (editMode ? "SAVE CHANGES" : "CREATE CHAT")
-          }
+            ? editMode
+              ? "SAVING..."
+              : "CREATING..."
+            : editMode
+              ? "SAVE CHANGES"
+              : "CREATE CHAT"}
         </button>
         <button className="create-channel-cancel-btn" onClick={onCancel}>
           CANCEL

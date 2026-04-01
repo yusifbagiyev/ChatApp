@@ -313,8 +313,8 @@ function DepartmentManagement() {
     try {
       const data = await getDepartments();
       setDepts(data ?? []);
-    } catch (e) {
-      console.error("Failed to load departments", e);
+    } catch {
+      alert("Failed to load departments.");
     } finally {
       setLoading(false);
     }

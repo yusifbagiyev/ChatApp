@@ -22,8 +22,13 @@ const MAX_VISIBLE_MESSAGES = 300;
 // selectedChat: hansı chat açıqdır
 // setMessages: messages state-ini yeniləmək üçün
 // allReadPatchRef: unreadCount===0 ilə girdikdə true — scroll ilə yüklənən mesajları isRead:true patch et
-export default function useChatScroll(messages, selectedChat, setMessages, allReadPatchRef, messagesAreaRef) {
-
+export default function useChatScroll(
+  messages,
+  selectedChat,
+  setMessages,
+  allReadPatchRef,
+  messagesAreaRef,
+) {
   // loadingMoreRef: hal-hazırda köhnə/yeni mesajlar yüklənirmi? (race condition önləmək üçün)
   const loadingMoreRef = useRef(false);
 
@@ -105,8 +110,11 @@ export default function useChatScroll(messages, selectedChat, setMessages, allRe
         if (unique.length === 0) return prev;
         loadOlderTriggeredRef.current = true;
         const final = unique.map((m) => {
-          const patched = (allReadPatchRef?.current && !m.isRead) ? { ...m, isRead: true } : m;
-          return patched === m ? { ...m, _prepended: true } : { ...patched, _prepended: true };
+          const patched =
+            allReadPatchRef?.current && !m.isRead ? { ...m, isRead: true } : m;
+          return patched === m
+            ? { ...m, _prepended: true }
+            : { ...patched, _prepended: true };
         });
         const merged = [...prev, ...final];
 
@@ -118,7 +126,7 @@ export default function useChatScroll(messages, selectedChat, setMessages, allRe
         return merged;
       });
     } catch (err) {
-      console.error("Failed to load older messages:", err);
+      alert(err?.message ?? "Failed to load older messages");
       if (err.message === "Session expired") {
         hasMoreRef.current = false;
       }
@@ -149,7 +157,11 @@ export default function useChatScroll(messages, selectedChat, setMessages, allRe
     const afterDate = newestMsg.createdAtUtc || newestMsg.sentAt;
     if (!afterDate) return;
 
-    const base = getChatEndpoint(currentChat.id, currentChat.type, "/messages/after");
+    const base = getChatEndpoint(
+      currentChat.id,
+      currentChat.type,
+      "/messages/after",
+    );
     if (!base) return;
     const endpoint = `${base}?date=${encodeURIComponent(afterDate)}&limit=${MESSAGE_PAGE_SIZE}`;
 
@@ -169,8 +181,11 @@ export default function useChatScroll(messages, selectedChat, setMessages, allRe
         if (unique.length === 0) return prev;
         const reversed = unique.reverse();
         const final = reversed.map((m) => {
-          const patched = (allReadPatchRef?.current && !m.isRead) ? { ...m, isRead: true } : m;
-          return patched === m ? { ...m, _prepended: true } : { ...patched, _prepended: true };
+          const patched =
+            allReadPatchRef?.current && !m.isRead ? { ...m, isRead: true } : m;
+          return patched === m
+            ? { ...m, _prepended: true }
+            : { ...patched, _prepended: true };
         });
         const merged = [...final, ...prev];
 
@@ -182,7 +197,7 @@ export default function useChatScroll(messages, selectedChat, setMessages, allRe
         return merged;
       });
     } catch (err) {
-      console.error("Failed to load newer messages:", err);
+      alert(err?.message ?? "Failed to load newer messages");
       if (err.message === "Session expired") {
         hasMoreDownRef.current = false;
       }

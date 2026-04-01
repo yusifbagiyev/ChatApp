@@ -6,8 +6,12 @@ import { useState, useCallback, useMemo } from "react";
 import { apiPost, apiDelete } from "../services/api";
 import { getChatEndpoint, BATCH_DELETE_THRESHOLD } from "../utils/chatUtils";
 
-export default function useMessageSelection(selectedChat, messages, setMessages, user) {
-
+export default function useMessageSelection(
+  selectedChat,
+  messages,
+  setMessages,
+  user,
+) {
   // selectMode — çox mesaj seçmə rejimi (true = SelectToolbar görünür)
   const [selectMode, setSelectMode] = useState(false);
 
@@ -67,7 +71,7 @@ export default function useMessageSelection(selectedChat, messages, setMessages,
       );
       handleExitSelectMode();
     } catch (err) {
-      console.error("Failed to delete selected messages:", err);
+      alert("Failed to delete selected messages:", err);
     }
   }, [selectedChat, selectedMessages, handleExitSelectMode, setMessages]);
 

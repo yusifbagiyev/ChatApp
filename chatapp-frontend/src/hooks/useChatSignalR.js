@@ -14,22 +14,22 @@ import { startConnection } from "../services/signalr";
 import { getMessagePreview } from "../utils/chatUtils";
 
 export default function useChatSignalR(
-  userId,             // Cari istifadəçinin ID-si (öz typing signal-ını ignore etmək üçün)
-  selectedChatRef,    // Seçilmiş chat-ın ref-i (stale closure problemi yoxdur)
-  setMessages,        // Mesajlar array-ını yeniləmək üçün
-  setConversations,   // Conversation list-i yeniləmək üçün (son mesaj)
+  userId, // Cari istifadəçinin ID-si (öz typing signal-ını ignore etmək üçün)
+  selectedChatRef, // Seçilmiş chat-ın ref-i (stale closure problemi yoxdur)
+  setMessages, // Mesajlar array-ını yeniləmək üçün
+  setConversations, // Conversation list-i yeniləmək üçün (son mesaj)
   setShouldScrollBottom, // Yeni mesaj gəldikdə aşağı scroll et
-  setOnlineUsers,     // Online olan userlərin Set-i
-  setTypingUsers,     // Kim yazır — { [conversationId]: true/fullName }
-  setPinnedMessages,  // Pinlənmiş mesajlar array-ı
+  setOnlineUsers, // Online olan userlərin Set-i
+  setTypingUsers, // Kim yazır — { [conversationId]: true/fullName }
+  setPinnedMessages, // Pinlənmiş mesajlar array-ı
   setCurrentPinIndex, // Pin bar-dakı aktiv index
   setLastReadTimestamp, // DM mesajın oxunma vaxtı — { [chatId]: Date }
   onCheckUploadCompletion, // Upload manager — real mesaj gəldikdə upload task-ı silmək üçün
-  scrollerRef,            // Scroll container ref — reaction height compensation üçün
-  showScrollDownRef,      // Scroll-to-bottom buton görünürmü — compensation yalnız aşağıdaysa
-  messageCacheRef,        // Message cache ref — yeni mesaj gəldikdə cache-i invalidasiya etmək üçün
-  onNewFileMessageRef,    // Sidebar — fayl mesajı gəldikdə Files & Media panelini yeniləmək üçün
-  onChannelUpdatedRef,    // Channel adı/avatarı dəyişdikdə selectedChat-ı yeniləmək üçün (ref)
+  scrollerRef, // Scroll container ref — reaction height compensation üçün
+  showScrollDownRef, // Scroll-to-bottom buton görünürmü — compensation yalnız aşağıdaysa
+  messageCacheRef, // Message cache ref — yeni mesaj gəldikdə cache-i invalidasiya etmək üçün
+  onNewFileMessageRef, // Sidebar — fayl mesajı gəldikdə Files & Media panelini yeniləmək üçün
+  onChannelUpdatedRef, // Channel adı/avatarı dəyişdikdə selectedChat-ı yeniləmək üçün (ref)
 ) {
   // useEffect — komponentin mount olduğunda 1 dəfə işləyir
   // [userId] — dependency array: yalnız userId dəyişəndə yenidən işləyir
@@ -68,18 +68,30 @@ export default function useChatSignalR(
           let enrichedMsg = message;
           let matchedOptId = null;
           if (message.senderId === userId) {
-            const pendingOptimistics = prev.filter((m) => typeof m.id === "string" && m.id.startsWith("temp-"));
+            const pendingOptimistics = prev.filter(
+              (m) => typeof m.id === "string" && m.id.startsWith("temp-"),
+            );
             // DESC sıra: pendingOptimistics[0] = ən yeni, [length-1] = ən köhnə (FIFO)
-            const optimistic = pendingOptimistics.length > 0 ? pendingOptimistics[pendingOptimistics.length - 1] : null;
+            const optimistic =
+              pendingOptimistics.length > 0
+                ? pendingOptimistics[pendingOptimistics.length - 1]
+                : null;
             if (optimistic) {
               matchedOptId = optimistic.id;
               enrichedMsg = {
                 ...message,
                 createdAtUtc: optimistic.createdAtUtc, // Lokal vaxt saxla — layout shift olmasın
-                _optimistic: true,  // Hələ pending saxla — layout shift olmasın
-                replyToContent: message.replyToContent || optimistic.replyToContent || null,
-                replyToSenderName: message.replyToSenderName || optimistic.replyToSenderName || null,
-                mentions: message.mentions?.length > 0 ? message.mentions : (optimistic.mentions || []),
+                _optimistic: true, // Hələ pending saxla — layout shift olmasın
+                replyToContent:
+                  message.replyToContent || optimistic.replyToContent || null,
+                replyToSenderName:
+                  message.replyToSenderName ||
+                  optimistic.replyToSenderName ||
+                  null,
+                mentions:
+                  message.mentions?.length > 0
+                    ? message.mentions
+                    : optimistic.mentions || [],
                 _stableKey: optimistic._stableKey || optimistic.id,
               };
               // Scroll sabitləşdikdən sonra _optimistic sil + status yenilə
@@ -94,7 +106,7 @@ export default function useChatSignalR(
             }
           }
           if (matchedOptId) {
-            return prev.map((m) => m.id === matchedOptId ? enrichedMsg : m);
+            return prev.map((m) => (m.id === matchedOptId ? enrichedMsg : m));
           }
           // Yeni mesaj əlavə et — scroll Chat.jsx useLayoutEffect ilə idarə olunur
           // (ayrı setShouldScrollBottom çağırmaq frame gap yaradır → sıçrama)
@@ -146,7 +158,8 @@ export default function useChatSignalR(
               lastMessageSenderFullName: message.senderFullName,
               lastMessageSenderAvatarUrl: message.senderAvatarUrl,
               // Öz mesajımızın echo-su: Sent yaz — MessageBubble da eyni anda echo alır
-              lastMessageStatus: message.senderId === userId ? "Sent" : c.lastMessageStatus,
+              lastMessageStatus:
+                message.senderId === userId ? "Sent" : c.lastMessageStatus,
               unreadCount:
                 message.senderId !== userId && !isDuplicate
                   ? c.unreadCount + 1
@@ -209,7 +222,11 @@ export default function useChatSignalR(
     // ─── handleChannelMessagesRead ──────────────────────────────────────────────
     // Channel-da mesajlar oxunanda — readByCount yenilə
     // data: channelId, readByUserId, messageReadCounts (Dictionary<Guid, int>)
-    function handleChannelMessagesRead(channelId, readByUserId, messageReadCounts) {
+    function handleChannelMessagesRead(
+      channelId,
+      readByUserId,
+      messageReadCounts,
+    ) {
       // Mesajlardakı readByCount + readBy array yenilə
       setMessages((prev) =>
         prev.map((m) => {
@@ -246,7 +263,7 @@ export default function useChatSignalR(
     function handleUserOnline(onlineUserId) {
       setOnlineUsers((prev) => {
         const next = new Set(prev); // Köhnə Set-dən yeni Set yarat (immutability)
-        next.add(onlineUserId);     // Online user-i əlavə et
+        next.add(onlineUserId); // Online user-i əlavə et
         return next;
       });
     }
@@ -264,7 +281,11 @@ export default function useChatSignalR(
     // ─── handleUserTypingInConversation ───────────────────────────────────────
     // DM conversation-da digər user yazır/yazmağı dayandırır
     // typingUsers: { [conversationId]: true } — həmin conversation-da yazır
-    function handleUserTypingInConversation(conversationId, typingUserId, isTyping) {
+    function handleUserTypingInConversation(
+      conversationId,
+      typingUserId,
+      isTyping,
+    ) {
       // Özümüzün typing signal-ını ignore et
       if (typingUserId === userId) return;
       setTypingUsers((prev) => {
@@ -282,7 +303,12 @@ export default function useChatSignalR(
     // ─── handleUserTypingInChannel ────────────────────────────────────────────
     // Channel-da digər user yazır/yazmağı dayandırır
     // fullName — channel-da "Ali yazır..." göstərmək üçün
-    function handleUserTypingInChannel(channelId, typingUserId, fullName, isTyping) {
+    function handleUserTypingInChannel(
+      channelId,
+      typingUserId,
+      fullName,
+      isTyping,
+    ) {
       if (typingUserId === userId) return;
       setTypingUsers((prev) => {
         if (isTyping) {
@@ -312,13 +338,17 @@ export default function useChatSignalR(
               if (c.id !== chatId) return c;
               const isIncoming = deletedMsg.senderId !== userId;
               const updates = {
-                unreadCount: isIncoming ? Math.max(0, c.unreadCount - 1) : c.unreadCount,
+                unreadCount: isIncoming
+                  ? Math.max(0, c.unreadCount - 1)
+                  : c.unreadCount,
               };
               // Silinən mesaj son mesaj idisə → əvvəlki mesajın məlumatını göstər
               if (c._lastProcessedMsgId === deletedMsg.id) {
                 updates.lastMessage = deletedMsg.previousLastMessage || "";
-                updates.lastMessageAtUtc = deletedMsg.previousLastMessageAtUtc || null;
-                updates.lastMessageSenderId = deletedMsg.previousLastMessageSenderId || null;
+                updates.lastMessageAtUtc =
+                  deletedMsg.previousLastMessageAtUtc || null;
+                updates.lastMessageSenderId =
+                  deletedMsg.previousLastMessageSenderId || null;
                 updates._lastProcessedMsgId = null;
               }
               return { ...c, ...updates };
@@ -328,7 +358,9 @@ export default function useChatSignalR(
       } else {
         // Soft delete — isDeleted: true et
         setMessages((prev) =>
-          prev.map((m) => (m.id === deletedMsg.id ? { ...m, isDeleted: true } : m)),
+          prev.map((m) =>
+            m.id === deletedMsg.id ? { ...m, isDeleted: true } : m,
+          ),
         );
 
         // Conversation list — silinən mesaj son mesaj idisə preview-u yenilə
@@ -355,7 +387,12 @@ export default function useChatSignalR(
         prev.map((m) => {
           if (m.id === editedMsg.id) {
             // Özünü yenilə
-            return { ...m, content: editedMsg.content, isEdited: true, editedAtUtc: editedMsg.editedAtUtc };
+            return {
+              ...m,
+              content: editedMsg.content,
+              isEdited: true,
+              editedAtUtc: editedMsg.editedAtUtc,
+            };
           }
           // Bu mesajın reply-ı varsa (başqasının cavabıdır) — reply text-ini yenilə
           if (m.replyToMessageId === editedMsg.id) {
@@ -406,7 +443,11 @@ export default function useChatSignalR(
       });
       // Messages state-də də isPinned-i yenilə (pin icon üçün)
       setMessages((prev) =>
-        prev.map((m) => (m.id === msgDto.id ? { ...m, isPinned: true, pinnedAtUtc: msgDto.pinnedAtUtc } : m)),
+        prev.map((m) =>
+          m.id === msgDto.id
+            ? { ...m, isPinned: true, pinnedAtUtc: msgDto.pinnedAtUtc }
+            : m,
+        ),
       );
     }
 
@@ -416,11 +457,15 @@ export default function useChatSignalR(
       setPinnedMessages((prev) => {
         const next = prev.filter((m) => m.id !== msgDto.id); // Həmin mesajı çıxar
         // Pin index-i array uzunluğundan böyük olmasın
-        setCurrentPinIndex((idx) => (idx >= next.length ? Math.max(0, next.length - 1) : idx));
+        setCurrentPinIndex((idx) =>
+          idx >= next.length ? Math.max(0, next.length - 1) : idx,
+        );
         return next;
       });
       setMessages((prev) =>
-        prev.map((m) => (m.id === msgDto.id ? { ...m, isPinned: false, pinnedAtUtc: null } : m)),
+        prev.map((m) =>
+          m.id === msgDto.id ? { ...m, isPinned: false, pinnedAtUtc: null } : m,
+        ),
       );
     }
 
@@ -431,7 +476,11 @@ export default function useChatSignalR(
       setConversations((prev) =>
         prev.map((c) =>
           c.id === data.channelId
-            ? { ...c, name: data.name, avatarUrl: data.avatarUrl ?? c.avatarUrl }
+            ? {
+                ...c,
+                name: data.name,
+                avatarUrl: data.avatarUrl ?? c.avatarUrl,
+              }
             : c,
         ),
       );
@@ -511,7 +560,7 @@ export default function useChatSignalR(
           conn.on(event, handler);
         }
       })
-      .catch((err) => console.error("SignalR connection failed:", err));
+      .catch((err) => alert(err ?? "Failed to connect to real-time service."));
 
     // ─── Cleanup Function ─────────────────────────────────────────────────────
     // useEffect-in return etdiyi funksiya — komponent unmount olduqda çağırılır.

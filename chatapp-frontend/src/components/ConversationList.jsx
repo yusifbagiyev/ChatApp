@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 
 // Utility funksiyaları import et
 import { getInitials, getAvatarColor, formatTime } from "../utils/chatUtils";
-import { renderTextWithEmojis } from "../utils/emojiConstants";  // Emoji → Apple img çevirici
+import { renderTextWithEmojis } from "../utils/emojiConstants"; // Emoji → Apple img çevirici
 
 // API servis — backend-ə HTTP GET request göndərmək üçün
 import { apiGet, getFileUrl } from "../services/api";
@@ -32,14 +32,19 @@ function renderPreviewEmojis(text) {
           e.target.replaceWith(span);
         }}
       />
-    )
+    ),
   );
 }
 
 // ─── ConversationItem — memo-lanmış conversation item ───────────────────────
 // Hər item yalnız öz prop-ları dəyişdikdə yenidən render olur
 const ConversationItem = memo(function ConversationItem({
-  conv, isSelected, userId, typingUsers, onSelectChat, onContextMenu,
+  conv,
+  isSelected,
+  userId,
+  typingUsers,
+  onSelectChat,
+  onContextMenu,
 }) {
   const isOwnLastMessage = conv.lastMessageSenderId === userId;
 
@@ -54,20 +59,51 @@ const ConversationItem = memo(function ConversationItem({
   } else if (!conv.lastMessage) {
     previewContent = "No messages yet";
   } else if (conv.isNotes) {
-    previewPrefix = <span className="preview-reply-icon"><svg viewBox="0 0 16 16"><path d="M14 3v4c0 1.1-.9 2-2 2H4m0 0l3-3M4 9l3 3"/></svg></span>;
+    previewPrefix = (
+      <span className="preview-reply-icon">
+        <svg viewBox="0 0 16 16">
+          <path d="M14 3v4c0 1.1-.9 2-2 2H4m0 0l3-3M4 9l3 3" />
+        </svg>
+      </span>
+    );
     previewContent = conv.lastMessage;
   } else if (isOwnLastMessage) {
-    previewPrefix = <span className="preview-reply-icon"><svg viewBox="0 0 16 16"><path d="M14 3v4c0 1.1-.9 2-2 2H4m0 0l3-3M4 9l3 3"/></svg></span>;
+    previewPrefix = (
+      <span className="preview-reply-icon">
+        <svg viewBox="0 0 16 16">
+          <path d="M14 3v4c0 1.1-.9 2-2 2H4m0 0l3-3M4 9l3 3" />
+        </svg>
+      </span>
+    );
     previewContent = conv.lastMessage;
   } else if (conv.type === 1 && conv.lastMessageSenderFullName) {
     previewPrefix = (
       <span
         className="preview-sender-avatar"
-        style={{ background: conv.lastMessageSenderAvatarUrl ? "transparent" : getAvatarColor(conv.lastMessageSenderFullName) }}
+        style={{
+          background: conv.lastMessageSenderAvatarUrl
+            ? "transparent"
+            : getAvatarColor(conv.lastMessageSenderFullName),
+        }}
       >
         {conv.lastMessageSenderAvatarUrl ? (
-          <img src={getFileUrl(conv.lastMessageSenderAvatarUrl)} alt="" className="preview-sender-avatar-img" onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(conv.lastMessageSenderFullName); e.target.parentNode.textContent = getInitials(conv.lastMessageSenderFullName); }} />
-        ) : getInitials(conv.lastMessageSenderFullName)}
+          <img
+            src={getFileUrl(conv.lastMessageSenderAvatarUrl)}
+            alt=""
+            className="preview-sender-avatar-img"
+            onError={(e) => {
+              e.target.style.display = "none";
+              e.target.parentNode.style.background = getAvatarColor(
+                conv.lastMessageSenderFullName,
+              );
+              e.target.parentNode.textContent = getInitials(
+                conv.lastMessageSenderFullName,
+              );
+            }}
+          />
+        ) : (
+          getInitials(conv.lastMessageSenderFullName)
+        )}
       </span>
     );
     previewContent = conv.lastMessage;
@@ -84,10 +120,23 @@ const ConversationItem = memo(function ConversationItem({
       <div className="conversation-avatar-wrapper">
         <div
           className="conversation-avatar"
-          style={{ background: conv.isNotes ? "#2FC6F6" : conv.avatarUrl ? "transparent" : getAvatarColor(conv.name) }}
+          style={{
+            background: conv.isNotes
+              ? "#2FC6F6"
+              : conv.avatarUrl
+                ? "transparent"
+                : getAvatarColor(conv.name),
+          }}
         >
           {conv.isNotes ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="white"
+              stroke="white"
+              strokeWidth="2"
+            >
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>
           ) : conv.avatarUrl ? (
@@ -95,7 +144,13 @@ const ConversationItem = memo(function ConversationItem({
               src={getFileUrl(conv.avatarUrl)}
               alt={conv.name}
               className="conversation-avatar-img"
-              onError={(e) => { e.target.style.display = "none"; e.target.parentNode.style.background = getAvatarColor(conv.name); e.target.parentNode.textContent = getInitials(conv.name); }}
+              onError={(e) => {
+                e.target.style.display = "none";
+                e.target.parentNode.style.background = getAvatarColor(
+                  conv.name,
+                );
+                e.target.parentNode.textContent = getInitials(conv.name);
+              }}
             />
           ) : (
             getInitials(conv.name)
@@ -116,7 +171,16 @@ const ConversationItem = memo(function ConversationItem({
             <span className="conversation-name">{conv.name}</span>
             {conv.isMuted && (
               <span className="conv-mute-icon" title="Muted">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   <line x1="23" y1="9" x2="17" y2="15" />
                   <line x1="17" y1="9" x2="23" y2="15" />
@@ -125,16 +189,33 @@ const ConversationItem = memo(function ConversationItem({
             )}
           </div>
           <div className="conversation-time-wrapper">
-            {isOwnLastMessage && conv.type !== 2 && !conv.isNotes && conv.lastMessage && (
-              conv.lastMessageStatus === "Pending" ? (
+            {isOwnLastMessage &&
+              conv.type !== 2 &&
+              !conv.isNotes &&
+              conv.lastMessage &&
+              (conv.lastMessageStatus === "Pending" ? (
                 <span className="preview-tick pending">
                   <svg viewBox="0 0 16 16">
-                    <circle cx="8" cy="8" r="6.5" fill="none" strokeWidth="1.5" />
-                    <polyline points="8 4 8 8 11 9.5" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6.5"
+                      fill="none"
+                      strokeWidth="1.5"
+                    />
+                    <polyline
+                      points="8 4 8 8 11 9.5"
+                      fill="none"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </span>
               ) : (
-                <span className={`preview-tick ${conv.lastMessageStatus === "Read" ? "read" : ""}`}>
+                <span
+                  className={`preview-tick ${conv.lastMessageStatus === "Read" ? "read" : ""}`}
+                >
                   <svg viewBox="0 0 16 11">
                     <polyline points="1 5.5 5 9.5 11 1" />
                     {conv.lastMessageStatus === "Read" && (
@@ -142,8 +223,7 @@ const ConversationItem = memo(function ConversationItem({
                     )}
                   </svg>
                 </span>
-              )
-            )}
+              ))}
             <span className="conversation-time">
               {formatTime(conv.lastMessageAtUtc)}
             </span>
@@ -159,14 +239,28 @@ const ConversationItem = memo(function ConversationItem({
           </span>
           {conv.isPinned && (
             <span className="conv-pin-icon" title="Pinned">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ transform: "rotate(45deg)" }}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                stroke="none"
+                style={{ transform: "rotate(45deg)" }}
+              >
                 <path d="M16 2a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v1h1.5v5.26a2.5 2.5 0 0 1-1.39 2.24L6.5 11.56A1.5 1.5 0 0 0 5.83 13v1.5h5.67V22a.5.5 0 0 0 1 0v-7.5h5.67V13a1.5 1.5 0 0 0-.67-1.44l-1.61-1.06A2.5 2.5 0 0 1 14.5 8.26V3H16V2Z" />
               </svg>
             </span>
           )}
           {(conv.lastReadLaterMessageId || conv.isMarkedReadLater) && (
             <span className="read-later-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
               </svg>
             </span>
@@ -232,7 +326,6 @@ function ConversationList({
   const [contextMenu, setContextMenu] = useState(null);
   const contextMenuRef = useRef(null);
 
-
   // --- Filter dropdown state ---
   // filterOpen — filter dropdown açıq/bağlı
   const [filterOpen, setFilterOpen] = useState(false);
@@ -265,17 +358,21 @@ function ConversationList({
         // Promise.allSettled — biri fail olsa digəri itməsin
         const results = await Promise.allSettled([
           apiGet(`/api/users/search?q=${encodeURIComponent(searchText)}`),
-          apiGet(`/api/channels/search?query=${encodeURIComponent(searchText)}`),
+          apiGet(
+            `/api/channels/search?query=${encodeURIComponent(searchText)}`,
+          ),
         ]);
         // Abort olunubsa nəticəni ignore et (yeni axtarış başlayıb)
         if (controller.signal.aborted) return;
         setSearchResults({
-          users: results[0].status === "fulfilled" ? results[0].value || [] : [],
-          channels: results[1].status === "fulfilled" ? results[1].value || [] : [],
+          users:
+            results[0].status === "fulfilled" ? results[0].value || [] : [],
+          channels:
+            results[1].status === "fulfilled" ? results[1].value || [] : [],
         });
       } catch (err) {
         if (controller.signal.aborted) return;
-        console.error("Search failed:", err);
+        alert(err ?? "Search failed. Please try again.");
         setSearchResults({ users: [], channels: [] });
       }
     }, 300);
@@ -303,7 +400,10 @@ function ConversationList({
   useEffect(() => {
     if (!contextMenu) return;
     function handleClickOutside(e) {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
+      if (
+        contextMenuRef.current &&
+        !contextMenuRef.current.contains(e.target)
+      ) {
         setContextMenu(null);
       }
     }
@@ -351,23 +451,32 @@ function ConversationList({
   }, []);
 
   // handleSearchKeyDown — ESC basıldıqda search mode-dan çıx
-  const handleSearchKeyDown = useCallback((e) => {
-    if (e.key === "Escape") {
-      exitSearchMode();
-    }
-  }, [exitSearchMode]);
+  const handleSearchKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Escape") {
+        exitSearchMode();
+      }
+    },
+    [exitSearchMode],
+  );
 
   // handleSelectUser — search nəticəsindən user-ə klik
-  const handleSelectUser = useCallback((user) => {
-    onSelectSearchUser(user);
-    exitSearchMode();
-  }, [onSelectSearchUser, exitSearchMode]);
+  const handleSelectUser = useCallback(
+    (user) => {
+      onSelectSearchUser(user);
+      exitSearchMode();
+    },
+    [onSelectSearchUser, exitSearchMode],
+  );
 
   // handleSelectChannel — search nəticəsindən channel-ə klik
-  const handleSelectChannel = useCallback((channel) => {
-    onSelectSearchChannel(channel);
-    exitSearchMode();
-  }, [onSelectSearchChannel, exitSearchMode]);
+  const handleSelectChannel = useCallback(
+    (channel) => {
+      onSelectSearchChannel(channel);
+      exitSearchMode();
+    },
+    [onSelectSearchChannel, exitSearchMode],
+  );
 
   // Client-side filter + pin sort — memoized (conversations/searchText dəyişməsə yenidən hesablanmır)
   const sortedConversations = useMemo(() => {
@@ -385,11 +494,12 @@ function ConversationList({
   // Bütün nəticələr (conversations, users, channels) birləşdirilir, dublikatlar çıxarılır
   function renderSearchResults() {
     // Client-side: mövcud conversations arasında axtarış
-    const matchedConversations = searchText.length >= 2
-      ? conversations.filter((c) =>
-          c.name.toLowerCase().includes(searchText.toLowerCase()),
-        )
-      : [];
+    const matchedConversations =
+      searchText.length >= 2
+        ? conversations.filter((c) =>
+            c.name.toLowerCase().includes(searchText.toLowerCase()),
+          )
+        : [];
 
     // searchText 2 hərfdən azdırsa, backend nəticələrini göstərmə
     const effectiveResults = searchText.length >= 2 ? searchResults : null;
@@ -428,8 +538,15 @@ function ConversationList({
         avatarBg: c.isNotes ? "#2FC6F6" : getAvatarColor(c.name),
         initials: c.isNotes ? null : getInitials(c.name),
         isNotes: c.isNotes,
-        detail: c.isNotes ? "Your personal notes" : c.type === 1 ? "Group chat" : "User",
-        onClick: () => { onSelectChat(c); exitSearchMode(); },
+        detail: c.isNotes
+          ? "Your personal notes"
+          : c.type === 1
+            ? "Group chat"
+            : "User",
+        onClick: () => {
+          onSelectChat(c);
+          exitSearchMode();
+        },
       });
     }
 
@@ -476,7 +593,14 @@ function ConversationList({
               style={{ background: item.avatarBg }}
             >
               {item.isNotes ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="white"
+                  stroke="white"
+                  strokeWidth="2"
+                >
                   <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                 </svg>
               ) : (
@@ -560,7 +684,14 @@ function ConversationList({
           {/* Search mode-da X button göstər — search bağlamaq üçün */}
           {searchMode && (
             <button className="search-clear-btn" onClick={exitSearchMode}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -568,21 +699,27 @@ function ConversationList({
           )}
         </div>
         {/* Yeni söhbət düyməsi — Channels.Create permission */}
-        {hasPermission("Channels.Create") && <button className="header-icon-btn create-btn" title="New group" onClick={onCreateChannel}>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {hasPermission("Channels.Create") && (
+          <button
+            className="header-icon-btn create-btn"
+            title="New group"
+            onClick={onCreateChannel}
           >
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-        </button>}
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Söhbət siyahısı / Search nəticələri */}
@@ -592,12 +729,18 @@ function ConversationList({
           renderSearchResults()
         ) : isLoading ? (
           <div className="conv-skeleton-list">
-            {[1,2,3,4,5,6,7,8].map(i => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div key={i} className="conv-skeleton-item">
                 <div className="conv-skeleton-avatar" />
                 <div className="conv-skeleton-text">
-                  <div className="conv-skeleton-bar" style={{ width: `${55 + (i % 3) * 15}%` }} />
-                  <div className="conv-skeleton-bar conv-skeleton-bar--short" style={{ width: `${35 + (i % 4) * 10}%` }} />
+                  <div
+                    className="conv-skeleton-bar"
+                    style={{ width: `${55 + (i % 3) * 15}%` }}
+                  />
+                  <div
+                    className="conv-skeleton-bar conv-skeleton-bar--short"
+                    style={{ width: `${35 + (i % 4) * 10}%` }}
+                  />
                 </div>
                 <div className="conv-skeleton-time" />
               </div>
@@ -635,7 +778,9 @@ function ConversationList({
                 className="conv-context-item"
                 onClick={() => handleContextAction(onToggleReadLater)}
               >
-                {contextMenu.conv.isMarkedReadLater ? "Unmark read later" : "Mark to read later"}
+                {contextMenu.conv.isMarkedReadLater
+                  ? "Unmark read later"
+                  : "Mark to read later"}
               </button>
 
               <button
@@ -660,18 +805,27 @@ function ConversationList({
           {/* DM + DepartmentUser: View profile, Find chats */}
           {(contextMenu.conv.type === 0 || contextMenu.conv.type === 2) && (
             <>
-              <button className="conv-context-item" onClick={() => {
-                const otherUserId = contextMenu.conv.otherUserId || contextMenu.conv.userId;
-                setContextMenu(null);
-                if (onViewProfile && otherUserId) onViewProfile(otherUserId);
-              }}>
+              <button
+                className="conv-context-item"
+                onClick={() => {
+                  const otherUserId =
+                    contextMenu.conv.otherUserId || contextMenu.conv.userId;
+                  setContextMenu(null);
+                  if (onViewProfile && otherUserId) onViewProfile(otherUserId);
+                }}
+              >
                 View profile
               </button>
-              <button className="conv-context-item" onClick={() => {
-                const otherUserId = contextMenu.conv.otherUserId || contextMenu.conv.userId;
-                setContextMenu(null);
-                if (onFindChatsWithUser && otherUserId) onFindChatsWithUser(otherUserId);
-              }}>
+              <button
+                className="conv-context-item"
+                onClick={() => {
+                  const otherUserId =
+                    contextMenu.conv.otherUserId || contextMenu.conv.userId;
+                  setContextMenu(null);
+                  if (onFindChatsWithUser && otherUserId)
+                    onFindChatsWithUser(otherUserId);
+                }}
+              >
                 Find chats with this user
               </button>
             </>

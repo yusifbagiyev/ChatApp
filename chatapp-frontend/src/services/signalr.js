@@ -136,7 +136,6 @@ export async function startConnection() {
     return conn;
   })().catch((err) => {
     // startConnection fail oldu — connectionPromise-i sıfırla ki, retry mümkün olsun
-    console.error("SignalR: initial connection failed:", err);
     connection = null;
     connectionPromise = null;
     notifyConnectionState("reconnecting");

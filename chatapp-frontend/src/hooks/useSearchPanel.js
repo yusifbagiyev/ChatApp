@@ -10,7 +10,6 @@ import { apiGet } from "../services/api";
 // ─── useSearchPanel ──────────────────────────────────────────────────────────
 // selectedChat: hansı chat açıqdır (search scope təyin etmək üçün)
 export default function useSearchPanel(selectedChat) {
-
   // ─── State-lər ────────────────────────────────────────────────────────────
   const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,9 +39,10 @@ export default function useSearchPanel(selectedChat) {
     searchTimerRef.current = setTimeout(async () => {
       try {
         const scope = selectedChat.type === 1 ? 3 : 4;
-        const idParam = selectedChat.type === 1
-          ? `channelId=${selectedChat.id}`
-          : `conversationId=${selectedChat.id}`;
+        const idParam =
+          selectedChat.type === 1
+            ? `channelId=${selectedChat.id}`
+            : `conversationId=${selectedChat.id}`;
         const data = await apiGet(
           `/api/search?q=${encodeURIComponent(q)}&scope=${scope}&${idParam}&page=1&pageSize=20`,
         );
@@ -52,7 +52,7 @@ export default function useSearchPanel(selectedChat) {
         setSearchPage(1);
       } catch (err) {
         if (cancelled) return;
-        console.error("Search failed:", err);
+        alert("Search failed:", err);
         setSearchResultsList([]);
       } finally {
         if (!cancelled) setSearchLoading(false);
@@ -63,7 +63,7 @@ export default function useSearchPanel(selectedChat) {
       cancelled = true;
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, selectedChat?.id, selectedChat?.type]);
 
   // ─── loadMoreSearchResults ─────────────────────────────────────────────────
@@ -74,9 +74,10 @@ export default function useSearchPanel(selectedChat) {
       const q = searchQuery.trim();
       const nextPage = searchPage + 1;
       const scope = selectedChat.type === 1 ? 3 : 4;
-      const idParam = selectedChat.type === 1
-        ? `channelId=${selectedChat.id}`
-        : `conversationId=${selectedChat.id}`;
+      const idParam =
+        selectedChat.type === 1
+          ? `channelId=${selectedChat.id}`
+          : `conversationId=${selectedChat.id}`;
       const data = await apiGet(
         `/api/search?q=${encodeURIComponent(q)}&scope=${scope}&${idParam}&page=${nextPage}&pageSize=20`,
       );
@@ -84,7 +85,7 @@ export default function useSearchPanel(selectedChat) {
       setSearchHasMore(data.hasNextPage || false);
       setSearchPage(nextPage);
     } catch (err) {
-      console.error("Load more search results failed:", err);
+      alert("Load more search results failed:", err);
     } finally {
       setSearchLoading(false);
     }
