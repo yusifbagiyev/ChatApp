@@ -13,7 +13,10 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 
 // SignalR hub-ının URL-i — backend-dəki ChatHub endpoint-i
 // Docker-da: window.__ENV__.API_BASE_URL runtime-da set olunur (nginx/docker-entrypoint.sh)
-const HUB_URL = (window.__ENV__?.API_BASE_URL ?? "http://localhost:7000") + "/hubs/chat";
+// Production: nginx /hubs/ proxy istifadə edir → boş prefix
+// Development: localhost:7000 birbaşa backend-ə gedir
+const HUB_BASE = window.__ENV__?.API_BASE_URL ?? (window.location.hostname === "localhost" ? "http://localhost:7000" : "");
+const HUB_URL = HUB_BASE + "/hubs/chat";
 
 // ─── Module-Level Singleton ───────────────────────────────────────────────────
 // connection: aktiv SignalR bağlantısı (1 ədəd — singleton pattern)

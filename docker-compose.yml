@@ -74,10 +74,6 @@ services:
       context: ./chatapp-frontend
       dockerfile: Dockerfile
     container_name: talkbit_frontend
-    env_file:
-      - .env
-    environment:
-      VITE_API_BASE_URL: ${API_BASE_URL}
     networks:
       - talkbit-net
     depends_on:

@@ -8,7 +8,9 @@
 // Backend server URL-i — bütün endpointlərə bu əlavə olunur
 // Docker-da: window.__ENV__.API_BASE_URL nginx/docker-entrypoint.sh tərəfindən set olunur
 // Development-də: public/env.js default "http://localhost:7000" istifadə edir
-const BASE_URL = window.__ENV__?.API_BASE_URL ?? "http://localhost:7000";
+// Production: nginx /api/ proxy istifadə edir → BASE_URL boş olmalıdır
+// Development: localhost:7000 birbaşa backend-ə gedir
+const BASE_URL = window.__ENV__?.API_BASE_URL ?? (window.location.hostname === "localhost" ? "http://localhost:7000" : "");
 
 // JWT access token 15 dəqiqəyə expire olur (appsettings.json: AccessTokenExpirationMinutes=15).
 // Biz 12 dəqiqə sonra proaktiv refresh edirik ki, expire olmadan yeniləsin.
