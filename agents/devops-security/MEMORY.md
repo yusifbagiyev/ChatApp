@@ -48,6 +48,14 @@
 - **Runner service**: `actions.runner.yusifbagiyev-Talkbit.hetzner-machine` (systemd, enabled)
 - **SSL certs**: `/etc/letsencrypt/live/ittech.az/`
 
+## Security Configuration
+
+- Cloudflare WAF: Custom rule "Block non-AZ traffic" — Managed Challenge for non-AZ countries
+- Cloudflare Rate Limiting: TODO — add for /api/ endpoints (free plan allows 1 rule)
+- Fail2ban: 3 jails active (sshd port 4624 — 3 attempts/24h ban, nginx-http-auth, nginx-limit-req)
+- Under Attack Mode: OFF (use only during active DDoS)
+- Cloudflare API token: NOT created yet (email verification issue pending)
+
 ## Known Issues
 
 - Redis password with special characters (`/`, `;`, `=`) breaks Docker Compose variable expansion → use simple alphanumeric passwords

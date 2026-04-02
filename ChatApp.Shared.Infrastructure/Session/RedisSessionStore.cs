@@ -72,10 +72,21 @@ public class RedisSessionStore : ISessionStore
     {
         var data = await GetSessionDataAsync(sessionId);
 
-        if (data != null && data.RefreshTokenExpiresAt > DateTime.UtcNow)
-            return data.RefreshToken;
+        if (data == null)
+        {
+            _logger.LogWarning("GetRefreshToken: session data null — Redis key expired or evicted (sessionId: {SessionId})",
+                sessionId[..Math.Min(8, sessionId.Length)] + "...");
+            return null;
+        }
 
-        return null;
+        if (data.RefreshTokenExpiresAt <= DateTime.UtcNow)
+        {
+            _logger.LogWarning("GetRefreshToken: refresh token expired — ExpiresAt: {ExpiresAt}, Now: {Now}, UserId: {UserId}",
+                data.RefreshTokenExpiresAt, DateTime.UtcNow, data.UserId);
+            return null;
+        }
+
+        return data.RefreshToken;
     }
 
     public async Task UpdateTokensAsync(string sessionId, string newAccessToken, string newRefreshToken, TimeSpan accessTokenLifetime, TimeSpan refreshTokenLifetime)

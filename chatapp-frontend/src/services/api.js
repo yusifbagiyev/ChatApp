@@ -115,6 +115,15 @@ function resetSessionExpired() {
   sessionExpired = false;
 }
 
+// ─── visibilitychange — sleep/wake handler ────────────────────────────────────
+// Kompüter sleep-dən qayıdanda və ya tab aktiv olanda dərhal refresh cəhd et.
+// setTimeout sleep zamanı pauzaya düşür → token expire ola bilər.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && !sessionExpired && refreshTimerId) {
+    refreshToken().catch(() => {});
+  }
+});
+
 // ─── apiFetch — Core HTTP Function ───────────────────────────────────────────
 // Bütün API calls buradan keçir. 401 gəldikdə: refresh + retry.
 // endpoint: "/api/users/me" kimi — BASE_URL-ə əlavə olunur

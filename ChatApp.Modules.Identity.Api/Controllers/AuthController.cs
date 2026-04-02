@@ -93,18 +93,28 @@ namespace ChatApp.Modules.Identity.Api.Controllers
             var sessionId = Request.Cookies[SessionCookieName];
 
             if (string.IsNullOrEmpty(sessionId))
+            {
+                _logger.LogWarning("Refresh failed: no _sid cookie in request");
                 return BadRequest(new { error = "No session found" });
+            }
 
             // Get refresh token from server-side session store
             var refreshToken = await _sessionStore.GetRefreshTokenAsync(sessionId);
 
             if (string.IsNullOrEmpty(refreshToken))
+            {
+                _logger.LogWarning("Refresh failed: session {SessionId} — Redis returned null (session expired or evicted)",
+                    sessionId[..Math.Min(8, sessionId.Length)] + "...");
                 return BadRequest(new { error = "Session expired" });
+            }
 
             var result = await _mediator.Send(new RefreshTokenCommand(refreshToken), CancellationToken.None);
 
             if (result.IsFailure)
             {
+                _logger.LogWarning("Refresh failed: session {SessionId} — {Error}",
+                    sessionId[..Math.Min(8, sessionId.Length)] + "...", result.Error);
+
                 var isTokenInvalid = result.Error!.Contains("Invalid or expired")
                     || result.Error.Contains("User not found");
 
