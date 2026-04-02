@@ -63,16 +63,24 @@
 - Nginx frontend upstream port: 80 (nginx:alpine container), not 3000
 - Cloudflare CDN caches old JS files → must "Purge Everything" after deploy
 - SignalR nginx path: `/hubs/` (was `/hub/` before — fixed)
+- Grafana imported dashboards use `${DS_PROMETHEUS}` placeholder — must replace with actual datasource UID after import
+- Community Grafana dashboards often use old node_exporter metric names (pre-v1.x) — always verify and rename
 
 ## Incidents
 
 - 2026-04-01: Production login "Failed to fetch" — Redis NOAUTH (password mismatch) + frontend env.js returning localhost:7000 + wrong nginx SignalR path + CORS only allowing localhost
+- 2026-04-02: Grafana "Docker and system monitoring" dashboard showing N/A/No data — all containers were stopped + dashboard had unresolved `${DS_PROMETHEUS}` datasource + old metric names without `_bytes`/`_seconds_total` suffix
 
 ## Patterns
 
 - Always purge Cloudflare cache after deploy
 - When Redis password changes, delete Docker volume (`docker volume rm`) to clear stale data
 - Never use special characters in `.env` passwords (Docker Compose variable expansion breaks)
+- Grafana dashboard import fix: `GET /api/dashboards/uid/<uid>` → string-replace `${DS_PROMETHEUS}` with actual UID (`PBFA97CFB590B2093`) → `POST /api/dashboards/db` with `overwrite: true`
+- Node exporter v1.x metric renames: `node_boot_time` → `node_boot_time_seconds`, `node_filesystem_size` → `node_filesystem_size_bytes`, `node_memory_MemTotal` → `node_memory_MemTotal_bytes`, `node_cpu` → `node_cpu_seconds_total` etc.
+- Grafana datasource UIDs: stored in Grafana, query via API if needed
+- Grafana admin password is in `.env` (not hardcoded)
+- SSH to production: use non-standard port (stored securely, not in repo)
 
 ## Last Updated
-- 2026-04-01
+- 2026-04-02
