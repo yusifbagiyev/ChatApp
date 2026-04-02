@@ -161,6 +161,8 @@ services:
       - /dev/disk/:/dev/disk:ro
     command:
       - "-port=8081"
+      - "--docker_only=true"
+      - "--store_container_labels=true"
     privileged: true
     devices:
       - /dev/kmsg
