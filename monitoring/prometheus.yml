@@ -18,6 +18,7 @@ scrape_configs:
 
   # cAdvisor — Docker container metrikləri (CPU, RAM, restart)
   - job_name: 'cadvisor'
+    honor_labels: true
     static_configs:
       - targets: ['cadvisor:8081']
 
