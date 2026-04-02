@@ -168,6 +168,17 @@ services:
       - talkbit-net
     restart: unless-stopped
 
+  # ── Nginx Exporter ───────────────────────
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: talkbit_nginx_exporter
+    command: --nginx.scrape-uri=http://nginx:80/nginx_status
+    networks:
+      - talkbit-net
+    depends_on:
+      - nginx
+    restart: unless-stopped
+
   # ── Loki ──────────────────────────────────
   loki:
     image: grafana/loki:latest
