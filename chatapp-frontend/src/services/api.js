@@ -481,9 +481,9 @@ function getDriveFiles(folderId, sortBy, sortOrder, search) {
   if (search) params.set("search", search);
   return apiGet(`/api/drive/files?${params}`);
 }
-function uploadDriveFile(formData, folderId) {
+function uploadDriveFile(formData, folderId, onProgress) {
   const url = folderId ? `/api/drive/upload?folderId=${folderId}` : "/api/drive/upload";
-  return apiUpload(url, formData);
+  return apiUpload(url, formData, onProgress);
 }
 function renameDriveFile(id, name) { return apiPut(`/api/drive/files/${id}/rename`, { name }); }
 function moveDriveFile(id, targetFolderId) { return apiPut(`/api/drive/files/${id}/move`, { targetFolderId }); }

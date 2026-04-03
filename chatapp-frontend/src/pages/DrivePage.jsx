@@ -77,10 +77,9 @@ const FolderIcon = memo(function FolderIcon({ size = 40 }) {
 const DriveHeader = memo(function DriveHeader({
   searchTerm, setSearchTerm, showAddDropdown, setShowAddDropdown,
   onUploadFile, onNewFolder, setShowRecycleBin, showRecycleBin,
-  showQuota, setShowQuota, quota,
+  quota,
 }) {
   const addRef = useRef(null);
-  const quotaRef = useRef(null);
   const fileInputRef = useRef(null);
 
   // Dropdown kənarına klik — bağla
@@ -93,14 +92,6 @@ const DriveHeader = memo(function DriveHeader({
     return () => document.removeEventListener("mousedown", handler);
   }, [showAddDropdown, setShowAddDropdown]);
 
-  useEffect(() => {
-    if (!showQuota) return;
-    const handler = (e) => {
-      if (quotaRef.current && !quotaRef.current.contains(e.target)) setShowQuota(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showQuota, setShowQuota]);
 
   return (
     <div className="drive-header">
@@ -124,9 +115,6 @@ const DriveHeader = memo(function DriveHeader({
             </div>
           )}
         </div>
-      </div>
-
-      <div className="drive-header-right">
         <div className="drive-search-wrap">
           <svg className="drive-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input
@@ -142,21 +130,29 @@ const DriveHeader = memo(function DriveHeader({
             </button>
           )}
         </div>
+      </div>
+
+      <div className="drive-header-right">
+
+        {/* Storage Quota — inline progress */}
+        {quota && (
+          <div className="drive-quota-inline">
+            <div className="drive-quota-bar-wrap">
+              <div
+                className={`drive-quota-bar-fill${quota.percentage >= 90 ? " critical" : quota.percentage >= 70 ? " warning" : ""}`}
+                style={{ width: `${Math.min(quota.percentage, 100)}%` }}
+              />
+            </div>
+            <span className="drive-quota-text">{quota.usedMb?.toFixed(1) ?? 0} / {quota.limitMb?.toFixed(0) ?? 0} MB</span>
+          </div>
+        )}
 
         <button
-          className={`drive-btn drive-btn-icon${showRecycleBin ? " active" : ""}`}
-          title="Recycle Bin"
+          className={`drive-btn drive-btn-ghost${showRecycleBin ? " active" : ""}`}
           onClick={() => setShowRecycleBin(!showRecycleBin)}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          Recycle Bin
         </button>
-
-        <div className="drive-quota-wrap" ref={quotaRef}>
-          <button className="drive-btn drive-btn-icon" title="Storage Quota" onClick={() => setShowQuota(!showQuota)}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0022 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          </button>
-          {showQuota && quota && <DriveQuotaBar quota={quota} />}
-        </div>
       </div>
 
       {/* Gizli fayl input — Upload File kliklənəndə açılır */}
@@ -564,76 +560,52 @@ const DriveSelectionToolbar = memo(function DriveSelectionToolbar({
   );
 });
 
-// ─── DriveDetailsPanel — Sağ tərəfdə açılan detallar paneli ─────────────────
+// ─── DriveDetailsPanel — Kompakt detallar paneli ─────────────────────────────
 const DriveDetailsPanel = memo(function DriveDetailsPanel({ item, isFolder, onClose, onDownload, onDelete }) {
   if (!item) return null;
   const name = isFolder ? item.name : item.originalFileName;
   const isImg = !isFolder && isImageFile(name);
 
   return (
-    <div className="drive-details-overlay" onClick={onClose}>
-      <div className="drive-details-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="drive-details-header">
-          <h3 className="drive-details-title">Details</h3>
-          <button className="drive-btn drive-btn-icon" onClick={onClose}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <div className="drive-detail-overlay" onClick={onClose}>
+      <div className="drive-detail-card" onClick={(e) => e.stopPropagation()}>
+        {/* Yuxarı: preview + əsas məlumat */}
+        <div className="drive-detail-top">
+          <div className="drive-detail-preview">
+            {isFolder ? (
+              <FolderIcon size={48} />
+            ) : isImg && item.serveUrl ? (
+              <img src={getFileUrl(item.serveUrl)} alt={name} />
+            ) : (
+              <FileTypeIcon fileName={name} size={48} />
+            )}
+          </div>
+          <div className="drive-detail-info">
+            <span className="drive-detail-name">{name}</span>
+            <span className="drive-detail-sub">
+              {isFolder
+                ? `${item.itemCount || 0} items`
+                : `${formatSize(item.fileSizeInBytes)} · ${item.contentType || ""}`}
+            </span>
+            <span className="drive-detail-date">
+              {formatDate(item.createdAtUtc)}
+              {item.updatedAtUtc && ` · Modified ${formatDate(item.updatedAtUtc)}`}
+            </span>
+          </div>
+          <button className="drive-detail-close" onClick={onClose}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-
-        <div className="drive-details-preview">
-          {isFolder ? (
-            <FolderIcon size={80} />
-          ) : isImg && item.serveUrl ? (
-            <img src={getFileUrl(item.serveUrl)} alt={name} className="drive-details-img" />
-          ) : (
-            <FileTypeIcon fileName={name} size={80} />
-          )}
-        </div>
-
-        <div className="drive-details-meta">
-          <div className="drive-details-row">
-            <span className="drive-details-label">Name</span>
-            <span className="drive-details-value">{name}</span>
-          </div>
+        {/* Aşağı: action butonlar */}
+        <div className="drive-detail-actions">
           {!isFolder && (
-            <div className="drive-details-row">
-              <span className="drive-details-label">Size</span>
-              <span className="drive-details-value">{formatSize(item.fileSizeInBytes)}</span>
-            </div>
-          )}
-          {isFolder && (
-            <div className="drive-details-row">
-              <span className="drive-details-label">Items</span>
-              <span className="drive-details-value">{item.itemCount || 0}</span>
-            </div>
-          )}
-          <div className="drive-details-row">
-            <span className="drive-details-label">Created</span>
-            <span className="drive-details-value">{formatDate(item.createdAtUtc)}</span>
-          </div>
-          {item.updatedAtUtc && (
-            <div className="drive-details-row">
-              <span className="drive-details-label">Modified</span>
-              <span className="drive-details-value">{formatDate(item.updatedAtUtc)}</span>
-            </div>
-          )}
-          {!isFolder && item.contentType && (
-            <div className="drive-details-row">
-              <span className="drive-details-label">Type</span>
-              <span className="drive-details-value">{item.contentType}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="drive-details-actions">
-          {!isFolder && (
-            <button className="drive-btn drive-btn-primary" onClick={() => onDownload(item)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <button className="drive-detail-action" onClick={() => onDownload(item)}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Download
             </button>
           )}
-          <button className="drive-btn drive-btn-ghost drive-btn-danger" onClick={() => onDelete(item, isFolder)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          <button className="drive-detail-action danger" onClick={() => onDelete(item, isFolder)}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
             Delete
           </button>
         </div>
@@ -907,6 +879,11 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack }) {
         )}
       </div>
 
+      <div className="drive-recycle-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        Files deleted to the Recycle Bin are kept for 30 days
+      </div>
+
       {loading ? (
         <div className="drive-skeleton-list">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -1016,8 +993,10 @@ export default function DrivePage() {
   const [renameItem, setRenameItem] = useState(null);
   const [showAddDropdown, setShowAddDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [showQuota, setShowQuota] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  // Upload progress — [{name, progress, status}]
+  const [uploads, setUploads] = useState([]);
+  const [lightboxUrl, setLightboxUrl] = useState(null);
   const [newFolderDialog, setNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderSaving, setNewFolderSaving] = useState(false);
@@ -1074,7 +1053,11 @@ export default function DrivePage() {
   const handleItemClick = useCallback((item, isFolder) => {
     if (isFolder) {
       navigateToFolder(item.id, [...folderPath, { id: item.id, name: item.name }]);
+    } else if (isImageFile(item.originalFileName) && item.serveUrl) {
+      // Şəkil faylı — lightbox açılır
+      setLightboxUrl(getFileUrl(item.serveUrl));
     } else {
+      // Digər fayllar — details paneli
       setDetailItem({ item, isFolder: false });
     }
   }, [folderPath, navigateToFolder]);
@@ -1097,22 +1080,42 @@ export default function DrivePage() {
     setContextMenu({ x, y, item, isFolder });
   }, []);
 
-  // ── Fayl yükləmə ──
+  // ── Fayl yükləmə — progress ilə ──
   const handleUploadFiles = useCallback(async (fileList) => {
     const filesArr = Array.from(fileList);
     if (filesArr.length === 0) return;
-    try {
-      for (const file of filesArr) {
+
+    // Hər fayl üçün upload entry yarat
+    const entries = filesArr.map((f, i) => ({ id: `up-${Date.now()}-${i}`, name: f.name, progress: 0, status: "uploading" }));
+    setUploads((prev) => [...prev, ...entries]);
+
+    let successCount = 0;
+    for (let i = 0; i < filesArr.length; i++) {
+      const file = filesArr[i];
+      const entryId = entries[i].id;
+      try {
         const formData = new FormData();
         formData.append("File", file);
-        await uploadDriveFile(formData, currentFolderId);
+        await uploadDriveFile(formData, currentFolderId, (p) => {
+          const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;
+          setUploads((prev) => prev.map((u) => u.id === entryId ? { ...u, progress: pct } : u));
+        });
+        setUploads((prev) => prev.map((u) => u.id === entryId ? { ...u, progress: 100, status: "done" } : u));
+        successCount++;
+      } catch {
+        setUploads((prev) => prev.map((u) => u.id === entryId ? { ...u, status: "error" } : u));
       }
-      showToast(`${filesArr.length} file(s) uploaded`, "success");
+    }
+
+    // 2 saniyə sonra tamamlanmış upload-ları sil
+    setTimeout(() => {
+      setUploads((prev) => prev.filter((u) => u.status === "uploading"));
+    }, 2500);
+
+    if (successCount > 0) {
+      showToast(`${successCount} file(s) uploaded`, "success");
       loadData();
-      // Kvota yenilə
       getDriveQuota().then(setQuota).catch(() => {});
-    } catch {
-      showToast("Failed to upload files", "error");
     }
   }, [currentFolderId, loadData, showToast]);
 
@@ -1326,8 +1329,6 @@ export default function DrivePage() {
         onNewFolder={handleNewFolder}
         setShowRecycleBin={setShowRecycleBin}
         showRecycleBin={showRecycleBin}
-        showQuota={showQuota}
-        setShowQuota={setShowQuota}
         quota={quota}
       />
 
@@ -1433,34 +1434,59 @@ export default function DrivePage() {
       {/* Yeni qovluq dialog */}
       {newFolderDialog && (
         <div className="drive-move-overlay" onClick={(e) => { if (e.target === e.currentTarget) setNewFolderDialog(false); }}>
-          <div className="drive-move-dialog" style={{ maxHeight: "none" }}>
-            <div className="drive-move-header">
-              <span className="drive-move-header-title">New Folder</span>
-              <button className="drive-details-close" onClick={() => setNewFolderDialog(false)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
+          <div className="drive-newfolder-dialog">
+            <div className="drive-newfolder-icon-wrap">
+              <FolderIcon size={40} />
             </div>
-            <div style={{ padding: "20px" }}>
-              <label style={{ fontSize: 12, fontWeight: 500, color: "#6b7280", display: "block", marginBottom: 6 }}>Folder name</label>
-              <input
-                className="drive-search-input"
-                style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 13 }}
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
-                placeholder="Enter folder name..."
-                autoFocus
-              />
-            </div>
-            <div className="drive-move-actions">
-              <button className="drive-move-cancel-btn" onClick={() => setNewFolderDialog(false)}>Cancel</button>
-              <button className="drive-move-confirm-btn" onClick={handleCreateFolder} disabled={!newFolderName.trim() || newFolderSaving}>
-                {newFolderSaving ? "Creating..." : "Create"}
+            <h3 className="drive-newfolder-title">Create New Folder</h3>
+            <input
+              className="drive-newfolder-input"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && newFolderName.trim() && handleCreateFolder()}
+              placeholder="Folder name"
+              autoFocus
+            />
+            <div className="drive-newfolder-actions">
+              <button className="drive-newfolder-create" onClick={handleCreateFolder} disabled={!newFolderName.trim() || newFolderSaving}>
+                {newFolderSaving ? "CREATING..." : "CREATE"}
               </button>
+              <button className="drive-newfolder-cancel" onClick={() => setNewFolderDialog(false)}>CLOSE</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Upload progress panel — sağ aşağıda */}
+      {uploads.length > 0 && (
+        <div className="drive-upload-panel">
+          <div className="drive-upload-panel-header">
+            <span className="drive-upload-panel-title">Uploading {uploads.filter(u => u.status === "uploading").length} file(s)</span>
+            <button className="drive-upload-panel-close" onClick={() => setUploads([])}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          {uploads.map((u) => (
+            <div key={u.id} className="drive-upload-item">
+              <span className="drive-upload-item-name">{u.name}</span>
+              <div className="drive-upload-item-bar">
+                <div className={`drive-upload-item-fill${u.status === "error" ? " error" : u.status === "done" ? " done" : ""}`} style={{ width: `${u.progress}%` }} />
+              </div>
+              <span className="drive-upload-item-pct">
+                {u.status === "error" ? "Failed" : u.status === "done" ? "Done" : `${u.progress}%`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox — şəkil faylı böyüdülmüş */}
+      {lightboxUrl && (
+        <div className="drive-lightbox" onClick={() => setLightboxUrl(null)}>
+          <img src={lightboxUrl} alt="" onClick={(e) => e.stopPropagation()} />
+          <button className="drive-lightbox-close" onClick={() => setLightboxUrl(null)}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
       )}
     </div>
