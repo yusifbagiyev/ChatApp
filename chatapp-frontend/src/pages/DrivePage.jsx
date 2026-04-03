@@ -844,7 +844,7 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
         </button>
         <h2 className="drive-recycle-title">Recycle Bin</h2>
         {trashItems.length > 0 && (
-          <button className="drive-btn drive-btn-ghost drive-btn-danger" onClick={handleEmptyTrash}>
+          <button className="drive-btn drive-btn-primary-danger" onClick={handleEmptyTrash}>
             Empty Trash
           </button>
         )}
@@ -874,6 +874,13 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
         </div>
       ) : (
         <div className="drive-list">
+          <div className="drive-list-row drive-list-header">
+            <div className="drive-list-cell drive-list-icon" />
+            <div className="drive-list-cell drive-list-name">Name</div>
+            <div className="drive-list-cell drive-list-size">Size</div>
+            <div className="drive-list-cell drive-list-date">Deleted</div>
+            <div className="drive-list-cell drive-list-actions">Actions</div>
+          </div>
           {trashItems.map((item) => {
             const name = item.name || item.originalFileName || "Unknown";
             const isFolder = item.type === "folder";
@@ -890,6 +897,9 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
                 </div>
                 <div className="drive-list-cell drive-list-name">
                   <span>{name}</span>
+                </div>
+                <div className="drive-list-cell drive-list-size">
+                  {isFolder ? "—" : formatSize(item.sizeInBytes)}
                 </div>
                 <div className="drive-list-cell drive-list-date">{formatDate(item.deletedAtUtc)}</div>
                 <div className="drive-list-cell drive-list-actions">

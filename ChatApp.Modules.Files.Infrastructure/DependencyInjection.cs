@@ -1,6 +1,7 @@
 ﻿using ChatApp.Modules.Files.Application.Behaviors;
 using ChatApp.Modules.Files.Application.Commands.UploadFile;
 using ChatApp.Modules.Files.Application.Interfaces;
+using ChatApp.Modules.Files.Infrastructure.BackgroundServices;
 using ChatApp.Modules.Files.Infrastructure.Persistence;
 using ChatApp.Modules.Files.Infrastructure.Persistence.Repositories;
 using ChatApp.Modules.Files.Infrastructure.Services;
@@ -40,6 +41,9 @@ namespace ChatApp.Modules.Files.Infrastructure
             // Link Preview
             services.AddSingleton<ILinkPreviewService, LinkPreviewService>();
             services.AddHttpClient("LinkPreview");
+
+            // Background Services
+            services.AddHostedService<DriveTrashCleanupWorker>();
 
             return services;
         }

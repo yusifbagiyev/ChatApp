@@ -201,11 +201,6 @@ namespace ChatApp.Modules.Files.Api.Controllers
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty) return Unauthorized();
 
-            // Quota yoxlaması
-            var currentUsage = await unitOfWork.Files.GetDriveUsageAsync(userId, cancellationToken);
-            if (currentUsage + request.File.Length > DriveQuotaBytes)
-                return BadRequest(new { error = "Storage quota exceeded. Limit: 3 GB" });
-
             // Folder yoxlaması
             if (folderId.HasValue)
             {
@@ -215,24 +210,50 @@ namespace ChatApp.Modules.Files.Api.Controllers
                     return BadRequest(new { error = "Folder not found" });
             }
 
-            var (companyId, companySlug) = GetCompanyClaims();
-
-            var result = await mediator.Send(
-                new UploadFileCommand(request.File, userId, companyId, companySlug),
-                cancellationToken);
-
-            if (result.IsFailure)
-                return BadRequest(new { error = result.Error });
-
-            // Drive faylı olaraq işarələ
-            var fileMetadata = await unitOfWork.Files.GetByIdAsync(result.Value!.FileId, cancellationToken);
-            if (fileMetadata != null)
+            // Transaction + advisory lock ilə concurrent-safe quota yoxlaması
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+            try
             {
-                fileMetadata.MarkAsDriveFile(folderId);
-                await unitOfWork.SaveChangesAsync(cancellationToken);
-            }
+                // User-ə xas advisory lock — eyni user-in paralel upload-ları serialized olur
+                var lockKey = userId.GetHashCode();
+                await unitOfWork.ExecuteSqlAsync(
+                    $"SELECT pg_advisory_xact_lock({lockKey})", cancellationToken);
 
-            return Ok(result.Value);
+                var currentUsage = await unitOfWork.Files.GetDriveUsageAsync(userId, cancellationToken);
+                if (currentUsage + request.File.Length > DriveQuotaBytes)
+                {
+                    await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return BadRequest(new { error = "Storage quota exceeded. Limit: 3 GB" });
+                }
+
+                var (companyId, companySlug) = GetCompanyClaims();
+
+                var result = await mediator.Send(
+                    new UploadFileCommand(request.File, userId, companyId, companySlug),
+                    cancellationToken);
+
+                if (result.IsFailure)
+                {
+                    await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return BadRequest(new { error = result.Error });
+                }
+
+                // Drive faylı olaraq işarələ
+                var fileMetadata = await unitOfWork.Files.GetByIdAsync(result.Value!.FileId, cancellationToken);
+                if (fileMetadata != null)
+                {
+                    fileMetadata.MarkAsDriveFile(folderId);
+                    await unitOfWork.SaveChangesAsync(cancellationToken);
+                }
+
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
+                return Ok(result.Value);
+            }
+            catch
+            {
+                await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                throw;
+            }
         }
 
         [HttpPut("files/{id:guid}/rename")]
@@ -338,7 +359,7 @@ namespace ChatApp.Modules.Files.Api.Controllers
             }
 
             // Fayl-dırsa
-            var file = await unitOfWork.Files.GetByIdAsync(id, cancellationToken);
+            var file = await unitOfWork.Files.GetByIdIncludingDeletedAsync(id, cancellationToken);
             if (file != null && file.UploadedBy == userId && file.IsDeleted && file.IsDriveFile)
             {
                 file.Restore();
@@ -357,7 +378,7 @@ namespace ChatApp.Modules.Files.Api.Controllers
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty) return Unauthorized();
 
-            var file = await unitOfWork.Files.GetByIdAsync(id, cancellationToken);
+            var file = await unitOfWork.Files.GetByIdIncludingDeletedAsync(id, cancellationToken);
             if (file != null && file.UploadedBy == userId && file.IsDeleted && file.IsDriveFile)
             {
                 await fileStorageService.DeleteFileAsync(file.StoragePath, cancellationToken);

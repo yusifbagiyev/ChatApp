@@ -7,6 +7,10 @@ namespace ChatApp.Modules.Files.Application.Interfaces
     public interface IFileRepository
     {
         Task<FileMetadata?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// Silinmiş fayllar da daxil olmaqla — restore/permanent-delete üçün
+        /// </summary>
+        Task<FileMetadata?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken cancellationToken = default);
         Task<FileDto?> GetFileDtoByIdAsync(Guid id, CancellationToken cancellationToken = default);
         Task<List<FileDto>> GetUserFilesAsync(Guid userId,int pageSize=50,int skip=0,CancellationToken cancellationToken = default);
         Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
@@ -47,5 +51,9 @@ namespace ChatApp.Modules.Files.Application.Interfaces
         Task<List<FileMetadata>> GetDeletedDriveFilesAsync(Guid ownerId, CancellationToken cancellationToken = default);
         Task<long> GetDriveUsageAsync(Guid ownerId, CancellationToken cancellationToken = default);
         Task<List<FileMetadata>> GetFilesByFolderIdAsync(Guid folderId, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 30 gündən çox recycle bin-də olan drive fayllarını qaytarır — auto-cleanup üçün
+        /// </summary>
+        Task<List<FileMetadata>> GetExpiredDeletedDriveFilesAsync(int batchSize = 100, CancellationToken cancellationToken = default);
     }
 }

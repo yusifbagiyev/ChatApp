@@ -85,5 +85,22 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
                 .CountAsync(f => f.FolderId == folderId && !f.IsDeleted && f.IsDriveFile, cancellationToken);
             return subFolders + files;
         }
+
+        public Task DeleteAsync(DriveFolder folder, CancellationToken cancellationToken = default)
+        {
+            context.DriveFolders.Remove(folder);
+            return Task.CompletedTask;
+        }
+
+        public async Task<List<DriveFolder>> GetExpiredDeletedFoldersAsync(
+            int batchSize = 100, CancellationToken cancellationToken = default)
+        {
+            var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+            return await context.DriveFolders
+                .Where(f => f.IsDeleted && f.DeletedAtUtc <= thirtyDaysAgo)
+                .OrderBy(f => f.DeletedAtUtc)
+                .Take(batchSize)
+                .ToListAsync(cancellationToken);
+        }
     }
 }

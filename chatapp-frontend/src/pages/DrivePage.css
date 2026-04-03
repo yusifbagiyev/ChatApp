@@ -107,6 +107,18 @@
   color: #dc2626;
 }
 
+.drive-btn-primary-danger {
+  background: #b2e232;
+  color: #3d4a2e;
+}
+.drive-btn-primary-danger:hover {
+  filter: brightness(1.06);
+}
+.drive-btn-primary-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ─── + Add dropdown ──────────────────────────────────────────────────────── */
 .drive-add-wrap {
   position: relative;
@@ -516,10 +528,11 @@
 }
 
 .drive-list-actions {
+  width: 180px;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  margin-left: auto;
 }
 
 /* ─── §8 Selection toolbar ────────────────────────────────────────────────── */

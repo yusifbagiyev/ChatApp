@@ -1,4 +1,5 @@
 ﻿using ChatApp.Modules.Files.Application.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
@@ -50,6 +51,11 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
             }
         }
 
+
+        public async Task ExecuteSqlAsync(string sql, CancellationToken cancellationToken = default)
+        {
+            await _context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        }
 
         public void Dispose()
         {

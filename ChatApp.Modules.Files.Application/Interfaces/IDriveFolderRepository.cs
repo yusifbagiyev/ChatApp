@@ -12,5 +12,10 @@ namespace ChatApp.Modules.Files.Application.Interfaces
         Task AddAsync(DriveFolder folder, CancellationToken cancellationToken = default);
         Task UpdateAsync(DriveFolder folder, CancellationToken cancellationToken = default);
         Task<int> GetItemCountAsync(Guid folderId, CancellationToken cancellationToken = default);
+        Task DeleteAsync(DriveFolder folder, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 30 gündən çox recycle bin-də olan folder-ləri qaytarır — auto-cleanup üçün
+        /// </summary>
+        Task<List<DriveFolder>> GetExpiredDeletedFoldersAsync(int batchSize = 100, CancellationToken cancellationToken = default);
     }
 }

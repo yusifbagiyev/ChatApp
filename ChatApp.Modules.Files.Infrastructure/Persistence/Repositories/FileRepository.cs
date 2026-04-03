@@ -42,6 +42,12 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
                 .FirstOrDefaultAsync(f=>f.Id==id && !f.IsDeleted,cancellationToken);
         }
 
+        public async Task<FileMetadata?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _context.FileMetadata
+                .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
+        }
+
 
         public async Task<FileDto?> GetFileDtoByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
@@ -238,10 +244,11 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        // Recycle bin-dəki fayllar da quota-ya daxildir
         public async Task<long> GetDriveUsageAsync(Guid ownerId, CancellationToken cancellationToken = default)
         {
             return await _context.FileMetadata
-                .Where(f => f.UploadedBy == ownerId && f.IsDriveFile && !f.IsDeleted)
+                .Where(f => f.UploadedBy == ownerId && f.IsDriveFile)
                 .SumAsync(f => f.FileSizeInBytes, cancellationToken);
         }
 
@@ -250,6 +257,17 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
         {
             return await _context.FileMetadata
                 .Where(f => f.FolderId == folderId && !f.IsDeleted && f.IsDriveFile)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<FileMetadata>> GetExpiredDeletedDriveFilesAsync(
+            int batchSize = 100, CancellationToken cancellationToken = default)
+        {
+            var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+            return await _context.FileMetadata
+                .Where(f => f.IsDriveFile && f.IsDeleted && f.DeletedAtUtc <= thirtyDaysAgo)
+                .OrderBy(f => f.DeletedAtUtc)
+                .Take(batchSize)
                 .ToListAsync(cancellationToken);
         }
     }
