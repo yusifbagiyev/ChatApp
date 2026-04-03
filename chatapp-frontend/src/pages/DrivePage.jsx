@@ -31,6 +31,7 @@ import {
 } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import FileTypeIcon from "../components/FileTypeIcon";
+import ImageViewer from "../components/ImageViewer";
 import "./DrivePage.css";
 
 // ─── Yardımçı funksiyalar ────────────────────────────────────────────────────
@@ -782,40 +783,8 @@ const DriveMoveDialog = memo(function DriveMoveDialog({
   );
 });
 
-// ─── DriveQuotaBar — Saxlama kvotası popover ────────────────────────────────
-const DriveQuotaBar = memo(function DriveQuotaBar({ quota }) {
-  const usedPct = quota.limitBytes > 0
-    ? Math.min(100, (quota.usedBytes / quota.limitBytes) * 100)
-    : 0;
-
-  return (
-    <div className="drive-quota-popover">
-      <div className="drive-quota-header">
-        <span className="drive-quota-title">Storage</span>
-        <span className="drive-quota-usage">{formatSize(quota.usedBytes)} of {formatSize(quota.limitBytes)}</span>
-      </div>
-      <div className="drive-quota-bar-track">
-        <div
-          className={`drive-quota-bar-fill${usedPct > 90 ? " critical" : usedPct > 70 ? " warning" : ""}`}
-          style={{ width: `${usedPct}%` }}
-        />
-      </div>
-      {quota.breakdown && (
-        <div className="drive-quota-breakdown">
-          {quota.breakdown.map((b, i) => (
-            <div key={i} className="drive-quota-breakdown-row">
-              <span className="drive-quota-breakdown-label">{b.label}</span>
-              <span className="drive-quota-breakdown-value">{formatSize(b.bytes)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-});
-
 // ─── DriveRecycleBin — Silinmiş fayllar görünüşü ────────────────────────────
-const DriveRecycleBin = memo(function DriveRecycleBin({ onBack }) {
+const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange }) {
   const { showToast } = useToast();
   const [trashItems, setTrashItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -849,6 +818,7 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack }) {
       await permanentDeleteDriveItem(item.id);
       showToast("Item permanently deleted", "success");
       loadTrash();
+      onQuotaChange?.();
     } catch {
       showToast("Failed to delete permanently", "error");
     }
@@ -859,6 +829,7 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack }) {
       await emptyDriveTrash();
       showToast("Recycle bin emptied", "success");
       setTrashItems([]);
+      onQuotaChange?.();
     } catch {
       showToast("Failed to empty recycle bin", "error");
     }
@@ -996,7 +967,7 @@ export default function DrivePage() {
   const [dragOver, setDragOver] = useState(false);
   // Upload progress — [{name, progress, status}]
   const [uploads, setUploads] = useState([]);
-  const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [imageViewerIndex, setImageViewerIndex] = useState(null); // null = bağlı, index = açıq
   const [newFolderDialog, setNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderSaving, setNewFolderSaving] = useState(false);
@@ -1054,13 +1025,15 @@ export default function DrivePage() {
     if (isFolder) {
       navigateToFolder(item.id, [...folderPath, { id: item.id, name: item.name }]);
     } else if (isImageFile(item.originalFileName) && item.serveUrl) {
-      // Şəkil faylı — lightbox açılır
-      setLightboxUrl(getFileUrl(item.serveUrl));
+      // Şəkil faylı — ImageViewer açılır
+      const imgFiles = files.filter((f) => isImageFile(f.originalFileName) && f.serveUrl);
+      const idx = imgFiles.findIndex((f) => f.id === item.id);
+      if (idx !== -1) setImageViewerIndex(idx);
     } else {
       // Digər fayllar — details paneli
       setDetailItem({ item, isFolder: false });
     }
-  }, [folderPath, navigateToFolder]);
+  }, [folderPath, navigateToFolder, files]);
 
   const handleSelect = useCallback((item, isFolder, forceRemove = false) => {
     const key = `${isFolder ? "folder" : "file"}:${item.id}`;
@@ -1309,7 +1282,7 @@ export default function DrivePage() {
   if (showRecycleBin) {
     return (
       <div className="drive-page">
-        <DriveRecycleBin onBack={() => { setShowRecycleBin(false); loadData(); }} />
+        <DriveRecycleBin onBack={() => { setShowRecycleBin(false); loadData(); }} onQuotaChange={() => getDriveQuota().then(setQuota).catch(() => {})} />
       </div>
     );
   }
@@ -1496,15 +1469,18 @@ export default function DrivePage() {
         </div>
       )}
 
-      {/* Lightbox — şəkil faylı böyüdülmüş */}
-      {lightboxUrl && (
-        <div className="drive-lightbox" onClick={() => setLightboxUrl(null)}>
-          <img src={lightboxUrl} alt="" onClick={(e) => e.stopPropagation()} />
-          <button className="drive-lightbox-close" onClick={() => setLightboxUrl(null)}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      )}
+      {/* ImageViewer — conversation-dakı ilə eyni komponent */}
+      {imageViewerIndex !== null && (() => {
+        const imgFiles = files.filter((f) => isImageFile(f.originalFileName) && f.serveUrl);
+        return imgFiles.length > 0 ? (
+          <ImageViewer
+            images={imgFiles.map((f) => ({ id: f.id, fileUrl: f.serveUrl, originalFileName: f.originalFileName }))}
+            currentIndex={imageViewerIndex}
+            onClose={() => setImageViewerIndex(null)}
+            onNavigate={(idx) => setImageViewerIndex(idx)}
+          />
+        ) : null;
+      })()}
     </div>
   );
 }

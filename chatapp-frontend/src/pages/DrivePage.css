@@ -1244,7 +1244,7 @@
 }
 .drive-detail-close:hover { background: #f3f4f6; color: #374151; }
 .drive-detail-actions {
-  display: flex; gap: 8px; padding: 0 20px 18px;
+  display: flex; gap: 8px; padding: 0 20px 18px; justify-content: center;
 }
 .drive-detail-action {
   display: flex; align-items: center; gap: 6px;
