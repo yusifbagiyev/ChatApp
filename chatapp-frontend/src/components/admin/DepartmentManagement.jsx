@@ -6,6 +6,7 @@ import {
 } from "../../services/api";
 import { getInitials, getAvatarColor } from "../../utils/chatUtils";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import "./DepartmentManagement.css";
 import "./HierarchyView.css";
 
@@ -13,6 +14,7 @@ import "./HierarchyView.css";
 const DeptDetailPanel = memo(function DeptDetailPanel({
   dept, allDepts, closing, onClose, onDeleted, onEdit, onRefresh,
 }) {
+  const { showToast } = useToast();
   const [members, setMembers]             = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting]           = useState(false);
@@ -60,7 +62,7 @@ const DeptDetailPanel = memo(function DeptDetailPanel({
       await deleteDepartment(dept.id);
       onDeleted();
     } catch (err) {
-      alert(err.message || "Delete failed.");
+      showToast(err?.message || "Delete failed.", "error");
       setDeleting(false);
       setDeleteConfirm(false);
     }
@@ -82,7 +84,7 @@ const DeptDetailPanel = memo(function DeptDetailPanel({
       onClose();
       onRefresh();
     } catch (err) {
-      alert(err?.message ?? "Assign failed.");
+      showToast(err?.message || "Assign failed.", "error");
     } finally {
       setHeadSaving(false);
     }
@@ -96,7 +98,7 @@ const DeptDetailPanel = memo(function DeptDetailPanel({
       onClose();
       onRefresh();
     } catch (err) {
-      alert(err?.message ?? "Remove failed.");
+      showToast(err?.message || "Remove failed.", "error");
     } finally {
       setHeadSaving(false);
     }
@@ -281,6 +283,7 @@ const DeptDetailPanel = memo(function DeptDetailPanel({
 // ─── DepartmentManagement ─────────────────────────────────────────────────────
 function DepartmentManagement() {
   const { hasPermission } = useAuth();
+  const { showToast } = useToast();
   const canUploadAvatar = hasPermission("Avatar.Upload");
   const [depts, setDepts]           = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -314,11 +317,11 @@ function DepartmentManagement() {
       const data = await getDepartments();
       setDepts(data ?? []);
     } catch {
-      alert("Failed to load departments.");
+      showToast("Failed to load departments.", "error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => { loadDepts(); }, [loadDepts]);
 
@@ -473,9 +476,9 @@ function DepartmentManagement() {
       await deleteDepartment(dept.id);
       await loadDepts();
     } catch (err) {
-      alert(err?.message ?? "Delete failed.");
+      showToast(err?.message || "Delete failed.", "error");
     }
-  }, [loadDepts]);
+  }, [loadDepts, showToast]);
 
   const parentOptions = useMemo(() => {
     if (panel !== "edit" || !activeDept) return depts;

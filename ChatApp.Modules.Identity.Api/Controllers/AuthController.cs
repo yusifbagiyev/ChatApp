@@ -120,9 +120,14 @@ namespace ChatApp.Modules.Identity.Api.Controllers
 
                 if (isTokenInvalid)
                 {
-                    // Token-in özü keçərsizdir — session-u sil
-                    await _sessionStore.RemoveSessionAsync(sessionId);
-                    ClearSessionCookie();
+                    // Concurrent refresh race condition: digər request artıq yeni token yaratmış ola bilər.
+                    // Session hələ Redis-dədirsə — silmə, frontend növbəti call-da yeni token-i istifadə edəcək.
+                    var currentToken = await _sessionStore.GetRefreshTokenAsync(sessionId);
+                    if (string.IsNullOrEmpty(currentToken))
+                    {
+                        // Session həqiqətən expired — cookie-ni təmizlə
+                        ClearSessionCookie();
+                    }
                 }
 
                 // Keçici xətalarda (DB timeout, cancel) session saxlanılır — retry mümkün olsun
