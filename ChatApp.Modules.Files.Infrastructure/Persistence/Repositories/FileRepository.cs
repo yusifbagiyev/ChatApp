@@ -236,6 +236,47 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
             return await query.AsNoTracking().ToListAsync(cancellationToken);
         }
 
+        // Pagination ilə Drive fayllarını qaytarır + ümumi say və ölçü
+        public async Task<(List<FileMetadata> Items, int TotalCount, long TotalSize)> GetDriveFilesPagedAsync(
+            Guid ownerId, Guid? folderId, string? sortBy, string? sortOrder,
+            string? search, int skip, int take,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _context.FileMetadata
+                .Where(f => f.UploadedBy == ownerId && f.IsDriveFile && !f.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(f => EF.Functions.ILike(f.OriginalFileName, $"%{search}%"));
+            else
+                query = query.Where(f => f.FolderId == folderId);
+
+            // Ümumi say və ölçü — sort-dan əvvəl
+            var totalCount = await query.CountAsync(cancellationToken);
+            var totalSize = totalCount > 0
+                ? await query.SumAsync(f => f.FileSizeInBytes, cancellationToken)
+                : 0L;
+
+            query = (sortBy?.ToLower(), sortOrder?.ToLower()) switch
+            {
+                ("name", "asc") => query.OrderBy(f => f.OriginalFileName),
+                ("name", _) => query.OrderByDescending(f => f.OriginalFileName),
+                ("size", "asc") => query.OrderBy(f => f.FileSizeInBytes),
+                ("size", _) => query.OrderByDescending(f => f.FileSizeInBytes),
+                ("type", "asc") => query.OrderBy(f => f.FileType),
+                ("type", _) => query.OrderByDescending(f => f.FileType),
+                (_, "asc") => query.OrderBy(f => f.CreatedAtUtc),
+                _ => query.OrderByDescending(f => f.CreatedAtUtc)
+            };
+
+            var items = await query
+                .Skip(skip)
+                .Take(take)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount, totalSize);
+        }
+
         // Yalnız istifadəçinin birbaşa sildiyi fayllar — folder-cascade fayllar buraya düşmür
         public async Task<List<FileMetadata>> GetDeletedDriveFilesAsync(
             Guid ownerId, CancellationToken cancellationToken = default)
@@ -256,6 +297,23 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
             return await _context.FileMetadata
                 .Where(f => f.UploadedBy == ownerId && f.IsDriveFile)
                 .SumAsync(f => f.FileSizeInBytes, cancellationToken);
+        }
+
+        // Verilən folder ID-lərdəki faylların sayını və ümumi ölçüsünü qaytarır
+        public async Task<(int Count, long Size)> GetFileStatsInFoldersAsync(
+            Guid ownerId, IEnumerable<Guid> folderIds,
+            CancellationToken cancellationToken = default)
+        {
+            var ids = folderIds.ToList();
+            if (ids.Count == 0) return (0, 0);
+
+            var query = _context.FileMetadata
+                .Where(f => f.UploadedBy == ownerId && f.IsDriveFile && !f.IsDeleted
+                    && f.FolderId.HasValue && ids.Contains(f.FolderId.Value));
+
+            var count = await query.CountAsync(cancellationToken);
+            var size = count > 0 ? await query.SumAsync(f => f.FileSizeInBytes, cancellationToken) : 0L;
+            return (count, size);
         }
 
         public async Task<List<FileMetadata>> GetFilesByFolderIdAsync(

@@ -24,7 +24,9 @@ namespace ChatApp.Modules.Files.Application.DTOs.Responses
 
     public record DriveContentsDto(
         List<DriveFolderDto> Folders,
-        List<DriveFileDto> Files);
+        List<DriveFileDto> Files,
+        int TotalFiles,
+        long TotalFileSize);
 
     public record DriveTrashItemDto(
         Guid Id,

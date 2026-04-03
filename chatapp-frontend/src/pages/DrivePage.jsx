@@ -1043,6 +1043,11 @@ export default function DrivePage() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null); // { message, onConfirm }
   const [dragOver, setDragOver] = useState(false);
+  // Pagination + backend statistika
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [totalFileSize, setTotalFileSize] = useState(0);
+  const ITEMS_PER_PAGE = 100;
   // Upload progress — [{name, progress, status}]
   const [uploads, setUploads] = useState([]);
 
@@ -1080,19 +1085,24 @@ export default function DrivePage() {
   useEffect(() => { localStorage.setItem("driveViewMode", viewMode); }, [viewMode]);
   useEffect(() => { localStorage.setItem("driveSortBy", sortBy); }, [sortBy]);
 
-  // ── Məlumatları yüklə — tək request ilə ──
+  // ── Məlumatları yüklə — tək request, backend pagination ilə ──
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getDriveContents(currentFolderId, sortBy, sortOrder, debouncedSearch || undefined);
+      const data = await getDriveContents(
+        currentFolderId, sortBy, sortOrder,
+        debouncedSearch || undefined, currentPage, ITEMS_PER_PAGE,
+      );
       setFolders(data?.folders || []);
       setFiles(data?.files || []);
+      setTotalFiles(data?.totalFiles ?? 0);
+      setTotalFileSize(data?.totalFileSize ?? 0);
     } catch {
       showToast("Failed to load files", "error");
     } finally {
       setLoading(false);
     }
-  }, [currentFolderId, sortBy, sortOrder, debouncedSearch, showToast]);
+  }, [currentFolderId, sortBy, sortOrder, debouncedSearch, currentPage, showToast]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -1102,6 +1112,9 @@ export default function DrivePage() {
       .then((data) => setQuota(data))
       .catch(() => {});
   }, []);
+
+  // Folder/axtarış dəyişdikdə page sıfırla
+  useEffect(() => { setCurrentPage(1); }, [currentFolderId, debouncedSearch]);
 
   // ── Naviqasiya ──
   const navigateToFolder = useCallback((folderId, newPath) => {
@@ -1230,6 +1243,8 @@ export default function DrivePage() {
             };
             return [newFile, ...prev];
           });
+          setTotalFiles((prev) => prev + 1);
+          setTotalFileSize((prev) => prev + (file.size || 0));
         }
         successCount++;
       } catch (err) {
@@ -1317,6 +1332,8 @@ export default function DrivePage() {
           } else {
             await deleteDriveFile(item.id);
             setFiles((prev) => prev.filter((f) => f.id !== item.id));
+            setTotalFiles((prev) => Math.max(0, prev - 1));
+            setTotalFileSize((prev) => Math.max(0, prev - (item.fileSizeInBytes || 0)));
           }
           showToast("Moved to recycle bin", "success");
           setDetailItem(null);
@@ -1353,11 +1370,16 @@ export default function DrivePage() {
               return type === "folder" ? deleteDriveFolder(id) : deleteDriveFile(id);
             }));
           }
-          // Optimistic: silinən elementləri state-dən çıxar
+          // Optimistic: silinən elementləri state-dən çıxar + statistikanı yenilə
           const deletedFolderSet = new Set(folderIds);
           const deletedFileSet = new Set(fileIds);
           if (deletedFolderSet.size) setFolders((prev) => prev.filter((f) => !deletedFolderSet.has(f.id)));
-          if (deletedFileSet.size) setFiles((prev) => prev.filter((f) => !deletedFileSet.has(f.id)));
+          if (deletedFileSet.size) {
+            const deletedSize = files.filter((f) => deletedFileSet.has(f.id)).reduce((s, f) => s + (f.fileSizeInBytes || 0), 0);
+            setFiles((prev) => prev.filter((f) => !deletedFileSet.has(f.id)));
+            setTotalFiles((prev) => Math.max(0, prev - deletedFileSet.size));
+            setTotalFileSize((prev) => Math.max(0, prev - deletedSize));
+          }
           showToast(`${items.length} ${items.length === 1 ? "item" : "items"} deleted`, "success");
           setSelectedItems(new Set());
           getDriveQuota().then(setQuota).catch(() => {});
@@ -1414,7 +1436,12 @@ export default function DrivePage() {
         const movedFolderSet = new Set(folderIds);
         const movedFileSet = new Set(fileIds);
         if (movedFolderSet.size) setFolders((prev) => prev.filter((f) => !movedFolderSet.has(f.id)));
-        if (movedFileSet.size) setFiles((prev) => prev.filter((f) => !movedFileSet.has(f.id)));
+        if (movedFileSet.size) {
+          const movedSize = files.filter((f) => movedFileSet.has(f.id)).reduce((s, f) => s + (f.fileSizeInBytes || 0), 0);
+          setFiles((prev) => prev.filter((f) => !movedFileSet.has(f.id)));
+          setTotalFiles((prev) => Math.max(0, prev - movedFileSet.size));
+          setTotalFileSize((prev) => Math.max(0, prev - movedSize));
+        }
         showToast(`${items.length} ${items.length === 1 ? "item" : "items"} moved`, "success");
       } else {
         // Tək item
@@ -1425,6 +1452,8 @@ export default function DrivePage() {
         } else {
           await moveDriveFile(item.id, targetFolderId);
           setFiles((prev) => prev.filter((f) => f.id !== item.id));
+          setTotalFiles((prev) => Math.max(0, prev - 1));
+          setTotalFileSize((prev) => Math.max(0, prev - (item.fileSizeInBytes || 0)));
         }
         showToast("Moved successfully", "success");
       }
@@ -1493,6 +1522,11 @@ export default function DrivePage() {
     }
   }, [selectedItems, getFirstSelectedItem]);
 
+  // ── Pagination — backend tərəfdən idarə olunur ──
+  const totalItems = folders.length + totalFiles;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const needsPagination = totalItems > ITEMS_PER_PAGE;
+
   // ── Boş vəziyyət ──
   const isEmpty = !loading && folders.length === 0 && files.length === 0;
 
@@ -1553,6 +1587,22 @@ export default function DrivePage() {
         setShowSortDropdown={setShowSortDropdown}
       />
 
+      {/* Drive info bar — backend-dən gələn ümumi statistika */}
+      {!loading && !isEmpty && (
+        <div className="drive-info-bar">
+          <span className="drive-info-stat">
+            {folders.length > 0 && <>{folders.length} {folders.length === 1 ? "folder" : "folders"}</>}
+            {folders.length > 0 && totalFiles > 0 && <span className="drive-info-sep">,</span>}
+            {totalFiles > 0 && <>{totalFiles} {totalFiles === 1 ? "file" : "files"}</>}
+          </span>
+          {totalFileSize > 0 && (
+            <span className="drive-info-size">
+              {formatSize(totalFileSize)}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Selection toolbar */}
       {selectedItems.size > 0 && (
         <DriveSelectionToolbar
@@ -1607,6 +1657,48 @@ export default function DrivePage() {
             onRename={handleRename}
             renameItem={renameItem}
           />
+        )}
+
+        {/* Pagination — 100+ item olduqda görünür */}
+        {needsPagination && (
+          <div className="drive-pagination">
+            <button
+              className="drive-btn drive-btn-ghost drive-btn-sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+              .reduce((acc, p, i, arr) => {
+                // Arada boşluq varsa "..." əlavə et
+                if (i > 0 && p - arr[i - 1] > 1) acc.push("...");
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, i) =>
+                p === "..." ? (
+                  <span key={`dots-${i}`} className="drive-pagination-dots">...</span>
+                ) : (
+                  <button
+                    key={p}
+                    className={`drive-btn drive-btn-sm${p === currentPage ? " drive-pagination-active" : " drive-btn-ghost"}`}
+                    onClick={() => setCurrentPage(p)}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+            <button
+              className="drive-btn drive-btn-ghost drive-btn-sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <span className="drive-pagination-info">{totalItems} items</span>
+          </div>
         )}
       </div>
 

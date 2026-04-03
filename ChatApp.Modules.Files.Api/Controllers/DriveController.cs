@@ -34,12 +34,18 @@ namespace ChatApp.Modules.Files.Api.Controllers
             [FromQuery] string? sortBy,
             [FromQuery] string? sortOrder,
             [FromQuery] string? search,
-            CancellationToken cancellationToken)
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 100,
+            CancellationToken cancellationToken = default)
         {
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty) return Unauthorized();
 
-            // Folder-lər
+            // pageSize limiti
+            if (pageSize > 200) pageSize = 200;
+            if (page < 1) page = 1;
+
+            // Folder-lər — həmişə tam qaytarılır (adətən azdır)
             List<DriveFolder> folders;
             if (!string.IsNullOrWhiteSpace(search))
                 folders = await unitOfWork.DriveFolders.SearchAsync(userId, search, cancellationToken);
@@ -53,9 +59,42 @@ namespace ChatApp.Modules.Files.Api.Controllers
                 folderDtos.Add(new DriveFolderDto(f.Id, f.Name, f.ParentFolderId, itemCount, f.CreatedAtUtc, f.UpdatedAtUtc));
             }
 
-            // Fayllar
-            var files = await unitOfWork.Files.GetDriveFilesAsync(
-                userId, folderId, sortBy, sortOrder, search, cancellationToken);
+            // Fayllar — pagination ilə, folder-lər saydan çıxarılır
+            // Folder-lər birinci səhifədədir, qalan yer fayllara ayrılır
+            int folderCount = folderDtos.Count;
+            int fileSkip = 0;
+            int fileTake = pageSize;
+
+            if (page == 1)
+            {
+                // Birinci səhifədə folder-lər + qalan yer fayllara
+                fileTake = Math.Max(0, pageSize - folderCount);
+            }
+            else
+            {
+                // Sonrakı səhifələrdə yalnız fayllar
+                fileSkip = (page - 1) * pageSize - folderCount;
+                if (fileSkip < 0) fileSkip = 0;
+            }
+
+            var (files, totalFileCount, totalFileSize) = await unitOfWork.Files.GetDriveFilesPagedAsync(
+                userId, folderId, sortBy, sortOrder, search, fileSkip, fileTake, cancellationToken);
+
+            // Folder-lərin daxilindəki faylların ölçüsünü də hesabla
+            if (folderDtos.Count > 0 && string.IsNullOrWhiteSpace(search))
+            {
+                var allSubFolderIds = new List<Guid>();
+                foreach (var fd in folderDtos)
+                {
+                    allSubFolderIds.Add(fd.Id);
+                    var descendants = await unitOfWork.DriveFolders.GetAllDescendantsAsync(fd.Id, cancellationToken);
+                    allSubFolderIds.AddRange(descendants.Select(d => d.Id));
+                }
+                var (subFileCount, subFileSize) = await unitOfWork.Files.GetFileStatsInFoldersAsync(
+                    userId, allSubFolderIds, cancellationToken);
+                totalFileCount += subFileCount;
+                totalFileSize += subFileSize;
+            }
 
             var fileDtos = files.Select(f => new DriveFileDto(
                 f.Id, f.OriginalFileName, f.ContentType, f.FileSizeInBytes,
@@ -63,7 +102,7 @@ namespace ChatApp.Modules.Files.Api.Controllers
                 FileUrlHelper.ToServeUrl(f.Id)!,
                 f.CreatedAtUtc)).ToList();
 
-            return Ok(new DriveContentsDto(folderDtos, fileDtos));
+            return Ok(new DriveContentsDto(folderDtos, fileDtos, totalFileCount, totalFileSize));
         }
 
         // ─── Folders ────────────────────────────────────────────────────────

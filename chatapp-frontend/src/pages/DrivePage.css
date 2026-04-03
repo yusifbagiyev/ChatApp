@@ -858,6 +858,58 @@
   margin: 0;
 }
 
+/* ─── §13a Drive info bar ─────────────────────────────────────────────────── */
+.drive-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 24px;
+  font-size: 12px;
+  color: var(--gray-400, #9ca3af);
+  border-bottom: 1px solid var(--gray-100, #f3f4f6);
+}
+.drive-info-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.drive-info-sep {
+  margin-right: 4px;
+}
+.drive-info-size {
+  color: var(--gray-300, #d1d5db);
+}
+.drive-info-size::before {
+  content: "·";
+  margin-right: 8px;
+}
+
+/* ─── §13b Pagination ─────────────────────────────────────────────────────── */
+.drive-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--gray-100, #f3f4f6);
+}
+.drive-pagination-active {
+  background: var(--primary-color, #2fc6f6) !important;
+  color: #fff !important;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.drive-pagination-dots {
+  padding: 0 4px;
+  color: var(--gray-400, #9ca3af);
+  font-size: 13px;
+}
+.drive-pagination-info {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--gray-400, #9ca3af);
+}
+
 /* ─── §14 Drag & drop overlay ─────────────────────────────────────────────── */
 .drive-page.drag-over {
   outline: 2px dashed var(--primary-color, #2fc6f6);

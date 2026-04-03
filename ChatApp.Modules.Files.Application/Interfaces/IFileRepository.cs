@@ -48,8 +48,13 @@ namespace ChatApp.Modules.Files.Application.Interfaces
         Task<List<FileMetadata>> GetDriveFilesAsync(Guid ownerId, Guid? folderId,
             string? sortBy, string? sortOrder, string? search,
             CancellationToken cancellationToken = default);
+        Task<(List<FileMetadata> Items, int TotalCount, long TotalSize)> GetDriveFilesPagedAsync(
+            Guid ownerId, Guid? folderId, string? sortBy, string? sortOrder,
+            string? search, int skip, int take,
+            CancellationToken cancellationToken = default);
         Task<List<FileMetadata>> GetDeletedDriveFilesAsync(Guid ownerId, CancellationToken cancellationToken = default);
         Task<long> GetDriveUsageAsync(Guid ownerId, CancellationToken cancellationToken = default);
+        Task<(int Count, long Size)> GetFileStatsInFoldersAsync(Guid ownerId, IEnumerable<Guid> folderIds, CancellationToken cancellationToken = default);
         Task<List<FileMetadata>> GetFilesByFolderIdAsync(Guid folderId, CancellationToken cancellationToken = default);
         /// <summary>
         /// 30 gündən çox recycle bin-də olan drive fayllarını qaytarır — auto-cleanup üçün

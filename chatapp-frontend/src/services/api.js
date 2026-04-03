@@ -465,12 +465,14 @@ function updatePosition(id, data) { return apiPut(`/api/identity/positions/${id}
 function deletePosition(id) { return apiDelete(`/api/identity/positions/${id}`); }
 
 // ─── Drive API ────────────────────────────────────────────────────────────────
-function getDriveContents(folderId, sortBy, sortOrder, search) {
+function getDriveContents(folderId, sortBy, sortOrder, search, page, pageSize) {
   const params = new URLSearchParams();
   if (folderId) params.set("folderId", folderId);
   if (sortBy) params.set("sortBy", sortBy);
   if (sortOrder) params.set("sortOrder", sortOrder);
   if (search) params.set("search", search);
+  if (page) params.set("page", page);
+  if (pageSize) params.set("pageSize", pageSize);
   return apiGet(`/api/drive/contents?${params}`);
 }
 function getDriveFolders(parentId, search) {
