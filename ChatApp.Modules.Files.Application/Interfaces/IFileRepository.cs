@@ -55,5 +55,9 @@ namespace ChatApp.Modules.Files.Application.Interfaces
         /// 30 gündən çox recycle bin-də olan drive fayllarını qaytarır — auto-cleanup üçün
         /// </summary>
         Task<List<FileMetadata>> GetExpiredDeletedDriveFilesAsync(int batchSize = 100, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// Silinmiş faylları folder üzrə tapır — folder restore üçün
+        /// </summary>
+        Task<List<FileMetadata>> GetDeletedFilesByFolderIdAsync(Guid folderId, CancellationToken cancellationToken = default);
     }
 }

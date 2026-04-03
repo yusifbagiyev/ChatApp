@@ -1,6 +1,6 @@
 // Sabitlər import et
 import { useRef, useState, useEffect, useCallback, memo, lazy, Suspense } from "react";
-import { MESSAGE_MAX_LENGTH, MAX_FILE_SIZE, formatFileSize, isAllowedFileExtension } from "../utils/chatUtils";
+import { MESSAGE_MAX_LENGTH, MAX_FILE_SIZE, MAX_UPLOAD_FILES, formatFileSize, isAllowedFileExtension } from "../utils/chatUtils";
 import { useToast } from "../context/ToastContext";               // Toast notification sistemi
 import { useAuth } from "../context/AuthContext";                 // Permission yoxlaması
 import { renderTextWithEmojis } from "../utils/emojiConstants";  // Emoji → Apple img çevirici
@@ -188,8 +188,14 @@ function ChatInputArea({
         });
       }),
     );
-    const valid = validated.filter(Boolean);
-    if (valid.length > 0) onFilesSelected(valid);
+    let valid = validated.filter(Boolean);
+    if (valid.length === 0) return;
+
+    if (valid.length > MAX_UPLOAD_FILES) {
+      showToast(`You can upload max ${MAX_UPLOAD_FILES} files at once. Only the first ${MAX_UPLOAD_FILES} will be uploaded.`, "warning");
+      valid = valid.slice(0, MAX_UPLOAD_FILES);
+    }
+    onFilesSelected(valid);
 
     // Input-u sıfırla — eyni faylı yenidən seçə bilsin
     e.target.value = "";

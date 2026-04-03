@@ -3,12 +3,15 @@ import { memo } from "react";
 // Bütün silmə/ayrılma əməliyyatları üçün universal confirm dialog.
 // Props: message, confirmText, onConfirm, onCancel
 
-function ConfirmDialog({ message, confirmText = "DELETE", onConfirm, onCancel }) {
+function ConfirmDialog({ message, warning, confirmText = "Yes", onConfirm, onCancel }) {
   return (
     <div className="delete-confirm-overlay" onClick={onCancel}>
       <div className="delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
         <div className="delete-confirm-header">
-          <span>{message}</span>
+          <div className="delete-confirm-text">
+            <span>{message}</span>
+            {warning && <span className="delete-confirm-warning">{warning}</span>}
+          </div>
           <button className="delete-confirm-close" onClick={onCancel} aria-label="Close dialog">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -21,7 +24,7 @@ function ConfirmDialog({ message, confirmText = "DELETE", onConfirm, onCancel })
             {confirmText}
           </button>
           <button className="delete-cancel-btn" onClick={onCancel}>
-            CANCEL
+            No
           </button>
         </div>
       </div>

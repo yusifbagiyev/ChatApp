@@ -433,14 +433,17 @@ namespace ChatApp.Modules.Files.Api.Controllers
                 if (cacheMaxAge > 0)
                     Response.Headers.CacheControl = $"private, max-age={cacheMaxAge}";
 
+                // Non-ASCII simvollar (İ, Ş, Ə, Ö...) header-də icazə verilmir —
+                // RFC 6266 uyğun ContentDisposition istifadə et
+                var cd = new Microsoft.Net.Http.Headers.ContentDispositionHeaderValue(inline ? "inline" : "attachment");
+                cd.FileNameStar = fileMetadata.OriginalFileName;
+                Response.Headers.ContentDisposition = cd.ToString();
+
                 if (inline)
-                {
-                    Response.Headers.ContentDisposition = $"inline; filename=\"{fileMetadata.OriginalFileName}\"";
                     return File(fileStream, fileMetadata.ContentType, enableRangeProcessing: true);
-                }
 
                 return File(fileStream, fileMetadata.ContentType,
-                    fileMetadata.OriginalFileName, enableRangeProcessing: true);
+                    enableRangeProcessing: true);
             }
             catch (FileNotFoundException)
             {

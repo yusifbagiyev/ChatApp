@@ -30,8 +30,10 @@ import {
   downloadFile,
 } from "../services/api";
 import { useToast } from "../context/ToastContext";
+import { MAX_FILE_SIZE, MAX_UPLOAD_FILES, isAllowedFileExtension, formatFileSize } from "../utils/chatUtils";
 import FileTypeIcon from "../components/FileTypeIcon";
 import ImageViewer from "../components/ImageViewer";
+import ConfirmDialog from "../components/ConfirmDialog";
 import "./DrivePage.css";
 
 // ─── Yardımçı funksiyalar ────────────────────────────────────────────────────
@@ -278,7 +280,7 @@ const DriveBreadcrumb = memo(function DriveBreadcrumb({
 // ─── DriveFileCard — Tək fayl/qovluq kartı ──────────────────────────────────
 const DriveFileCard = memo(function DriveFileCard({
   item, isFolder, selected, viewMode, hasSelection,
-  onSelect, onClick, onContextMenu, onRename, renameItem,
+  onSelect, onClick, onDoubleClick, onContextMenu, onRename, renameItem,
 }) {
   const renameRef = useCallback((node) => {
     if (node) node.focus();
@@ -290,6 +292,8 @@ const DriveFileCard = memo(function DriveFileCard({
   const handleRenameSubmit = () => {
     if (renameValue.trim() && renameValue.trim() !== (item.name || item.originalFileName)) {
       onRename(item, renameValue.trim(), isFolder);
+    } else {
+      onRename(null);
     }
   };
 
@@ -304,6 +308,7 @@ const DriveFileCard = memo(function DriveFileCard({
         if (e.ctrlKey || e.metaKey || hasSelection) { onSelect(item, isFolder); return; }
         onClick(item, isFolder);
       }}
+      onDoubleClick={() => { if (!isRenaming) onDoubleClick?.(item, isFolder); }}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, item, isFolder); }}
     >
       <div className="drive-card-checkbox" onClick={(e) => { e.stopPropagation(); onSelect(item, isFolder); }}>
@@ -313,7 +318,8 @@ const DriveFileCard = memo(function DriveFileCard({
         {isFolder ? (
           <FolderIcon size={viewMode === "grid-medium" ? 36 : 48} />
         ) : isImg && item.serveUrl ? (
-          <img src={getFileUrl(item.serveUrl)} alt={name} className="drive-card-thumb" loading="lazy" />
+          <img src={getFileUrl(item.serveUrl)} alt={name} className="drive-card-thumb" loading="lazy"
+            onClick={(e) => { e.stopPropagation(); onDoubleClick?.(item, isFolder); }} />
         ) : (
           <FileTypeIcon fileName={name} size={viewMode === "grid-medium" ? 36 : 48} />
         )}
@@ -347,7 +353,7 @@ const DriveFileCard = memo(function DriveFileCard({
 // ─── DriveFileGrid — Grid görünüşü ──────────────────────────────────────────
 const DriveFileGrid = memo(function DriveFileGrid({
   folders, files, viewMode, selectedItems,
-  onSelect, onClick, onContextMenu, onRename, renameItem,
+  onSelect, onClick, onDoubleClick, onContextMenu, onRename, renameItem,
 }) {
   const hasSelection = selectedItems.size > 0;
   return (
@@ -362,6 +368,7 @@ const DriveFileGrid = memo(function DriveFileGrid({
           viewMode={viewMode}
           onSelect={onSelect}
           onClick={onClick}
+          onDoubleClick={onDoubleClick}
           onContextMenu={onContextMenu}
           onRename={onRename}
           renameItem={renameItem}
@@ -377,6 +384,7 @@ const DriveFileGrid = memo(function DriveFileGrid({
           viewMode={viewMode}
           onSelect={onSelect}
           onClick={onClick}
+          onDoubleClick={onDoubleClick}
           onContextMenu={onContextMenu}
           onRename={onRename}
           renameItem={renameItem}
@@ -388,7 +396,7 @@ const DriveFileGrid = memo(function DriveFileGrid({
 
 // ─── DriveFileList — List/Table görünüşü ─────────────────────────────────────
 const DriveFileList = memo(function DriveFileList({
-  folders, files, selectedItems, onSelect, onClick, onContextMenu, onRename, renameItem,
+  folders, files, selectedItems, onSelect, onClick, onDoubleClick, onContextMenu, onRename, renameItem,
 }) {
   const allItems = useMemo(() => [
     ...folders.map((f) => ({ ...f, _isFolder: true })),
@@ -396,7 +404,7 @@ const DriveFileList = memo(function DriveFileList({
   ], [folders, files]);
 
   const allSelected = allItems.length > 0 && allItems.every((it) =>
-    selectedItems.has(`${it._isFolder ? "folder" : "file"}-${it.id}`)
+    selectedItems.has(`${it._isFolder ? "folder" : "file"}:${it.id}`)
   );
 
   return (
@@ -413,7 +421,7 @@ const DriveFileList = memo(function DriveFileList({
               } else {
                 // Hamısını seç
                 allItems.forEach((it) => {
-                  const key = `${it._isFolder ? "folder" : "file"}-${it.id}`;
+                  const key = `${it._isFolder ? "folder" : "file"}:${it.id}`;
                   if (!selectedItems.has(key)) onSelect(it, it._isFolder);
                 });
               }
@@ -444,6 +452,7 @@ const DriveFileList = memo(function DriveFileList({
             hasSelection={selectedItems.size > 0}
             onSelect={onSelect}
             onClick={onClick}
+            onDoubleClick={onDoubleClick}
             onContextMenu={onContextMenu}
             onRename={onRename}
           />
@@ -456,7 +465,7 @@ const DriveFileList = memo(function DriveFileList({
 // ─── DriveListRow — List görünüşünün tək sətri ──────────────────────────────
 const DriveListRow = memo(function DriveListRow({
   item, isFolder, name, selected, isRenaming, hasSelection,
-  onSelect, onClick, onContextMenu, onRename,
+  onSelect, onClick, onDoubleClick, onContextMenu, onRename,
 }) {
   const renameRef = useCallback((node) => {
     if (node) node.focus();
@@ -466,6 +475,8 @@ const DriveListRow = memo(function DriveListRow({
   const handleRenameSubmit = () => {
     if (renameValue.trim() && renameValue.trim() !== name) {
       onRename(item, renameValue.trim(), isFolder);
+    } else {
+      onRename(null);
     }
   };
 
@@ -477,6 +488,7 @@ const DriveListRow = memo(function DriveListRow({
         if (e.ctrlKey || e.metaKey || hasSelection) { onSelect(item, isFolder); return; }
         onClick(item, isFolder);
       }}
+      onDoubleClick={() => { if (!isRenaming) onDoubleClick?.(item, isFolder); }}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, item, isFolder); }}
     >
       <div className="drive-list-cell drive-list-check" onClick={(e) => { e.stopPropagation(); onSelect(item, isFolder); }}>
@@ -788,6 +800,23 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
   const { showToast } = useToast();
   const [trashItems, setTrashItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [confirmAction, setConfirmAction] = useState(null);
+
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev =>
+      prev.size === trashItems.length ? new Set() : new Set(trashItems.map(i => i.id))
+    );
+  }, [trashItems]);
 
   const loadTrash = useCallback(async () => {
     setLoading(true);
@@ -813,26 +842,40 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
     }
   };
 
-  const handlePermanentDelete = async (item) => {
-    try {
-      await permanentDeleteDriveItem(item.id);
-      showToast("Item permanently deleted", "success");
-      loadTrash();
-      onQuotaChange?.();
-    } catch {
-      showToast("Failed to delete permanently", "error");
-    }
+  const handlePermanentDelete = (item) => {
+    setConfirmAction({
+      message: "Permanently delete this item?",
+      warning: "This cannot be undone.",
+      onConfirm: async () => {
+        setConfirmAction(null);
+        try {
+          await permanentDeleteDriveItem(item.id);
+          showToast("Item permanently deleted", "success");
+          loadTrash();
+          onQuotaChange?.();
+        } catch {
+          showToast("Failed to delete permanently", "error");
+        }
+      },
+    });
   };
 
-  const handleEmptyTrash = async () => {
-    try {
-      await emptyDriveTrash();
-      showToast("Recycle bin emptied", "success");
-      setTrashItems([]);
-      onQuotaChange?.();
-    } catch {
-      showToast("Failed to empty recycle bin", "error");
-    }
+  const handleEmptyTrash = () => {
+    setConfirmAction({
+      message: `Permanently delete all ${trashItems.length} ${trashItems.length === 1 ? "item" : "items"} in recycle bin?`,
+      warning: "This cannot be undone.",
+      onConfirm: async () => {
+        setConfirmAction(null);
+        try {
+          await emptyDriveTrash();
+          showToast("Recycle bin emptied", "success");
+          setTrashItems([]);
+          onQuotaChange?.();
+        } catch {
+          showToast("Failed to empty recycle bin", "error");
+        }
+      },
+    });
   };
 
   return (
@@ -875,6 +918,9 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
       ) : (
         <div className="drive-list">
           <div className="drive-list-row drive-list-header">
+            <div className="drive-list-cell drive-list-check">
+              <input type="checkbox" checked={selectedIds.size === trashItems.length && trashItems.length > 0} onChange={toggleSelectAll} />
+            </div>
             <div className="drive-list-cell drive-list-icon" />
             <div className="drive-list-cell drive-list-name">Name</div>
             <div className="drive-list-cell drive-list-size">Size</div>
@@ -884,8 +930,12 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
           {trashItems.map((item) => {
             const name = item.name || item.originalFileName || "Unknown";
             const isFolder = item.type === "folder";
+            const isSelected = selectedIds.has(item.id);
             return (
-              <div key={item.id} className="drive-list-row">
+              <div key={item.id} className={`drive-list-row${isSelected ? " selected" : ""}`} onClick={() => toggleSelect(item.id)}>
+                <div className="drive-list-cell drive-list-check">
+                  <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(item.id)} onClick={(e) => e.stopPropagation()} />
+                </div>
                 <div className="drive-list-cell drive-list-icon">
                   {isFolder ? (
                     <FolderIcon size={24} />
@@ -903,11 +953,11 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
                 </div>
                 <div className="drive-list-cell drive-list-date">{formatDate(item.deletedAtUtc)}</div>
                 <div className="drive-list-cell drive-list-actions">
-                  <button className="drive-btn drive-btn-ghost drive-btn-sm" onClick={() => handleRestore(item)} title="Restore">
+                  <button className="drive-btn drive-btn-ghost drive-btn-sm" onClick={(e) => { e.stopPropagation(); handleRestore(item); }} title="Restore">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>
                     Restore
                   </button>
-                  <button className="drive-btn drive-btn-ghost drive-btn-danger drive-btn-sm" onClick={() => handlePermanentDelete(item)} title="Delete permanently">
+                  <button className="drive-btn drive-btn-ghost drive-btn-danger drive-btn-sm" onClick={(e) => { e.stopPropagation(); handlePermanentDelete(item); }} title="Delete permanently">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                     Delete
                   </button>
@@ -916,6 +966,14 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
             );
           })}
         </div>
+      )}
+      {confirmAction && (
+        <ConfirmDialog
+          message={confirmAction.message}
+          warning={confirmAction.warning}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );
@@ -974,9 +1032,26 @@ export default function DrivePage() {
   const [renameItem, setRenameItem] = useState(null);
   const [showAddDropdown, setShowAddDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // { message, onConfirm }
   const [dragOver, setDragOver] = useState(false);
   // Upload progress — [{name, progress, status}]
   const [uploads, setUploads] = useState([]);
+
+  // Upload panel görünəndə toast-ın mövqeyini tənzimlə
+  useEffect(() => {
+    if (uploads.length === 0) {
+      document.documentElement.style.removeProperty("--upload-panel-offset");
+    }
+  }, [uploads.length]);
+
+  // Aktiv upload varsa səhifə bağlanma/refresh-in qarşısını al
+  useEffect(() => {
+    const hasActive = uploads.some((u) => u.status === "uploading");
+    if (!hasActive) return;
+    const handler = (e) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [uploads]);
   const [imageViewerIndex, setImageViewerIndex] = useState(null); // null = bağlı, index = açıq
   const [newFolderDialog, setNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -1031,20 +1106,6 @@ export default function DrivePage() {
   }, []);
 
   // ── Fayl/qovluq klik handler-ləri ──
-  const handleItemClick = useCallback((item, isFolder) => {
-    if (isFolder) {
-      navigateToFolder(item.id, [...folderPath, { id: item.id, name: item.name }]);
-    } else if (isImageFile(item.originalFileName) && item.serveUrl) {
-      // Şəkil faylı — ImageViewer açılır
-      const imgFiles = files.filter((f) => isImageFile(f.originalFileName) && f.serveUrl);
-      const idx = imgFiles.findIndex((f) => f.id === item.id);
-      if (idx !== -1) setImageViewerIndex(idx);
-    } else {
-      // Digər fayllar — details paneli
-      setDetailItem({ item, isFolder: false });
-    }
-  }, [folderPath, navigateToFolder, files]);
-
   const handleSelect = useCallback((item, isFolder, forceRemove = false) => {
     const key = `${isFolder ? "folder" : "file"}:${item.id}`;
     setSelectedItems((prev) => {
@@ -1054,6 +1115,25 @@ export default function DrivePage() {
       return next;
     });
   }, []);
+
+  const handleItemClick = useCallback((item, isFolder) => {
+    if (isFolder) {
+      navigateToFolder(item.id, [...folderPath, { id: item.id, name: item.name }]);
+    } else {
+      handleSelect(item, false);
+    }
+  }, [folderPath, navigateToFolder, handleSelect]);
+
+  // Double-click — şəkillər üçün ImageViewer, qovluq üçün navigate
+  const handleItemDoubleClick = useCallback((item, isFolder) => {
+    if (isFolder) {
+      navigateToFolder(item.id, [...folderPath, { id: item.id, name: item.name }]);
+    } else if (isImageFile(item.originalFileName) && item.serveUrl) {
+      const imgFiles = files.filter((f) => isImageFile(f.originalFileName) && f.serveUrl);
+      const idx = imgFiles.findIndex((f) => f.id === item.id);
+      if (idx !== -1) setImageViewerIndex(idx);
+    }
+  }, [folderPath, navigateToFolder, files]);
 
   // ── Context menu ──
   const handleContextMenu = useCallback((e, item, isFolder) => {
@@ -1068,13 +1148,57 @@ export default function DrivePage() {
     const filesArr = Array.from(fileList);
     if (filesArr.length === 0) return;
 
+    // 1) Extension + ölçü + boş fayl yoxlaması
+    const basicValid = filesArr.filter((f) => {
+      if (f.size === 0) {
+        showToast(`"${f.name}" is empty (0 bytes)`, "error");
+        return false;
+      }
+      if (!isAllowedFileExtension(f.name)) {
+        showToast(`"${f.name}" — unsupported file type`, "error");
+        return false;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        showToast(`"${f.name}" is too large (${formatFileSize(f.size)}). Max: ${formatFileSize(MAX_FILE_SIZE)}`, "warning");
+        return false;
+      }
+      return true;
+    });
+    if (basicValid.length === 0) return;
+
+    // 2) Şəkil fayllarını Image() ilə yoxla — corrupt şəkillər reject olunur
+    const validated = await Promise.all(
+      basicValid.map((f) => {
+        if (!f.type?.startsWith("image/")) return Promise.resolve(f);
+        return new Promise((resolve) => {
+          const url = URL.createObjectURL(f);
+          const img = new Image();
+          img.onload = () => { URL.revokeObjectURL(url); resolve(f); };
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            showToast(`"${f.name}" — corrupt or unreadable image`, "error");
+            resolve(null);
+          };
+          img.src = url;
+        });
+      }),
+    );
+    let validFiles = validated.filter(Boolean);
+    if (validFiles.length === 0) return;
+
+    // 3) Maksimum fayl sayı limiti
+    if (validFiles.length > MAX_UPLOAD_FILES) {
+      showToast(`You can upload max ${MAX_UPLOAD_FILES} files at once. Only the first ${MAX_UPLOAD_FILES} will be uploaded.`, "warning");
+      validFiles = validFiles.slice(0, MAX_UPLOAD_FILES);
+    }
+
     // Hər fayl üçün upload entry yarat
-    const entries = filesArr.map((f, i) => ({ id: `up-${Date.now()}-${i}`, name: f.name, progress: 0, status: "uploading" }));
+    const entries = validFiles.map((f, i) => ({ id: `up-${Date.now()}-${i}`, name: f.name, progress: 0, status: "uploading" }));
     setUploads((prev) => [...prev, ...entries]);
 
     let successCount = 0;
-    for (let i = 0; i < filesArr.length; i++) {
-      const file = filesArr[i];
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
       const entryId = entries[i].id;
       try {
         const formData = new FormData();
@@ -1102,7 +1226,9 @@ export default function DrivePage() {
           });
         }
         successCount++;
-      } catch {
+      } catch (err) {
+        const msg = err?.response?.error || err?.message || "Upload failed";
+        showToast(`"${file.name}" — ${msg}`, "error");
         setUploads((prev) => prev.map((u) => u.id === entryId ? { ...u, status: "error" } : u));
       }
     }
@@ -1161,39 +1287,49 @@ export default function DrivePage() {
   }, [loadData, showToast]);
 
   // ── Silmə ──
-  const handleDelete = useCallback(async (item, isFolder) => {
-    try {
-      if (isFolder) {
-        await deleteDriveFolder(item.id);
-      } else {
-        await deleteDriveFile(item.id);
-      }
-      showToast("Moved to recycle bin", "success");
-      setDetailItem(null);
-      setSelectedItems(new Set());
-      loadData();
-      getDriveQuota().then(setQuota).catch(() => {});
-    } catch {
-      showToast("Failed to delete", "error");
-    }
+  const handleDelete = useCallback((item, isFolder) => {
+    setConfirmAction({
+      message: "Are you sure you want to delete this item?",
+      onConfirm: async () => {
+        setConfirmAction(null);
+        try {
+          if (isFolder) {
+            await deleteDriveFolder(item.id);
+          } else {
+            await deleteDriveFile(item.id);
+          }
+          showToast("Moved to recycle bin", "success");
+          setDetailItem(null);
+          setSelectedItems(new Set());
+          loadData();
+        } catch {
+          showToast("Failed to delete", "error");
+        }
+      },
+    });
   }, [loadData, showToast]);
 
   // ── Çox seçimdə silmə ──
-  const handleBulkDelete = useCallback(async () => {
+  const handleBulkDelete = useCallback(() => {
     const items = Array.from(selectedItems);
     if (!items.length) return;
-    try {
-      await Promise.all(items.map((key) => {
-        const [type, id] = key.split(":");
-        return type === "folder" ? deleteDriveFolder(id) : deleteDriveFile(id);
-      }));
-      showToast(`${items.length} item(s) deleted`, "success");
-      setSelectedItems(new Set());
-      loadData();
-      getDriveQuota().then(setQuota).catch(() => {});
-    } catch {
-      showToast("Failed to delete items", "error");
-    }
+    setConfirmAction({
+      message: `Are you sure you want to delete ${items.length} ${items.length === 1 ? "item" : "items"}?`,
+      onConfirm: async () => {
+        setConfirmAction(null);
+        try {
+          await Promise.all(items.map((key) => {
+            const [type, id] = key.split(":");
+            return type === "folder" ? deleteDriveFolder(id) : deleteDriveFile(id);
+          }));
+          showToast(`${items.length} ${items.length === 1 ? "item" : "items"} deleted`, "success");
+          setSelectedItems(new Set());
+          loadData();
+        } catch {
+          showToast("Failed to delete items", "error");
+        }
+      },
+    });
   }, [selectedItems, loadData, showToast]);
 
   // ── Yükləmə (download) ──
@@ -1381,6 +1517,7 @@ export default function DrivePage() {
             selectedItems={selectedItems}
             onSelect={handleSelect}
             onClick={handleItemClick}
+            onDoubleClick={handleItemDoubleClick}
             onContextMenu={handleContextMenu}
             onRename={handleRename}
             renameItem={renameItem}
@@ -1393,6 +1530,7 @@ export default function DrivePage() {
             selectedItems={selectedItems}
             onSelect={handleSelect}
             onClick={handleItemClick}
+            onDoubleClick={handleItemDoubleClick}
             onContextMenu={handleContextMenu}
             onRename={handleRename}
             renameItem={renameItem}
@@ -1458,12 +1596,20 @@ export default function DrivePage() {
 
       {/* Upload progress panel — sağ aşağıda */}
       {uploads.length > 0 && (
-        <div className="drive-upload-panel">
+        <div className="drive-upload-panel" ref={(el) => {
+          if (el) {
+            // Toast notification upload panelin üstündə görünsün deyə offset hesabla
+            document.documentElement.style.setProperty("--upload-panel-offset", (el.offsetHeight + 8) + "px");
+          }
+        }}>
           <div className="drive-upload-panel-header">
             <span className="drive-upload-panel-title">Uploading {uploads.filter(u => u.status === "uploading").length} file(s)</span>
-            <button className="drive-upload-panel-close" onClick={() => setUploads([])}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+            {/* Aktiv upload varsa bağlama düyməsini gizlət */}
+            {!uploads.some((u) => u.status === "uploading") && (
+              <button className="drive-upload-panel-close" onClick={() => setUploads([])}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            )}
           </div>
           {uploads.map((u) => (
             <div key={u.id} className="drive-upload-item">
@@ -1491,6 +1637,15 @@ export default function DrivePage() {
           />
         ) : null;
       })()}
+
+      {confirmAction && (
+        <ConfirmDialog
+          message={confirmAction.message}
+          warning={confirmAction.warning}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
     </div>
   );
 }

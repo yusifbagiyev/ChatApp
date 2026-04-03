@@ -37,16 +37,16 @@ namespace ChatApp.Modules.Files.Api.Controllers
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty) return Unauthorized();
 
-            var folders = await unitOfWork.DriveFolders.GetChildrenAsync(userId, parentId, cancellationToken);
+            // Axtarış varsa bütün folder-lərdə axtar, yoxdursa cari folder-in uşaqlarını göstər
+            List<DriveFolder> folders;
+            if (!string.IsNullOrWhiteSpace(search))
+                folders = await unitOfWork.DriveFolders.SearchAsync(userId, search, cancellationToken);
+            else
+                folders = await unitOfWork.DriveFolders.GetChildrenAsync(userId, parentId, cancellationToken);
 
-            // Hər folder üçün item count
             var dtos = new List<DriveFolderDto>();
             foreach (var f in folders)
             {
-                if (!string.IsNullOrWhiteSpace(search) &&
-                    !f.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
                 var itemCount = await unitOfWork.DriveFolders.GetItemCountAsync(f.Id, cancellationToken);
                 dtos.Add(new DriveFolderDto(f.Id, f.Name, f.ParentFolderId, itemCount, f.CreatedAtUtc, f.UpdatedAtUtc));
             }
@@ -349,20 +349,40 @@ namespace ChatApp.Modules.Files.Api.Controllers
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty) return Unauthorized();
 
-            // Folder-dirsə
+            // Folder-dirsə — recursive restore (folder + bütün alt folder-lər + fayllar)
             var folder = await unitOfWork.DriveFolders.GetByIdAsync(id, cancellationToken);
             if (folder != null && folder.OwnerId == userId && folder.IsDeleted)
             {
-                folder.Restore();
+                var descendants = await unitOfWork.DriveFolders.GetAllDeletedDescendantsAsync(id, cancellationToken);
+                var allFolders = new List<DriveFolder> { folder };
+                allFolders.AddRange(descendants);
+
+                foreach (var f in allFolders)
+                {
+                    f.Restore();
+                    var files = await unitOfWork.Files.GetDeletedFilesByFolderIdAsync(f.Id, cancellationToken);
+                    foreach (var file in files)
+                        file.Restore();
+                }
+
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return Ok(new { message = "Folder restored" });
             }
 
             // Fayl-dırsa
-            var file = await unitOfWork.Files.GetByIdIncludingDeletedAsync(id, cancellationToken);
-            if (file != null && file.UploadedBy == userId && file.IsDeleted && file.IsDriveFile)
+            var singleFile = await unitOfWork.Files.GetByIdIncludingDeletedAsync(id, cancellationToken);
+            if (singleFile != null && singleFile.UploadedBy == userId && singleFile.IsDeleted && singleFile.IsDriveFile)
             {
-                file.Restore();
+                singleFile.Restore();
+
+                // Parent folder silinibsə, faylı root-a köçür
+                if (singleFile.FolderId.HasValue)
+                {
+                    var parentFolder = await unitOfWork.DriveFolders.GetByIdAsync(singleFile.FolderId.Value, cancellationToken);
+                    if (parentFolder != null && parentFolder.IsDeleted)
+                        singleFile.MoveToFolder(null);
+                }
+
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return Ok(new { message = "File restored" });
             }
@@ -378,11 +398,36 @@ namespace ChatApp.Modules.Files.Api.Controllers
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty) return Unauthorized();
 
-            var file = await unitOfWork.Files.GetByIdIncludingDeletedAsync(id, cancellationToken);
-            if (file != null && file.UploadedBy == userId && file.IsDeleted && file.IsDriveFile)
+            // Folder-dirsə — recursive permanent delete (folder + alt folder-lər + fayllar)
+            var folder = await unitOfWork.DriveFolders.GetByIdAsync(id, cancellationToken);
+            if (folder != null && folder.OwnerId == userId && folder.IsDeleted)
             {
-                await fileStorageService.DeleteFileAsync(file.StoragePath, cancellationToken);
-                await unitOfWork.Files.DeleteAsync(file, cancellationToken);
+                var descendants = await unitOfWork.DriveFolders.GetAllDeletedDescendantsAsync(id, cancellationToken);
+                var allFolders = new List<DriveFolder> { folder };
+                allFolders.AddRange(descendants);
+
+                foreach (var f in allFolders)
+                {
+                    var files = await unitOfWork.Files.GetDeletedFilesByFolderIdAsync(f.Id, cancellationToken);
+                    foreach (var file in files)
+                    {
+                        try { await fileStorageService.DeleteFileAsync(file.StoragePath, cancellationToken); }
+                        catch (Exception ex) { logger.LogWarning(ex, "Failed to delete file from disk: {Path}", file.StoragePath); }
+                        await unitOfWork.Files.DeleteAsync(file, cancellationToken);
+                    }
+                    await unitOfWork.DriveFolders.DeleteAsync(f, cancellationToken);
+                }
+
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                return Ok(new { message = "Folder permanently deleted" });
+            }
+
+            // Fayl-dırsa
+            var singleFile = await unitOfWork.Files.GetByIdIncludingDeletedAsync(id, cancellationToken);
+            if (singleFile != null && singleFile.UploadedBy == userId && singleFile.IsDeleted && singleFile.IsDriveFile)
+            {
+                await fileStorageService.DeleteFileAsync(singleFile.StoragePath, cancellationToken);
+                await unitOfWork.Files.DeleteAsync(singleFile, cancellationToken);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return Ok(new { message = "File permanently deleted" });
             }

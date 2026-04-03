@@ -192,10 +192,22 @@
   margin-bottom: 20px;
 }
 
+.delete-confirm-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .delete-confirm-header span {
   font-size: 14px;
   color: var(--gray-700);
   line-height: 1.4;
+}
+
+.delete-confirm-warning {
+  font-size: 12px !important;
+  color: #e53e3e !important;
+  font-weight: 500;
 }
 
 .delete-confirm-close {
@@ -229,8 +241,8 @@
   padding: 8px 24px;
   border-radius: 8px;
   border: none;
-  background: #23b0d8;
-  color: var(--white);
+  background: #b2e232;
+  color: #1e293b;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -239,7 +251,7 @@
 }
 
 .delete-confirm-btn:hover {
-  background: #008dba;
+  background: #9fcb28;
 }
 .delete-confirm-btn:active {
   transform: scale(0.96);

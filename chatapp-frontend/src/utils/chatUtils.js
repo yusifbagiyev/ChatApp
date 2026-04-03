@@ -14,6 +14,7 @@ export const MESSAGE_MAX_LENGTH = 10000; // Mesaj maksimum uzunluğu
 export const BATCH_DELETE_THRESHOLD = 5; // 5-dən çox mesaj → batch delete API istifadə et
 export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB — backend upload limiti
 export const MAX_BATCH_FILES = 20; // Backend batch limit (max 20 mesaj bir request-də)
+export const MAX_UPLOAD_FILES = 10; // Bir dəfədə max upload edilə bilən fayl sayı
 
 // İcazə verilən fayl extension-ları — backend FileTypeHelper.ContentTypeMapping ilə sinxron
 export const ALLOWED_FILE_EXTENSIONS = new Set([

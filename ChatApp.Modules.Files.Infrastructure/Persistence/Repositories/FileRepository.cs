@@ -213,10 +213,13 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
             CancellationToken cancellationToken = default)
         {
             var query = _context.FileMetadata
-                .Where(f => f.UploadedBy == ownerId && f.IsDriveFile && !f.IsDeleted && f.FolderId == folderId);
+                .Where(f => f.UploadedBy == ownerId && f.IsDriveFile && !f.IsDeleted);
 
+            // Axtarış varsa bütün folder-lərdə axtar, yoxdursa cari folder-i filtrələ
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(f => EF.Functions.ILike(f.OriginalFileName, $"%{search}%"));
+            else
+                query = query.Where(f => f.FolderId == folderId);
 
             query = (sortBy?.ToLower(), sortOrder?.ToLower()) switch
             {
@@ -233,12 +236,15 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
             return await query.AsNoTracking().ToListAsync(cancellationToken);
         }
 
+        // Yalnız istifadəçinin birbaşa sildiyi fayllar — folder-cascade fayllar buraya düşmür
         public async Task<List<FileMetadata>> GetDeletedDriveFilesAsync(
             Guid ownerId, CancellationToken cancellationToken = default)
         {
             var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
             return await _context.FileMetadata
-                .Where(f => f.UploadedBy == ownerId && f.IsDriveFile && f.IsDeleted && f.DeletedAtUtc > thirtyDaysAgo)
+                .Where(f => f.UploadedBy == ownerId && f.IsDriveFile && f.IsDeleted
+                    && f.DeletedAtUtc > thirtyDaysAgo
+                    && f.DeletedBy != "drive-folder-delete")
                 .OrderByDescending(f => f.DeletedAtUtc)
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
@@ -257,6 +263,14 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
         {
             return await _context.FileMetadata
                 .Where(f => f.FolderId == folderId && !f.IsDeleted && f.IsDriveFile)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<FileMetadata>> GetDeletedFilesByFolderIdAsync(
+            Guid folderId, CancellationToken cancellationToken = default)
+        {
+            return await _context.FileMetadata
+                .Where(f => f.FolderId == folderId && f.IsDeleted && f.IsDriveFile)
                 .ToListAsync(cancellationToken);
         }
 

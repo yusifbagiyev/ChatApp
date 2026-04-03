@@ -24,6 +24,18 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<List<DriveFolder>> SearchAsync(
+            Guid ownerId, string search, CancellationToken cancellationToken = default)
+        {
+            return await context.DriveFolders
+                .Where(f => f.OwnerId == ownerId && !f.IsDeleted
+                    && EF.Functions.ILike(f.Name, $"%{search}%"))
+                .OrderBy(f => f.Name)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+        }
+
+        // Yalnız top-level silinmiş folder-lər — parent-i silinmiş olanlar buraya düşmür
         public async Task<List<DriveFolder>> GetDeletedFoldersAsync(
             Guid ownerId, CancellationToken cancellationToken = default)
         {
@@ -31,7 +43,9 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
             return await context.DriveFolders
                 .Where(f => f.OwnerId == ownerId
                     && f.IsDeleted
-                    && f.DeletedAtUtc > thirtyDaysAgo)
+                    && f.DeletedAtUtc > thirtyDaysAgo
+                    && (!f.ParentFolderId.HasValue
+                        || !context.DriveFolders.Any(p => p.Id == f.ParentFolderId && p.IsDeleted)))
                 .OrderByDescending(f => f.DeletedAtUtc)
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
@@ -90,6 +104,29 @@ namespace ChatApp.Modules.Files.Infrastructure.Persistence.Repositories
         {
             context.DriveFolders.Remove(folder);
             return Task.CompletedTask;
+        }
+
+        // Silinmiş folder-in bütün silinmiş alt folder-ləri (recursive BFS)
+        public async Task<List<DriveFolder>> GetAllDeletedDescendantsAsync(
+            Guid folderId, CancellationToken cancellationToken = default)
+        {
+            var result = new List<DriveFolder>();
+            var queue = new Queue<Guid>();
+            queue.Enqueue(folderId);
+
+            while (queue.Count > 0)
+            {
+                var parentId = queue.Dequeue();
+                var children = await context.DriveFolders
+                    .Where(f => f.ParentFolderId == parentId && f.IsDeleted)
+                    .ToListAsync(cancellationToken);
+
+                result.AddRange(children);
+                foreach (var child in children)
+                    queue.Enqueue(child.Id);
+            }
+
+            return result;
         }
 
         public async Task<List<DriveFolder>> GetExpiredDeletedFoldersAsync(
