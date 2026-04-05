@@ -17,6 +17,16 @@
   to   { opacity: 1; }
 }
 
+/* Bağlanma animasiyası — overlay */
+.upp-overlay.closing {
+  animation: uppFadeOut 0.2s ease forwards;
+}
+
+@keyframes uppFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
 /* ─── Panel ─────────────────────────────────────────── */
 .upp-panel {
   position: fixed;
@@ -35,6 +45,11 @@
     radial-gradient(ellipse at 8%  92%,  rgba(0, 60,  220, 0.30) 0%, transparent 48%),
     radial-gradient(ellipse at 50% 50%,  rgba(0, 100, 200, 0.15) 0%, transparent 55%),
     linear-gradient(175deg, #063f7a 0%, #074987 50%, #055a8a 100%);
+}
+
+/* Bağlanma animasiyası — panel sağa sürüşür */
+.upp-panel.closing {
+  animation: uppSlideOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* Body — scroll container */
@@ -93,6 +108,11 @@
 @keyframes uppSlideIn {
   from { transform: translateX(100%); }
   to   { transform: translateX(0);    }
+}
+
+@keyframes uppSlideOut {
+  from { transform: translateX(0);    }
+  to   { transform: translateX(100%); }
 }
 
 @keyframes uppIconIn {

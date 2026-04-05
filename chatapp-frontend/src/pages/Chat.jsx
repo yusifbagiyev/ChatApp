@@ -453,6 +453,7 @@ function Chat() {
     onNewFileMessageRef, // Sidebar — fayl mesajı gəldikdə Files & Media panelini yeniləmək üçün
     onChannelUpdatedRef, // Channel adı/avatarı dəyişdikdə selectedChat-ı yenilə
     setSelectedChat, // Channel-dan çıxdıqda selectedChat-ı təmizləmək üçün
+    setChannelMembers, // Channel üzv dəyişikliyində cache-i yeniləmək üçün
   );
 
   // ─── Network / Connection State Effect ──────────────────────────────────────
@@ -2361,7 +2362,7 @@ function Chat() {
           fileId: file.id,
           replyToMessageId: i === 0 ? (currentReply?.id || null) : null,
         });
-      } catch (err) {
+      } catch {
         showToast(`Failed to send "${file.originalFileName}"`, "error");
       }
     }

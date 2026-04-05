@@ -46,6 +46,15 @@
   overflow: hidden;
 }
 
+/* Bağlanma animasiyası */
+.file-preview-overlay.closing {
+  animation: overlayFadeOut 0.2s ease forwards;
+}
+
+.file-preview-overlay.closing .file-preview-panel {
+  animation: modalScaleOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 .file-preview-header {
   display: flex;
   align-items: center;

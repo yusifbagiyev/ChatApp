@@ -25,6 +25,15 @@
   animation: modalScaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Bağlanma animasiyası */
+.readers-panel-overlay.closing {
+  animation: overlayFadeOut 0.2s ease forwards;
+}
+
+.readers-panel-overlay.closing .readers-panel {
+  animation: modalScaleOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 .readers-panel-header {
   display: flex;
   align-items: center;

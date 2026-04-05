@@ -119,7 +119,10 @@
       "Read(//c/Users/Joseph/.claude/**)",
       "Bash(mkdir -p /c/Users/Joseph/.claude/skills/)",
       "Bash(for f:*)",
-      "Read(//c/Users/ybaghiyev/Desktop/ChatApp/**)"
+      "Read(//c/Users/ybaghiyev/Desktop/ChatApp/**)",
+      "Bash(git status:*)",
+      "Bash(git reset:*)",
+      "Bash(PGPASSWORD=mysecretpassword psql -h localhost -U postgres -d chatapp -c \"SELECT id, first_name, last_name, role, company_id FROM users WHERE role = 2;\")"
     ],
     "deny": [],
     "ask": []

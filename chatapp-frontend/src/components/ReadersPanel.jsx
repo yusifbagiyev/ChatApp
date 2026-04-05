@@ -10,7 +10,18 @@ const READERS_PAGE_SIZE = 20;
 // Paginated: 20 nəfər göstərir, scroll ilə daha çox yüklənir
 function ReadersPanel({ readByIds, channelMembers, onClose }) {
   const [displayCount, setDisplayCount] = useState(READERS_PAGE_SIZE);
+  const [closing, setClosing] = useState(false);
   const listRef = useRef(null);
+
+  // Bağlanma animasiyası ilə close
+  const handleAnimatedClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+  }, [closing]);
+
+  const onOverlayAnimEnd = useCallback((e) => {
+    if (closing && e.animationName === "overlayFadeOut") onClose();
+  }, [closing, onClose]);
 
   // readByIds (Guid[]) → { id, fullName, avatarUrl } array-ına çevir
   const readers = readByIds
@@ -35,12 +46,12 @@ function ReadersPanel({ readByIds, channelMembers, onClose }) {
   }, [hasMore]);
 
   return (
-    <div className="readers-panel-overlay" onClick={onClose}>
+    <div className={`readers-panel-overlay${closing ? " closing" : ""}`} onClick={handleAnimatedClose} onAnimationEnd={onOverlayAnimEnd}>
       <div className="readers-panel" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="readers-panel-header">
           <span>Viewed by {readers.length}</span>
-          <button className="readers-panel-close" onClick={onClose} aria-label="Close readers panel">
+          <button className="readers-panel-close" onClick={handleAnimatedClose} aria-label="Close readers panel">
             <svg
               width="18"
               height="18"

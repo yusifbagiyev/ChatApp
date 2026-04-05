@@ -31,6 +31,7 @@ export default function useChatSignalR(
   onNewFileMessageRef, // Sidebar — fayl mesajı gəldikdə Files & Media panelini yeniləmək üçün
   onChannelUpdatedRef, // Channel adı/avatarı dəyişdikdə selectedChat-ı yeniləmək üçün (ref)
   setSelectedChat, // Channel-dan çıxdıqda selectedChat-ı təmizləmək üçün
+  setChannelMembers, // Channel üzv dəyişikliyində cache-i yeniləmək üçün
 ) {
   // useEffect — komponentin mount olduğunda 1 dəfə işləyir
   // [userId] — dependency array: yalnız userId dəyişəndə yenidən işləyir
@@ -229,29 +230,42 @@ export default function useChatSignalR(
       messageReadCounts,
     ) {
       // Mesajlardakı readByCount + readBy array yenilə
+      // Status hesablama: 1=Sent(tək tik), 2=Delivered(boz ikiqat), 3=Read(mavi ikiqat)
       setMessages((prev) =>
         prev.map((m) => {
           if (messageReadCounts && messageReadCounts[m.id] !== undefined) {
+            const newReadByCount = messageReadCounts[m.id];
             const updatedReadBy = m.readBy ? [...m.readBy] : [];
             if (!updatedReadBy.includes(readByUserId)) {
               updatedReadBy.push(readByUserId);
             }
+            // Backend məntiqi ilə eyni: totalMemberCount 0 → Sent, hamı oxuyub → Read, bəziləri → Delivered
+            const total = m.totalMemberCount || 0;
+            let newStatus = 1; // Sent
+            if (total > 0 && newReadByCount >= total) newStatus = 3; // Read — mavi ikiqat tik
+            else if (newReadByCount > 0) newStatus = 2; // Delivered — boz ikiqat tik
             return {
               ...m,
-              readByCount: messageReadCounts[m.id],
+              readByCount: newReadByCount,
               readBy: updatedReadBy,
-              status: 3, // Read — tick icon mavi double tick göstərsin
+              status: newStatus,
             };
           }
           return m;
         }),
       );
 
-      // Conversation list-dəki lastMessageStatus-u "Read"-ə yenilə
+      // Conversation list-dəki lastMessageStatus-u yenilə
       setConversations((prev) =>
         prev.map((c) => {
           if (c.id === channelId && c.lastMessageSenderId === userId) {
-            return { ...c, lastMessageStatus: "Read" };
+            // Son mesajın statusunu hesabla — sadəcə "Read" hardcode etmə
+            const lastMsgStatus = messageReadCounts[c.lastMessageId]
+              ? (c.memberCount && messageReadCounts[c.lastMessageId] >= (c.memberCount - 1))
+                ? "Read"
+                : "Delivered"
+              : c.lastMessageStatus;
+            return { ...c, lastMessageStatus: lastMsgStatus };
           }
           return c;
         }),
@@ -544,6 +558,26 @@ export default function useChatSignalR(
       }
     }
 
+    // ─── handleChannelMemberChanged ─────────────────────────────────────────────
+    // Üzv əlavə olunanda/çıxarılanda/leave edəndə bütün channel üzvlərinə göndərilir
+    // payload: { channelId, userId, action: "added"|"removed"|"left", memberCount }
+    function handleChannelMemberChanged(payload) {
+      const { channelId, memberCount } = payload;
+      // Conversation list-dəki memberCount-u yenilə
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === channelId ? { ...c, memberCount } : c,
+        ),
+      );
+      // channelMembers cache-ini sil — növbəti açılışda yenidən yüklənəcək
+      // Əgər bu channel hal-hazırda açıqdırsa — dərhal yenidən yüklə
+      setChannelMembers((prev) => {
+        const next = { ...prev };
+        delete next[channelId];
+        return next;
+      });
+    }
+
     // ─── SignalR Bağlantısını Qur + Handler-ları Register Et ─────────────────
     // startConnection() → Promise qaytarır → .then() ilə uğurlu bağlantıda handler-lar qur
     // conn.on("EventName", handlerFunction) — .NET-də: hub.On<T>("EventName", handler) kimi
@@ -570,6 +604,7 @@ export default function useChatSignalR(
       ["AddedToChannel", handleAddedToChannel],
       ["ChannelUpdated", handleChannelUpdated],
       ["MemberLeftChannel", handleMemberLeftChannel],
+      ["ChannelMemberChanged", handleChannelMemberChanged],
     ];
 
     startConnection()

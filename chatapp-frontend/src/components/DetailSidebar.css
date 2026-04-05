@@ -16,16 +16,31 @@
 
 .detail-sidebar {
   width: var(--detail-sidebar-width, 350px);
-  min-width: 350px;
+  min-width: 0;
+  max-width: var(--detail-sidebar-width, 350px);
   background: #eef2f4;
   border-left: 1px solid var(--gray-200, #e5e7eb);
   display: flex;
   flex-direction: column;
   position: relative;
-  /* animasiya silindi — layout shift / flash qarşısını almaq üçün */
   overflow: hidden;
   border-radius: 0 var(--panel-radius, 12px) var(--panel-radius, 12px) 0;
   box-shadow: var(--panel-shadow, 0 1px 4px rgba(0,0,0,0.08));
+  animation: dsSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Açılma — width 0-dan genişlənir, chat-panel ilə sinxron kiçilir */
+@keyframes dsSlideIn {
+  from { max-width: 0; opacity: 0; border-left-color: transparent; }
+  to { max-width: var(--detail-sidebar-width, 350px); opacity: 1; }
+}
+/* Bağlanma — width kiçilir */
+@keyframes dsSlideOut {
+  from { max-width: var(--detail-sidebar-width, 350px); opacity: 1; }
+  to { max-width: 0; opacity: 0; border-left-color: transparent; }
+}
+.detail-sidebar.closing {
+  animation: dsSlideOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 
@@ -45,19 +60,6 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-}
-
-/* transform + opacity animasiya — layout reflow yaratmır, Virtuoso scroll pozisiyasını pozmur */
-@keyframes detailSidebarSlideIn {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-@keyframes detailSidebarSlideOut {
-  from { opacity: 1; transform: translateX(0); }
-  to { opacity: 0; transform: translateX(20px); }
-}
-.detail-sidebar.closing {
-  animation: detailSidebarSlideOut 0.2s ease-in forwards;
 }
 
 /* Header — X button solda, title ortada */

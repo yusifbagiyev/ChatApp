@@ -14,12 +14,18 @@
 }
 
 @keyframes ivFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Bağlanma animasiyası */
+.image-viewer-overlay.closing {
+  animation: ivFadeOut 0.2s ease forwards;
+}
+
+@keyframes ivFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 
 /* ─── Top bar ─── */

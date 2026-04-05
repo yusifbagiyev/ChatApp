@@ -1,6 +1,7 @@
 ﻿using ChatApp.Modules.Channels.Application.Interfaces;
 using ChatApp.Modules.Channels.Domain.Enums;
 using ChatApp.Modules.Channels.Domain.Events;
+using ChatApp.Shared.Infrastructure.SignalR.Services;
 using ChatApp.Shared.Kernel.Common;
 using ChatApp.Shared.Kernel.Exceptions;
 using ChatApp.Shared.Kernel.Interfaces;
@@ -35,15 +36,18 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IEventBus _eventBus;
+        private readonly ISignalRNotificationService _notificationService;
         private readonly ILogger<LeaveChannelCommandHandler> _logger;
 
         public LeaveChannelCommandHandler(
             IUnitOfWork unitOfWork,
             IEventBus eventBus,
+            ISignalRNotificationService notificationService,
             ILogger<LeaveChannelCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _eventBus = eventBus;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -107,6 +111,18 @@ namespace ChatApp.Modules.Channels.Application.Commands.Channels
                 await _eventBus.PublishAsync(
                     new MemberRemovedEvent(request.ChannelId, request.UserId, request.UserId),
                     cancellationToken);
+
+                // Qalan üzvlərə member dəyişikliyi bildirişi göndər
+                var remainingMembers = await _unitOfWork.ChannelMembers.GetChannelMembersAsync(
+                    request.ChannelId, cancellationToken);
+                var remainingMemberIds = remainingMembers.Select(m => m.UserId).ToList();
+                if (remainingMemberIds.Count > 0)
+                {
+                    await _notificationService.NotifyChannelMemberChangedAsync(
+                        request.ChannelId,
+                        remainingMemberIds,
+                        new { channelId = request.ChannelId, userId = request.UserId, action = "left", memberCount = remainingMemberIds.Count });
+                }
 
                 _logger?.LogInformation(
                     "User {UserId} left channel {ChannelId} successfully",

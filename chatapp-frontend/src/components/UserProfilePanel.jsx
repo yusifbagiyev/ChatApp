@@ -431,6 +431,17 @@ function UserProfilePanel({ userId, currentUserId, isAdmin, onClose, onStartChat
   const [aboutEditMode, setAboutEditMode] = useState(false);
   const [aboutDraft, setAboutDraft]       = useState("");
   const [activeTab, setActiveTab]         = useState("General");
+  const [closing, setClosing]             = useState(false);
+
+  // Bağlanma animasiyası ilə close
+  const handleAnimatedClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+  }, [closing]);
+
+  const onOverlayAnimEnd = useCallback((e) => {
+    if (closing && e.animationName === "uppFadeOut") onClose();
+  }, [closing, onClose]);
   const [pwForm, setPwForm]               = useState({ current: "", newPw: "", confirm: "" });
   const [pwErrors, setPwErrors]           = useState({});
   const [pwLoading, setPwLoading]         = useState(false);
@@ -517,10 +528,10 @@ function UserProfilePanel({ userId, currentUserId, isAdmin, onClose, onStartChat
   }, [userId]);
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => { if (e.key === "Escape") handleAnimatedClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [handleAnimatedClose]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -741,23 +752,23 @@ function UserProfilePanel({ userId, currentUserId, isAdmin, onClose, onStartChat
 
   return (
     <>
-      <div className="upp-overlay" onClick={onClose} />
+      <div className={`upp-overlay${closing ? " closing" : ""}`} onClick={handleAnimatedClose} onAnimationEnd={onOverlayAnimEnd} />
 
-      <button className="upp-close-btn" onClick={onClose} title="Close">
+      <button className="upp-close-btn" onClick={handleAnimatedClose} title="Close">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       </button>
 
       {!isOwn && (
-        <button className="upp-chat-icon-btn" onClick={() => { onStartChat?.(userId); onClose(); }} title="Send message">
+        <button className="upp-chat-icon-btn" onClick={() => { onStartChat?.(userId); handleAnimatedClose(); }} title="Send message">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </button>
       )}
 
-      <div className="upp-panel">
+      <div className={`upp-panel${closing ? " closing" : ""}`}>
         <div className="upp-panel-scroll" ref={panelRef}>
         <div className="upp-header">
           <div className="upp-header-info">

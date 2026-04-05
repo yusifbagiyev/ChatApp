@@ -107,6 +107,20 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
                 };
                 await _notificationService.NotifyMemberAddedToChannelAsync(request.UserId, channelDto);
 
+                // Mövcud üzvlərə member dəyişikliyi bildirişi göndər
+                var existingMemberIds = (channel.Members ?? [])
+                    .Where(m => m.UserId != request.UserId)
+                    .Select(m => m.UserId)
+                    .ToList();
+                if (existingMemberIds.Count > 0)
+                {
+                    var newMemberCount = (channel.Members?.Count ?? 0) + 1;
+                    await _notificationService.NotifyChannelMemberChangedAsync(
+                        request.ChannelId,
+                        existingMemberIds,
+                        new { channelId = channel.Id, userId = request.UserId, action = "added", memberCount = newMemberCount });
+                }
+
                 _logger?.LogInformation(
                     "User {UserId} added to channel {ChannelId} successfully",
                     request.UserId,

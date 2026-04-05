@@ -135,6 +135,25 @@
 - `array.filter()` hər row üçün → O(n²). Əvvəlcədən Map/Set yarat
 - **Nümunə:** P5 — `depts.filter(d => d.parentDepartmentId === dept.id).length` hər sətirdə
 
+### Panel Bağlanma Animasiyası — Standart Pattern
+- Hər panel/modal/sidebar üçün **açılma + bağlanma** animasiyası olmalıdır
+- Pattern: `closing` state → CSS animasiya → `onAnimationEnd` → həqiqi `onClose()`
+- **JSX tərəf:**
+  ```jsx
+  const [closing, setClosing] = useState(false);
+  const handleAnimatedClose = useCallback(() => { if (!closing) setClosing(true); }, [closing]);
+  const onAnimEnd = useCallback((e) => { if (closing && e.animationName === "xyzOut") onClose(); }, [closing, onClose]);
+  // className-ə closing əlavə et, onAnimationEnd={onAnimEnd}
+  ```
+- **CSS tərəf:**
+  - Overlay: `overlayFadeOut` (Chat.css-dədir, paylaşılan)
+  - Modal: `modalScaleOut` (Chat.css-dədir, paylaşılan)
+  - Slide panel: öz `xxxSlideOut` keyframe-i (UPP → `uppSlideOut`, DS → `dsSlideOut`)
+  - Layout-a təsir edən panel (DetailSidebar): `max-width` animasiyası istifadə et, `translateX` deyil (background flash problemi)
+  - Overlay paneli (UserProfilePanel): `translateX` istifadə et (layout-a təsir etmir)
+- **Tətbiq olunan panellər:** DetailSidebar, UserProfilePanel, ForwardPanel, ReadersPanel, FilePreviewPanel, ImageViewer
+- Escape key, close button, overlay click — hamısı `handleAnimatedClose()` çağırmalıdır, birbaşa `onClose()` yox
+
 ## Patterns Noticed
 <!-- Emerging signals needing more data -->
 
@@ -150,5 +169,6 @@
 <!-- How this agent's own workflow should improve -->
 
 ## Last Updated
+- 2026-04-05: Panel bağlanma animasiyası pattern-i əlavə olundu (6 panel)
 - 2026-04-05: Frontend audit nəticəsi — 78 problemdən 65+ həll olundu, qaydalar əlavə olundu
 - 2026-03-27: Added DTO field name verification rule, search vs list endpoint contract, backend constraint mirroring

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { apiGet, getFileUrl } from "../services/api";
 import { getInitials, getAvatarColor } from "../utils/chatUtils";
 import { useToast } from "../context/ToastContext";
@@ -8,9 +8,20 @@ function ForwardPanel({ conversations, onForward, onClose }) {
   const { showToast } = useToast();
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState(null);
+  const [closing, setClosing] = useState(false);
   const searchInputRef = useRef(null);
   const debounceRef = useRef(null);
   const searchAbortRef = useRef(null);
+
+  // Bağlanma animasiyası ilə close
+  const handleAnimatedClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+  }, [closing]);
+
+  const onOverlayAnimEnd = useCallback((e) => {
+    if (closing && e.animationName === "overlayFadeOut") onClose();
+  }, [closing, onClose]);
 
   // Panel açılanda search input-a focus ver + unmount cleanup
   useEffect(() => {
@@ -24,18 +35,18 @@ function ForwardPanel({ conversations, onForward, onClose }) {
   // Overlay-ə klik → panel bağlansın
   function handleOverlayClick(e) {
     if (e.target === e.currentTarget) {
-      onClose();
+      handleAnimatedClose();
     }
   }
 
   // Escape ilə bağla
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleAnimatedClose();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [handleAnimatedClose]);
 
   // Debounced search
   function handleSearchChange(value) {
@@ -103,11 +114,11 @@ function ForwardPanel({ conversations, onForward, onClose }) {
   }
 
   return (
-    <div className="forward-overlay" onClick={handleOverlayClick}>
+    <div className={`forward-overlay${closing ? " closing" : ""}`} onClick={handleOverlayClick} onAnimationEnd={onOverlayAnimEnd}>
       <div className="forward-panel">
         <div className="forward-header">
           <h3>Forward message</h3>
-          <button className="forward-close-btn" onClick={onClose}>
+          <button className="forward-close-btn" onClick={handleAnimatedClose}>
             <svg
               width="18"
               height="18"

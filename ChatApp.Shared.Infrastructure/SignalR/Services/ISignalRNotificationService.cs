@@ -26,6 +26,7 @@
         // ─── User / Channel Membership ───
         Task NotifyUserAsync(Guid userId, string eventName, object data);
         Task NotifyMemberAddedToChannelAsync(Guid userId, object channelDto);
+        Task NotifyChannelMemberChangedAsync(Guid channelId, List<Guid> memberUserIds, object payload);
         Task NotifyMemberLeftChannelToMembersAsync(Guid channelId, List<Guid> memberUserIds, Guid leftUserId, string leftUserFullName);
 
         // ─── Channel Updates ───

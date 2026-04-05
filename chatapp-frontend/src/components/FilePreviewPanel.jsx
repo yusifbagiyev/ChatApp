@@ -16,7 +16,18 @@ function FilePreviewPanel({
   onSendFiles,
 }) {
   const [textValue, setTextValue] = useState("");
+  const [closing, setClosing] = useState(false);
   const textRef = useRef(null);
+
+  // Bağlanma animasiyası ilə close
+  const handleAnimatedClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+  }, [closing]);
+
+  const onOverlayAnimEnd = useCallback((e) => {
+    if (closing && e.animationName === "overlayFadeOut") onClearFiles();
+  }, [closing, onClearFiles]);
 
   // Drag reorder state
   const [dragIndex, setDragIndex] = useState(null);
@@ -148,7 +159,7 @@ function FilePreviewPanel({
   }, []);
 
   return (
-    <div className="file-preview-overlay">
+    <div className={`file-preview-overlay${closing ? " closing" : ""}`} onAnimationEnd={onOverlayAnimEnd}>
       <div className="file-preview-panel">
         {/* Header: "Selected: N" + bağla butonu */}
         <div className="file-preview-header">
@@ -157,7 +168,7 @@ function FilePreviewPanel({
           </span>
           <button
             className="file-preview-close"
-            onClick={onClearFiles}
+            onClick={handleAnimatedClose}
             title="Close"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

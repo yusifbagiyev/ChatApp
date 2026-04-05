@@ -187,6 +187,17 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Services
             }
         }
 
+        public async Task NotifyChannelMemberChangedAsync(Guid channelId, List<Guid> memberUserIds, object payload)
+        {
+            var allConnections = await CollectMemberConnectionsAsync(memberUserIds);
+            if (allConnections.Count > 0)
+            {
+                await _hubContext.Clients
+                    .Clients(allConnections)
+                    .SendAsync("ChannelMemberChanged", payload);
+            }
+        }
+
         public async Task NotifyMemberLeftChannelToMembersAsync(Guid channelId, List<Guid> memberUserIds, Guid leftUserId, string leftUserFullName)
         {
             var allConnections = await CollectMemberConnectionsAsync(memberUserIds);

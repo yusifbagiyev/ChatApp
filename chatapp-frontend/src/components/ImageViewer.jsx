@@ -5,8 +5,19 @@ import "./ImageViewer.css";
 function ImageViewer({ images, currentIndex, onClose, onNavigate }) {
   const [zoom, setZoom] = useState(1);
   const [imageError, setImageError] = useState(false);
+  const [closing, setClosing] = useState(false);
   const thumbStripRef = useRef(null);
   const currentImage = images[currentIndex];
+
+  // Bağlanma animasiyası ilə close
+  const handleAnimatedClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+  }, [closing]);
+
+  const onOverlayAnimEnd = useCallback((e) => {
+    if (closing && e.animationName === "ivFadeOut") onClose();
+  }, [closing, onClose]);
 
   // Şəkil dəyişdikdə zoom sıfırla — render zamanı (useState ilə, React 19 safe)
   const [prevIndex, setPrevIndex] = useState(currentIndex);
@@ -19,13 +30,13 @@ function ImageViewer({ images, currentIndex, onClose, onNavigate }) {
   // Keyboard: Escape=bağla, ←/→=naviqasiya
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleAnimatedClose();
       if (e.key === "ArrowLeft" && currentIndex > 0) onNavigate(currentIndex - 1);
       if (e.key === "ArrowRight" && currentIndex < images.length - 1) onNavigate(currentIndex + 1);
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, images.length, onClose, onNavigate]);
+  }, [currentIndex, images.length, handleAnimatedClose, onNavigate]);
 
   // Aktiv thumbnail-ı görünən sahəyə scroll et
   useEffect(() => {
@@ -65,7 +76,7 @@ function ImageViewer({ images, currentIndex, onClose, onNavigate }) {
   if (!currentImage) return null;
 
   return (
-    <div className="image-viewer-overlay" onClick={onClose}>
+    <div className={`image-viewer-overlay${closing ? " closing" : ""}`} onClick={handleAnimatedClose} onAnimationEnd={onOverlayAnimEnd}>
       {/* ─── Top bar ─── */}
       <div className="iv-topbar" onClick={e => e.stopPropagation()}>
         <div className="iv-topbar-left">
@@ -91,7 +102,7 @@ function ImageViewer({ images, currentIndex, onClose, onNavigate }) {
               <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
           </button>
-          <button className="iv-btn iv-close-btn" title="Close" onClick={onClose}>
+          <button className="iv-btn iv-close-btn" title="Close" onClick={handleAnimatedClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
