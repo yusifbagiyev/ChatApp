@@ -691,7 +691,7 @@
     background: var(--white, #fff);
     border-top: 1px solid var(--gray-200, #e5e7eb);
     display: flex; align-items: center; justify-content: space-around;
-    z-index: 90;
+    z-index: var(--zc-sidebar);
   }
   .mobile-bottom-tabs .tab {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -725,7 +725,7 @@
 /* ─── Avatar Context Menu ─────────────────────────────────────────────────── */
 .avatar-ctx-menu {
   position: fixed;
-  z-index: 9999;
+  z-index: var(--zc-popover);
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14), 0 1px 4px rgba(0, 0, 0, 0.08);

@@ -361,10 +361,12 @@ function ConversationList({
 
       try {
         // Promise.allSettled — biri fail olsa digəri itməsin
+        const opts = { signal: controller.signal };
         const results = await Promise.allSettled([
-          apiGet(`/api/users/search?q=${encodeURIComponent(searchText)}`),
+          apiGet(`/api/users/search?q=${encodeURIComponent(searchText)}`, opts),
           apiGet(
             `/api/channels/search?query=${encodeURIComponent(searchText)}`,
+            opts,
           ),
         ]);
         // Abort olunubsa nəticəni ignore et (yeni axtarış başlayıb)

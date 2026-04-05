@@ -64,7 +64,7 @@ export function ToastProvider({ children }) {
       {children}
       {/* ToastContainer — toastları render edir */}
       {toasts.length > 0 && (
-        <div className="toast-container">
+        <div className="toast-container" role="alert" aria-live="polite">
           {toasts.map((t) => (
             <div key={t.id} className={`toast-item toast-${t.type}`}>
               <div className="toast-icon">

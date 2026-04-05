@@ -187,16 +187,16 @@ async function apiFetch(endpoint, options = {}) {
 // GET sorğusu — body yoxdur, sadəcə endpoint
 // Auto-retry: yalnız network xətasında (TypeError) 1 dəfə yenidən cəhd edir.
 // HTTP error-lar (4xx/5xx) retry olunmur — server cavabı qətidir.
-async function apiGet(endpoint) {
+async function apiGet(endpoint, options) {
   try {
-    return await apiFetch(endpoint);
+    return await apiFetch(endpoint, options);
   } catch (err) {
     // Session expired və ya HTTP error — retry etmə
     if (sessionExpired || err.message === "Session expired") throw err;
     if (!(err instanceof TypeError)) throw err;
     // Yalnız network xətasında (fetch throws TypeError) 1s sonra retry
     await new Promise((r) => setTimeout(r, 1000));
-    return apiFetch(endpoint);
+    return apiFetch(endpoint, options);
   }
 }
 
