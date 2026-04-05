@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";                 // Permission 
 import { renderTextWithEmojis } from "../utils/emojiConstants";  // Emoji → Apple img çevirici
 import MentionPanel from "./MentionPanel";                       // @ mention dropdown paneli
 import FilePreviewPanel from "./FilePreviewPanel";               // Fayl preview modal
+import DriveFilePicker from "./DriveFilePicker";                 // Drive-dan fayl seçmə modalı
 // EmojiPicker lazy load — ~200KB bundle, yalnız açıldıqda yüklənir
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
 import "./ChatInputArea.css";
@@ -42,6 +43,8 @@ function ChatInputArea({
   onInputResize,
   // File upload props
   selectedFiles, onFilesSelected, onRemoveFile, onReorderFiles, onClearFiles, onSendFiles,
+  // Drive fayl seçimi
+  onSelectDriveFiles,
 }) {
   const { showToast } = useToast();
   const { hasPermission } = useAuth();
@@ -53,6 +56,7 @@ function ChatInputArea({
   const attachBtnRef = useRef(null);       // Attach button referansı (click-outside ignore üçün)
   const [dragging, setDragging] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [drivePickerOpen, setDrivePickerOpen] = useState(false);
   // Manual resize — drag handle istifadə olunanda auto-resize suppress olsun
   const manualResizeRef = useRef(false);
   // Drag listener-ləri saxla ki, unmount zamanı təmizlənsin
@@ -363,11 +367,19 @@ function ChatInputArea({
                 </svg>
                 File on this computer
               </button>
-              <button className="ds-dropdown-item" disabled style={{ opacity: 0.4, cursor: "default" }}>
+              <button
+                className="ds-dropdown-item"
+                onClick={() => {
+                  setDrivePickerOpen(true);
+                  setAttachMenuOpen(false);
+                }}
+              >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ marginRight: 8, flexShrink: 0 }}>
-                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                  <line x1="12" y1="11" x2="12" y2="17" />
+                  <polyline points="9 14 12 11 15 14" />
                 </svg>
-                File on Bitrix24
+                File on Drive
               </button>
             </div>
           )}
@@ -544,6 +556,17 @@ function ChatInputArea({
           onReorderFiles={onReorderFiles}
           onClearFiles={onClearFiles}
           onSendFiles={onSendFiles}
+        />
+      )}
+
+      {/* Drive fayl seçmə modalı */}
+      {drivePickerOpen && (
+        <DriveFilePicker
+          onSelect={(files) => {
+            setDrivePickerOpen(false);
+            onSelectDriveFiles?.(files);
+          }}
+          onClose={() => setDrivePickerOpen(false)}
         />
       )}
     </>

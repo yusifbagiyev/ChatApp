@@ -1,8 +1,9 @@
 // memo — komponenti cache-lər, props dəyişmədikdə yenidən render etmə
 // .NET ekvivalenti: IEqualityComparer ilə dəyər müqayisəsi
 import { memo } from "react";
-import { downloadFile } from "../services/api";
+import { downloadFile, saveToDrive } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import "./MessageActionMenu.css";
 
 // MessageActionMenu komponenti — mesaj üzərindəki "⋮" menyusu
@@ -42,6 +43,7 @@ function MessageActionMenu({
   onClose,
 }) {
   const { hasPermission } = useAuth();
+  const { showToast } = useToast();
 
   // handleAction — callback çağır + menyu bağla
   // ...args — variadic parametr: callback-ə ötürüləcək hər hansı arqument
@@ -187,7 +189,28 @@ function MessageActionMenu({
             </button>
           )}
 
-          {/* Save to drive — hələ implement olunmayıb, gizlədilib */}
+          {/* Save to drive — fayl/şəkili istifadəçinin drive-ına saxla */}
+          {msg.fileId && (
+            <button
+              className="action-menu-item"
+              onClick={async () => {
+                try {
+                  await saveToDrive(msg.fileId);
+                  showToast("File saved to drive", "success");
+                } catch (err) {
+                  showToast(err?.message || "Failed to save file to drive", "error");
+                }
+                onClose();
+              }}
+            >
+              <span>Save to Drive</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                <line x1="12" y1="11" x2="12" y2="17" />
+                <polyline points="9 14 12 11 15 14" />
+              </svg>
+            </button>
+          )}
 
           {/* Select — çox mesaj seçmə rejiminə keç (bu mesajı seçilmiş başlat) */}
           {/* onSelect(msg.id) — ID-ni ötürürük, mesaj obyektini yox */}

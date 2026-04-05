@@ -632,15 +632,18 @@ const DriveContextMenu = memo(function DriveContextMenu({
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) onClose();
     };
+    const scrollHandler = () => onClose();
     // setTimeout — açan klikin özü tərəfindən bağlanmasının qarşısını alır
     const timerId = setTimeout(() => {
       document.addEventListener("mousedown", handler);
       document.addEventListener("contextmenu", handler);
+      document.addEventListener("scroll", scrollHandler, { capture: true, passive: true });
     }, 0);
     return () => {
       clearTimeout(timerId);
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("contextmenu", handler);
+      document.removeEventListener("scroll", scrollHandler, { capture: true });
     };
   }, [contextMenu, onClose]);
 

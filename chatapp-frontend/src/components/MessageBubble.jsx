@@ -228,8 +228,23 @@ function MessageBubble({
     if (menuOpen || reactionOpen || reactionTooltipOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-    // Cleanup — listener-i sil (like removeEventListener in .NET Blazor)
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    // Scroll edəndə menu/reaction bağlansın — position:fixed elementlər scroll-da yerindən çıxır
+    function handleScroll() {
+      if (menuOpen) setMenuOpen(false);
+      if (reactionOpen) { setReactionOpen(false); setReactionExpanded(false); }
+      if (reactionTooltipOpen) setReactionTooltipOpen(null);
+    }
+    if (menuOpen || reactionOpen || reactionTooltipOpen) {
+      // capture: true — scroll event bubbling etmir, capture fazasında tutmalıyıq
+      document.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    }
+
+    // Cleanup — listener-ləri sil
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("scroll", handleScroll, { capture: true });
+    };
   }, [menuOpen, reactionOpen, reactionTooltipOpen]);
 
   // Action menu pozisyası — position: fixed ilə viewport-a nisbətən

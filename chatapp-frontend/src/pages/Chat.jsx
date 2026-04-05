@@ -2278,6 +2278,87 @@ function Chat() {
     setShouldScrollBottom(true);
   }
 
+  // handleSendDriveFiles — Drive-dan seçilmiş faylları mesaj olaraq göndər
+  // Drive faylları artıq serverdədir → re-upload yox, birbaşa fileId ilə göndər
+  async function handleSendDriveFiles(driveFiles) {
+    if (!selectedChat || driveFiles.length === 0) return;
+
+    let chatId = selectedChat.id;
+    let chatType = selectedChat.type;
+
+    // DepartmentUser (type=2) → əvvəlcə conversation yarat
+    if (chatType === 2) {
+      try {
+        const result = await apiPost("/api/conversations", {
+          otherUserId: selectedChat.id,
+        });
+        chatId = result.conversationId;
+        chatType = 0;
+        const updatedChat = {
+          ...selectedChat,
+          id: chatId,
+          type: 0,
+          otherUserId: selectedChat.id,
+        };
+        setSelectedChat(updatedChat);
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedChat.id && c.type === 2
+              ? { ...c, id: chatId, type: 0, otherUserId: selectedChat.id }
+              : c,
+          ),
+        );
+      } catch (err) {
+        showToast(err.message || "Failed to create conversation", "error");
+        return;
+      }
+    }
+
+    const endpoint = getChatEndpoint(chatId, chatType, "/messages");
+    if (!endpoint) return;
+
+    const currentReply = replyTo;
+    setReplyTo(null);
+
+    // ConversationList optimistic update
+    const now = new Date().toISOString();
+    setConversations((prev) => {
+      const updated = prev.map((c) =>
+        c.id === chatId
+          ? {
+              ...c,
+              lastMessage: `📎 ${driveFiles[0].originalFileName}`,
+              lastMessageAtUtc: now,
+              lastMessageSenderId: user.id,
+              lastMessageStatus: "Pending",
+            }
+          : c,
+      );
+      const idx = updated.findIndex((c) => c.id === chatId);
+      if (idx > 0) {
+        const [item] = updated.splice(idx, 1);
+        updated.unshift(item);
+      }
+      return updated;
+    });
+
+    // Hər fayl üçün ayrı mesaj göndər
+    for (let i = 0; i < driveFiles.length; i++) {
+      const file = driveFiles[i];
+      try {
+        await apiPost(endpoint, {
+          content: "",
+          fileId: file.id,
+          replyToMessageId: i === 0 ? (currentReply?.id || null) : null,
+        });
+      } catch (err) {
+        showToast(`Failed to send "${file.originalFileName}"`, "error");
+      }
+    }
+
+    setShouldScrollBottom(true);
+  }
+
   // handleSendMessage — mesaj göndər (Enter / Send button)
   async function handleSendMessage() {
     // Fayllar seçilibsə → FilePreviewPanel açılır, oradan göndərilir
@@ -3692,6 +3773,7 @@ function Chat() {
                     onReorderFiles={fileUpload.handleReorderFiles}
                     onClearFiles={fileUpload.handleClearFiles}
                     onSendFiles={handleSendFiles}
+                    onSelectDriveFiles={handleSendDriveFiles}
                   />
                 )}
 

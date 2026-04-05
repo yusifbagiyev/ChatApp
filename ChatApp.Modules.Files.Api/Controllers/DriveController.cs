@@ -609,6 +609,46 @@ namespace ChatApp.Modules.Files.Api.Controllers
             return Ok(new { message = "Trash emptied", deletedCount = deletedFiles.Count });
         }
 
+        // ─── Save to Drive — chat faylını drive-a kopyala ───────────────────
+
+        [HttpPost("save/{fileId:guid}")]
+        public async Task<IActionResult> SaveToDrive(
+            [FromRoute] Guid fileId,
+            [FromQuery] Guid? folderId,
+            CancellationToken cancellationToken)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == Guid.Empty) return Unauthorized();
+
+            var file = await unitOfWork.Files.GetByIdAsync(fileId, cancellationToken);
+            if (file == null)
+                return NotFound(new { error = "File not found" });
+
+            // Artıq drive faylıdırsa, dublikat yaratma
+            if (file.IsDriveFile)
+                return BadRequest(new { error = "File is already in your drive" });
+
+            // Folder yoxlaması
+            if (folderId.HasValue)
+            {
+                var folderExists = await unitOfWork.DriveFolders.ExistsAsync(
+                    folderId.Value, userId, cancellationToken);
+                if (!folderExists)
+                    return BadRequest(new { error = "Folder not found" });
+            }
+
+            // Quota yoxlaması
+            var currentUsage = await unitOfWork.Files.GetDriveUsageAsync(userId, cancellationToken);
+            if (currentUsage + file.FileSizeInBytes > DriveQuotaBytes)
+                return BadRequest(new { error = "Storage quota exceeded. Limit: 3 GB" });
+
+            file.MarkAsDriveFile(folderId);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation("File {FileId} saved to drive by user {UserId}", fileId, userId);
+            return Ok(new { message = "File saved to drive" });
+        }
+
         // ─── Quota ──────────────────────────────────────────────────────────
 
         [HttpGet("quota")]

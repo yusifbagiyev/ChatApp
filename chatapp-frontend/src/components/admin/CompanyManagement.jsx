@@ -211,6 +211,14 @@ function CompanyManagement() {
   const [detail, setDetail]           = useState(null);   // CompanyDetailDto
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Scroll edəndə açıq menu-nu bağla — position:fixed elementlər scroll-da yerindən çıxır
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = () => setMenuOpen(null);
+    document.addEventListener("scroll", handler, { capture: true, passive: true });
+    return () => document.removeEventListener("scroll", handler, { capture: true });
+  }, [menuOpen]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {

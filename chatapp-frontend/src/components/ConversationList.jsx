@@ -403,7 +403,7 @@ function ConversationList({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [filterOpen]);
 
-  // --- Context menu kənar klik bağlama ---
+  // --- Context menu kənar klik + scroll bağlama ---
   useEffect(() => {
     if (!contextMenu) return;
     function handleClickOutside(e) {
@@ -414,8 +414,13 @@ function ConversationList({
         setContextMenu(null);
       }
     }
+    function handleScroll() { setContextMenu(null); }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("scroll", handleScroll, { capture: true });
+    };
   }, [contextMenu]);
 
   // handleContextMenu — conversation item üzərində sağ klik
