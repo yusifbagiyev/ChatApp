@@ -104,9 +104,13 @@
 - İki ardıcıl `showToast()` çağırışı → istifadəçi iki toast görür
 - **Nümunə:** K6 — eyni xəta üçün iki toast (biri ingilis, biri azərbaycan dilində)
 
-### Z-index — CSS dəyişən istifadə et
-- Hardcoded z-index YASAQDIR → `var(--z-navbar)`, `var(--z-modal)`, `var(--z-toast)` istifadə et
-- Dəyişənlər `index.css :root`-da təyin olunub
+### Z-index — İKİ SCOPE VAR, QARIŞDIRMA!
+- **Global** (`index.css :root`): `--z-navbar`, `--z-panel`, `--z-overlay`, `--z-modal`, `--z-toast` — UserProfilePanel, TopNavbar kimi global komponentlər üçün
+- **Chat-lokal** (`Chat.css .chat-page`): `--zc-panel`, `--zc-float`, `--zc-dropdown`, `--zc-sidebar`, `--zc-popup`, `--zc-modal`, `--zc-popover` — Chat daxili komponentlər üçün
+- Chat daxilindəki komponent (MessageBubble, PinnedBar, DetailSidebar...) → `--zc-*` istifadə et
+- Chat xaricindəki və ya fixed-position overlay (UserProfilePanel, TopNavbar) → `--z-*` istifadə et
+- **KRİTİK:** Eyni adlı variable iki scope-da fərqli dəyərlə mövcuddur → QARIŞDIRMAQ OLMAZ!
+- **Nümunə:** `--z-panel: 2` (Chat.css) vs `--z-panel: 400` (index.css) — UserProfilePanel navbar altında qaldı
 
 ### Shimmer keyframe — VAHİD
 - Yeni shimmer yaratma → `shimmer` keyframe `index.css`-dədir, onu istifadə et
