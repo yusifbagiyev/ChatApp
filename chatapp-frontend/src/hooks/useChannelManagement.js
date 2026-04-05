@@ -259,6 +259,7 @@ export default function useChannelManagement(
     addMemberShowHistory,
     setAddMemberShowHistory,
     addMemberSearchResults,
+    setAddMemberSearchResults,
     addMemberUsers,
     addMemberSelectedInfo,
     setAddMemberSelectedInfo,

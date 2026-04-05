@@ -464,11 +464,18 @@ function Chat() {
     window.addEventListener("offline", handleOffline);
 
     // SignalR connection state callback + toast logic
+    // reconnectingTimerRef — toast yalnız əlaqə 3+ saniyə kəsildikdə göstərilir
+    // Qısa fasilələr (refresh, server hiccup) toast göstərmir
+    let reconnectingTimer = null;
     const unsubscribe = onConnectionStateChange((state) => {
       if (state === "connected") {
+        // Pending reconnecting toast varsa ləğv et
+        if (reconnectingTimer) {
+          clearTimeout(reconnectingTimer);
+          reconnectingTimer = null;
+        }
         if (wasConnectedRef.current) {
           // Soft refresh — conversation list + açıq chatın mesajlarını yenilə
-          // window.location.reload() əvəzinə state-i qoruyaraq yeniləyirik
           messageCacheRef.current.clear();
           loadConversations();
           // Açıq chat varsa — mesajları yenidən yüklə
@@ -500,14 +507,16 @@ function Chat() {
         wasConnectedRef.current &&
         (state === "reconnecting" || state === "disconnected")
       ) {
-        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-        setToast({
-          type: state,
-          message:
-            state === "reconnecting"
-              ? "Reconnecting..."
-              : "Connection lost. Reconnecting...",
-        });
+        // Dərhal toast göstərmə — 3 saniyə gözlə (refresh/qısa hiccup filter)
+        if (!reconnectingTimer) {
+          reconnectingTimer = setTimeout(() => {
+            reconnectingTimer = null;
+            setToast({
+              type: "reconnecting",
+              message: "Reconnecting...",
+            });
+          }, 3000);
+        }
       }
     });
 
@@ -517,6 +526,7 @@ function Chat() {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       unsubscribe();
+      if (reconnectingTimer) clearTimeout(reconnectingTimer);
       if (capturedTimerId) clearTimeout(capturedTimerId);
       if (readBatchTimerRef.current) clearTimeout(readBatchTimerRef.current);
       if (scrollbarTimerRef.current) clearTimeout(scrollbarTimerRef.current);

@@ -33,6 +33,11 @@ let retryTimerId = null;
 // retryCount: exponential backoff üçün sayğac (limit yoxdur — tab aktiv olduqda həmişə retry)
 let retryCount = 0;
 
+// disconnectedSince: bağlantı nə vaxtdan kəsilib (auto-reload üçün)
+// 3 dəqiqə ərzində bərpa olunmazsa — səhifə avtomatik refresh olunur
+let disconnectedSince = null;
+const AUTO_RELOAD_TIMEOUT = 3 * 60 * 1000; // 3 dəqiqə
+
 // ─── Tab bağlananda bağlantını təmiz bağla ──────────────────────────────────
 function handleBeforeUnload() {
   stopRequested = true;

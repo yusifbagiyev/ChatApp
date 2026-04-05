@@ -224,7 +224,9 @@ function DetailSidebar({
                         +{Object.keys(channelMembers[selectedChat.id]).length - 4}
                       </span>
                     )}
-                    <button className="ds-members-add-btn" onClick={(e) => { e.stopPropagation(); channel.setShowAddMember(true); }}>+ Add</button>
+                    {(channelMembers[selectedChat.id]?.[user.id]?.role >= 2 || channelMembers[selectedChat.id]?.[user.id]?.role === "Admin" || channelMembers[selectedChat.id]?.[user.id]?.role === "Owner") && (
+                      <button className="ds-members-add-btn" onClick={(e) => { e.stopPropagation(); channel.setShowAddMember(true); }}>+ Add</button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1144,9 +1146,11 @@ function DetailSidebar({
             )}
             <span className="ds-favorites-title">
               Members: {selectedChat.memberCount || sidebar.membersPanelList.length}
-              <button className="ds-mp-add-btn" onClick={() => { sidebar.setMemberMenuId(null); channel.setShowAddMember(true); }}>
-                + Add
-              </button>
+              {(channelMembers[selectedChat.id]?.[user.id]?.role >= 2 || channelMembers[selectedChat.id]?.[user.id]?.role === "Admin" || channelMembers[selectedChat.id]?.[user.id]?.role === "Owner") && (
+                <button className="ds-mp-add-btn" onClick={() => { sidebar.setMemberMenuId(null); channel.setShowAddMember(true); }}>
+                  + Add
+                </button>
+              )}
             </span>
           </div>
 

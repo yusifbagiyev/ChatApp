@@ -45,6 +45,7 @@ public class SearchUsersQueryHandler(
                 .Where(u =>
                     EF.Functions.Like(u.FirstName.ToLower(), $"%{searchTerm}%") ||
                     EF.Functions.Like(u.LastName.ToLower(), $"%{searchTerm}%"))
+                .OrderBy(u => u.FirstName).ThenBy(u => u.LastName)
                 .Select(u => new UserSearchResultDto(
                     u.Id,
                     u.FirstName,

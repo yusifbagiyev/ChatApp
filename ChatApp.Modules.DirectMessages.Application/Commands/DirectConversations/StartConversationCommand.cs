@@ -30,8 +30,9 @@ namespace ChatApp.Modules.DirectMessages.Application.Commands.DirectConversation
                 .WithMessage("Cannot start conversation with yourself");
 
             // SuperAdmin (companyId=Empty) hər kəslə danışa bilər; digərləri yalnız öz şirkətində
+            // Hər iki tərəfdən biri SuperAdmin olarsa, şirkət yoxlaması bypass olunur
             RuleFor(x => x)
-                .Must(x => x.User1CompanyId == Guid.Empty || x.User1CompanyId == x.User2CompanyId)
+                .Must(x => x.User1CompanyId == Guid.Empty || x.User2CompanyId == Guid.Empty || x.User1CompanyId == x.User2CompanyId)
                 .WithMessage("Cannot start a conversation with a user from a different company");
         }
     }

@@ -224,8 +224,8 @@ function ChatHeader({
 
       {/* Sağ tərəf: action düymələri */}
       <div className="chat-header-actions">
-        {/* Add Member — yalnız channel (type=1) üçün göstər */}
-        {selectedChat.type === 1 && (
+        {/* Add Member — yalnız channel admin/owner üçün göstər */}
+        {selectedChat.type === 1 && canEdit && (
           <button
             className={`header-action-btn${addMemberOpen ? " active" : ""}`}
             title="Add member"

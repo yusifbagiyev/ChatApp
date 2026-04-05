@@ -77,10 +77,11 @@ namespace ChatApp.Modules.Channels.Api.Controllers
             if (userResult.IsFailure || userResult.Value is null)
                 return NotFound(new { error = "User not found" });
 
+            var (_, isSuperAdmin) = GetCompanyClaims();
             var userCompanyId = userResult.Value.CompanyId ?? Guid.Empty;
 
             var result = await _mediator.Send(
-                new AddMemberCommand(channelId, request.UserId, currentUserId, userCompanyId, request.ShowChatHistory),
+                new AddMemberCommand(channelId, request.UserId, currentUserId, userCompanyId, request.ShowChatHistory, isSuperAdmin),
                 cancellationToken);
 
             if (result.IsFailure)

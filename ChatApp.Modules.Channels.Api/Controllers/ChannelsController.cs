@@ -53,11 +53,11 @@ namespace ChatApp.Modules.Channels.Api.Controllers
             if (userId == Guid.Empty)
                 return Unauthorized();
 
-            var companyIdClaim = User.FindFirst("companyId")?.Value;
-            if (!Guid.TryParse(companyIdClaim, out var companyId) || companyId == Guid.Empty)
+            var (companyId, isSuperAdmin) = GetCompanyClaims();
+            if (!companyId.HasValue && !isSuperAdmin)
                 return Unauthorized();
 
-            var commandWithUser = command with { CreatedBy = userId, CompanyId = companyId };
+            var commandWithUser = command with { CreatedBy = userId, CompanyId = companyId ?? userId };
 
             var result = await _mediator.Send(commandWithUser, cancellationToken);
 

@@ -17,7 +17,8 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
         Guid UserId,
         Guid AddedBy,
         Guid UserCompanyId,
-        bool ShowChatHistory = true
+        bool ShowChatHistory = true,
+        bool IsSuperAdmin = false
     ) : IRequest<Result>;
 
 
@@ -62,7 +63,8 @@ namespace ChatApp.Modules.Channels.Application.Commands.ChannelMembers
                     ?? throw new NotFoundException($"Channel with ID {request.ChannelId} not found");
 
                 // Şirkət izolyasiyası — fərqli şirkət üzvünü kanala əlavə etmək mümkün deyil
-                if (channel.CompanyId != request.UserCompanyId)
+                // SuperAdmin hər kanala istənilən üzvü əlavə edə bilər
+                if (!request.IsSuperAdmin && request.UserCompanyId != Guid.Empty && channel.CompanyId != request.UserCompanyId)
                     return Result.Failure("Cannot add members from a different company to this channel");
 
                 // Domain yalnız qaydaları yoxlayır (duplicate, icazə və s.)
