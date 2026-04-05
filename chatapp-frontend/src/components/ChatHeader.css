@@ -69,13 +69,10 @@
   width: 80px; height: 10px; border-radius: 5px;
   background: linear-gradient(90deg, #e8ecef 25%, #f3f5f7 50%, #e8ecef 75%);
   background-size: 200% 100%;
-  animation: headerShimmer 1.4s infinite;
+  animation: shimmer 1.4s infinite;
   vertical-align: middle;
 }
-@keyframes headerShimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
+/* shimmer animasiyası index.css-də təyin olunub */
 
 .chat-header-name-row {
   display: flex;
@@ -245,4 +242,16 @@
 
 .chat-header-edit-btn:hover {
   color: var(--selected-chat);
+}
+
+/* ─── Tablet responsiv — action butonları sıxlaşdırılır ─── */
+@media (max-width: 768px) {
+  .chat-header-actions {
+    gap: 2px;
+  }
+
+  .header-action-btn {
+    padding: 4px;
+    min-width: 28px;
+  }
 }

@@ -507,11 +507,12 @@
     transparent
   );
   transform: skewX(-20deg);
-  animation: shimmer 4s ease-in-out infinite;
+  animation: loginShimmer 4s ease-in-out infinite;
   z-index: 1;
 }
 
-@keyframes shimmer {
+/* Login button üçün xüsusi shimmer — global shimmer-dən fərqlidir (left istifadə edir) */
+@keyframes loginShimmer {
   0% { left: -100%; }
   40%, 100% { left: 200%; }
 }

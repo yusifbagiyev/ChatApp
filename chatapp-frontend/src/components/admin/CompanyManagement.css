@@ -438,3 +438,14 @@
 }
 
 .cm-empty { text-align: center; color: var(--gray-400); padding: 20px; font-size: 13px; }
+
+/* ─── Mobil responsiv: cədvəl üfüqi scroll ─────────────────────────────── */
+@media (max-width: 768px) {
+  .cm-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cm-table {
+    min-width: 700px;
+  }
+}

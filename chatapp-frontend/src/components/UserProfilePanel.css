@@ -8,7 +8,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 1900;
+  z-index: var(--z-panel);
   animation: uppFadeIn 0.25s ease;
 }
 
@@ -24,7 +24,7 @@
   right: 0;
   width: 76%;
   height: calc(100vh - 20px);
-  z-index: 1901;
+  z-index: calc(var(--z-panel) + 1);
   border-radius: 16px 0 0 0;
   animation: uppSlideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   overflow: hidden;
@@ -159,7 +159,7 @@
   justify-content: flex-end;
   padding-right: 11px;
   transition: background 150ms ease;
-  z-index: 1902;
+  z-index: calc(var(--z-panel) + 2);
   flex-shrink: 0;
   opacity: 0;
   animation: uppIconIn 0.15s ease 0.28s forwards;
@@ -396,7 +396,7 @@
   align-items: center;
   justify-content: center;
   transition: background 150ms ease;
-  z-index: 1902;
+  z-index: calc(var(--z-panel) + 2);
   opacity: 0;
   animation: uppIconIn 0.15s ease 0.28s forwards;
 }
@@ -450,7 +450,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  z-index: 3000;
+  z-index: var(--z-crop-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -700,13 +700,10 @@
   border-radius: 50%;
   background: linear-gradient(90deg, #e8ecef 25%, #f3f5f7 50%, #e8ecef 75%);
   background-size: 200% 100%;
-  animation: uppShimmer 1.4s ease-in-out infinite;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
-@keyframes uppShimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
+/* shimmer animasiyası index.css-də təyin olunub */
 
 /* Avatar altında ad */
 .upp-avatar-name-wrap {
@@ -784,7 +781,7 @@
   border-radius: 6px;
   background: linear-gradient(90deg, rgba(255,255,255,0.12) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.12) 75%);
   background-size: 200% 100%;
-  animation: uppShimmer 1.4s ease-in-out infinite;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
 .upp-sk-field {
@@ -792,7 +789,7 @@
   border-radius: 6px;
   background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0.08) 75%);
   background-size: 200% 100%;
-  animation: uppShimmer 1.4s ease-in-out infinite;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
 /* ─── Security skeleton ──────────────────────────────── */
@@ -807,7 +804,7 @@
   border-radius: 8px;
   background: linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.11) 50%, rgba(0,0,0,0.06) 75%);
   background-size: 200% 100%;
-  animation: uppShimmer 1.4s ease-in-out infinite;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
 .upp-sk-sec-btn {
@@ -816,7 +813,7 @@
   border-radius: 8px;
   background: linear-gradient(90deg, rgba(0,0,0,0.08) 25%, rgba(0,0,0,0.14) 50%, rgba(0,0,0,0.08) 75%);
   background-size: 200% 100%;
-  animation: uppShimmer 1.4s ease-in-out infinite;
+  animation: shimmer 1.4s ease-in-out infinite;
   margin-top: 4px;
 }
 
@@ -831,7 +828,7 @@
   border-radius: 50%;
   background: linear-gradient(90deg, rgba(0,0,0,0.07) 25%, rgba(0,0,0,0.13) 50%, rgba(0,0,0,0.07) 75%);
   background-size: 200% 100%;
-  animation: uppShimmer 1.4s ease-in-out infinite;
+  animation: shimmer 1.4s ease-in-out infinite;
   flex-shrink: 0;
 }
 
@@ -840,7 +837,7 @@
   border-radius: 6px;
   background: linear-gradient(90deg, rgba(0,0,0,0.07) 25%, rgba(0,0,0,0.13) 50%, rgba(0,0,0,0.07) 75%);
   background-size: 200% 100%;
-  animation: uppShimmer 1.4s ease-in-out infinite;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
 .upp-sk-sec-email-row {
@@ -858,7 +855,7 @@
   flex-shrink: 0;
   background: linear-gradient(90deg, rgba(0,0,0,0.07) 25%, rgba(0,0,0,0.13) 50%, rgba(0,0,0,0.07) 75%);
   background-size: 200% 100%;
-  animation: uppShimmer 1.4s ease-in-out infinite;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
 /* Xəta/boş vəziyyət */
@@ -1045,7 +1042,7 @@
   border: 1px solid rgba(0,0,0,0.08);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.08);
-  z-index: 9999;
+  z-index: var(--z-toast);
   overflow: hidden;
   animation: dropdownIn 0.15s ease-out;
   transform-origin: top left;
@@ -1842,7 +1839,7 @@
   width: 76%;
   height: calc(100vh - 20px);
   background: rgba(0, 0, 0, 0.45);
-  z-index: 9999;
+  z-index: var(--z-toast);
   display: flex;
   align-items: center;
   justify-content: center;

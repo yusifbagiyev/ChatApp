@@ -196,3 +196,13 @@
   color: var(--gray-400);
   font-size: 13px;
 }
+
+/* ─── Mobil responsiv — forward panel ekrana sığır ─── */
+@media (max-width: 480px) {
+  .forward-panel {
+    width: calc(100vw - 24px);
+    max-width: 400px;
+    height: auto;
+    max-height: 80vh;
+  }
+}

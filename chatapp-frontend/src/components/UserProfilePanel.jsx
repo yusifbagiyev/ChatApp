@@ -204,10 +204,11 @@ function AvatarCropModal({ file, onSave, onCancel, uploading, showToast }) {
   const [zoom, setZoom]           = useState(1);
   const [offset, setOffset]       = useState({ x: 0, y: 0 });
   const [dragging, setDragging]   = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [natSize, setNatSize]     = useState({ w: 0, h: 0 });
   const replaceRef = useRef(null);
   const [imgSrc, setImgSrc] = useState(() => URL.createObjectURL(file));
+  // Drag listener-ləri saxla ki, unmount zamanı təmizlənsin
+  const dragCleanupRef = useRef(null);
 
   useEffect(() => {
     const img = new Image();
@@ -217,16 +218,41 @@ function AvatarCropModal({ file, onSave, onCancel, uploading, showToast }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Unmount zamanı aktiv drag listener-ləri təmizlə (memory leak qarşısını al)
+  useEffect(() => {
+    return () => {
+      if (dragCleanupRef.current) {
+        dragCleanupRef.current();
+        dragCleanupRef.current = null;
+      }
+    };
+  }, []);
+
   const onMouseDown = (e) => {
     e.preventDefault();
     setDragging(true);
-    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+    const startX = e.clientX - offset.x;
+    const startY = e.clientY - offset.y;
+
+    const onMove = (ev) => {
+      setOffset({ x: ev.clientX - startX, y: ev.clientY - startY });
+    };
+    const onUp = () => {
+      setDragging(false);
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      dragCleanupRef.current = null;
+    };
+
+    // Cleanup funksiyasını saxla — unmount zamanı istifadə olunacaq
+    dragCleanupRef.current = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
   };
-  const onMouseMove = (e) => {
-    if (!dragging) return;
-    setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-  };
-  const onMouseUp = () => setDragging(false);
 
   // fitScale: şəkil kəsmə dairəsini tam örtəcək miqyas
   const fitScale = natSize.w && natSize.h
@@ -317,8 +343,7 @@ function AvatarCropModal({ file, onSave, onCancel, uploading, showToast }) {
             </div>
 
             <div className="upp-crop-area"
-              onMouseDown={onMouseDown} onMouseMove={onMouseMove}
-              onMouseUp={onMouseUp}   onMouseLeave={onMouseUp}
+              onMouseDown={onMouseDown}
               style={{ cursor: dragging ? "grabbing" : "grab" }}
             >
               <img src={imgSrc} className="upp-crop-img" draggable={false}
@@ -631,10 +656,15 @@ function UserProfilePanel({ userId, currentUserId, isAdmin, onClose, onStartChat
     }
   };
 
-  const handleAboutSave = () => {
-    // TODO: real API call
-    setProfile((prev) => ({ ...prev, aboutMe: aboutDraft }));
-    setAboutEditMode(false);
+  const handleAboutSave = async () => {
+    try {
+      const endpoint = isOwn ? "/api/users/me" : `/api/users/${profile.id}`;
+      await apiPut(endpoint, { aboutMe: aboutDraft });
+      setProfile((prev) => ({ ...prev, aboutMe: aboutDraft }));
+      setAboutEditMode(false);
+    } catch (err) {
+      showToast?.(err.message || "Failed to update about", "error");
+    }
   };
 
   const handleSave = async () => {

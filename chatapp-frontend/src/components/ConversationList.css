@@ -105,7 +105,7 @@
 
 /* Search clear button — search mode-da input-un sağında X düyməsi */
 .search-clear-btn {
-  position: absolute;
+  position: relative;
   right: 8px;
   display: flex;
   align-items: center;
@@ -123,6 +123,16 @@
     background var(--transition-fast),
     color var(--transition-fast),
     transform 0.15s ease;
+}
+/* A11y — toxunma sahəsi minimum 44px (vizual ölçü dəyişmir) */
+.search-clear-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .search-clear-btn:active {
@@ -329,24 +339,21 @@
 .conv-skeleton-avatar {
   width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
   background: linear-gradient(90deg, #e8ecef 25%, #f3f5f7 50%, #e8ecef 75%);
-  background-size: 200% 100%; animation: convShimmer 1.4s infinite;
+  background-size: 200% 100%; animation: shimmer 1.4s infinite;
 }
 .conv-skeleton-text { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 .conv-skeleton-bar {
   height: 12px; border-radius: 6px;
   background: linear-gradient(90deg, #e8ecef 25%, #f3f5f7 50%, #e8ecef 75%);
-  background-size: 200% 100%; animation: convShimmer 1.4s infinite;
+  background-size: 200% 100%; animation: shimmer 1.4s infinite;
 }
 .conv-skeleton-bar--short { height: 10px; }
 .conv-skeleton-time {
   width: 32px; height: 10px; border-radius: 5px; flex-shrink: 0; align-self: flex-start; margin-top: 2px;
   background: linear-gradient(90deg, #e8ecef 25%, #f3f5f7 50%, #e8ecef 75%);
-  background-size: 200% 100%; animation: convShimmer 1.4s infinite;
+  background-size: 200% 100%; animation: shimmer 1.4s infinite;
 }
-@keyframes convShimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
+/* shimmer animasiyası index.css-də təyin olunub */
 
 /* ===================================
    CONVERSATION ITEM
@@ -536,7 +543,7 @@
 
 .conversation-time {
   font-size: 11px;
-  color: var(--gray-400);
+  color: #6B7280; /* WCAG AA — kontrast nisbəti artırıldı (əvvəlki gray-400 #9CA3AF — 2.8:1) */
   flex-shrink: 0;
 }
 

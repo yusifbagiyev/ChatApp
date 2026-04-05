@@ -22,15 +22,22 @@ function FilePreviewPanel({
   const [dragIndex, setDragIndex] = useState(null);
   const [overIndex, setOverIndex] = useState(null);
   const listRef = useRef(null);
-  const dragListenersRef = useRef(null);
+  // Ayrı ref-lər: reorder drag və textarea resize bir-birini əzməsin
+  const reorderCleanupRef = useRef(null);
+  const resizeCleanupRef = useRef(null);
 
-  // Unmount zamanı drag listener-ləri təmizlə
+  // Unmount zamanı bütün drag listener-ləri təmizlə
   useEffect(() => {
     return () => {
-      if (dragListenersRef.current) {
-        document.removeEventListener("mousemove", dragListenersRef.current.move);
-        document.removeEventListener("mouseup", dragListenersRef.current.up);
-        dragListenersRef.current = null;
+      if (reorderCleanupRef.current) {
+        document.removeEventListener("mousemove", reorderCleanupRef.current.move);
+        document.removeEventListener("mouseup", reorderCleanupRef.current.up);
+        reorderCleanupRef.current = null;
+      }
+      if (resizeCleanupRef.current) {
+        document.removeEventListener("mousemove", resizeCleanupRef.current.move);
+        document.removeEventListener("mouseup", resizeCleanupRef.current.up);
+        resizeCleanupRef.current = null;
       }
     };
   }, []);
@@ -104,10 +111,10 @@ function FilePreviewPanel({
       });
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
-      dragListenersRef.current = null;
+      reorderCleanupRef.current = null;
     };
 
-    dragListenersRef.current = { move: onMove, up: onUp };
+    reorderCleanupRef.current = { move: onMove, up: onUp };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }, [onReorderFiles]);
@@ -132,10 +139,10 @@ function FilePreviewPanel({
       setTextDragging(false);
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
-      dragListenersRef.current = null;
+      resizeCleanupRef.current = null;
     };
 
-    dragListenersRef.current = { move: onMove, up: onUp };
+    resizeCleanupRef.current = { move: onMove, up: onUp };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }, []);

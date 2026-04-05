@@ -77,7 +77,6 @@ export default function useChatScroll(
 
     loadingMoreRef.current = true;
     setLoadingOlder(true);
-    const loadStart = Date.now();
 
     try {
       const olderMessages = await apiGet(endpoint);
@@ -131,11 +130,6 @@ export default function useChatScroll(
         hasMoreRef.current = false;
       }
     } finally {
-      const elapsed = Date.now() - loadStart;
-      const minDuration = 400;
-      if (elapsed < minDuration) {
-        await new Promise((r) => setTimeout(r, minDuration - elapsed));
-      }
       loadingMoreRef.current = false;
       setLoadingOlder(false);
     }

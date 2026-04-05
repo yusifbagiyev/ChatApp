@@ -200,33 +200,34 @@ async function apiGet(endpoint) {
   }
 }
 
-// POST sorğusu — body var (JSON)
-// JSON.stringify(body): JavaScript object-i JSON string-ə çevirir
-// { "Content-Type": "application/json" }: servərə "body JSON formatındadır" deyirik
+// POST sorğusu — body undefined olduqda header və body göndərilmir (400 xətasının qarşısını alır)
 function apiPost(endpoint, body) {
-  return apiFetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const options = { method: "POST" };
+  if (body !== undefined) {
+    options.headers = { "Content-Type": "application/json" };
+    options.body = JSON.stringify(body);
+  }
+  return apiFetch(endpoint, options);
 }
 
-// PUT sorğusu — POST kimi, amma mövcud resursu yeniləmək üçün
+// PUT sorğusu — body undefined olduqda header və body göndərilmir
 function apiPut(endpoint, body) {
-  return apiFetch(endpoint, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const options = { method: "PUT" };
+  if (body !== undefined) {
+    options.headers = { "Content-Type": "application/json" };
+    options.body = JSON.stringify(body);
+  }
+  return apiFetch(endpoint, options);
 }
 
-// PATCH sorğusu — qismən yeniləmə üçün
+// PATCH sorğusu — body undefined olduqda header və body göndərilmir
 function apiPatch(endpoint, body) {
-  return apiFetch(endpoint, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const options = { method: "PATCH" };
+  if (body !== undefined) {
+    options.headers = { "Content-Type": "application/json" };
+    options.body = JSON.stringify(body);
+  }
+  return apiFetch(endpoint, options);
 }
 
 // DELETE sorğusu — body yoxdur, yalnız URL

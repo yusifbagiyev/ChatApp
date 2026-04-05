@@ -330,8 +330,12 @@ export default function useFileUploadManager(user, onFallbackReload, onMessageSe
         clearTimeout(pendingUpdate.current);
         pendingUpdate.current = null;
       }
-      // Bütün aktiv upload task-larının timer-lərini və Object URL-lərini təmizlə
+      // Bütün aktiv upload task-larının XHR-lərini, timer-lərini və Object URL-lərini təmizlə
       for (const task of uploads.values()) {
+        // Aktiv upload-ları abort et
+        if (task.status === "uploading" && task.abortController) {
+          task.abortController.abort();
+        }
         if (task._timers) task._timers.forEach(clearTimeout);
         if (task.previewUrl) URL.revokeObjectURL(task.previewUrl);
       }

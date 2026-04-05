@@ -101,8 +101,8 @@ export async function startConnection() {
       .configureLogging(LogLevel.Warning)
       .build();
 
+    // Reconnecting zamanı connection obyekti hələ keçərlidir — null etmək olmaz
     conn.onreconnecting(() => {
-      connection = null;
       notifyConnectionState("reconnecting");
     });
 

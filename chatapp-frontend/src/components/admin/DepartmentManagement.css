@@ -200,7 +200,7 @@
 .dm-skeleton-bar {
   height: 12px; border-radius: 4px;
   background: linear-gradient(90deg, #f0f2f5 25%, #e8eaed 50%, #f0f2f5 75%);
-  background-size: 200% 100%; animation: adm-shimmer 1.2s infinite;
+  background-size: 200% 100%; animation: shimmer 1.2s infinite;
 }
 
 /* ─── Dept Detail Panel ───────────────────────────────────────────────────────── */
@@ -456,4 +456,12 @@
 /* ─── Mobile Responsive ───────────────────────────────────────────────────── */
 @media (max-width: 767px) {
   .dm-modal { width: calc(100vw - 24px); }
+  /* Dərin ağac strukturu mobilda daşmasın */
+  .dm-tree-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .dm-dept-row {
+    min-width: 500px;
+  }
 }

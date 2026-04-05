@@ -36,12 +36,20 @@ function ImageViewer({ images, currentIndex, onClose, onNavigate }) {
     }
   }, [currentIndex]);
 
-  // Mouse wheel zoom
+  // Mouse wheel zoom — manual non-passive listener (preventDefault passive listener-də işləmir)
+  const mainRef = useRef(null);
   const handleWheel = useCallback((e) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     setZoom(z => Math.max(0.25, Math.min(z * delta, 5)));
   }, []);
+
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
 
   // Double-click: 1x ↔ 2x toggle
   const handleDoubleClick = useCallback(() => {
@@ -92,7 +100,7 @@ function ImageViewer({ images, currentIndex, onClose, onNavigate }) {
       </div>
 
       {/* ─── Main image area ─── */}
-      <div className="iv-main" onClick={e => e.stopPropagation()} onWheel={handleWheel}>
+      <div className="iv-main" ref={mainRef} onClick={e => e.stopPropagation()}>
         {currentIndex > 0 && (
           <button className="iv-nav iv-nav-left" onClick={() => onNavigate(currentIndex - 1)}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

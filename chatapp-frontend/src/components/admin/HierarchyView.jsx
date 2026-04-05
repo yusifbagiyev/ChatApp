@@ -6,7 +6,7 @@ import {
   assignDepartmentHead, removeDepartmentHead, deleteDepartment, updateDepartment, getUsers, searchUsers,
   uploadDepartmentAvatar,
 } from "../../services/api";
-import { getInitials, getAvatarColor } from "../../utils/chatUtils";
+import { getInitials, getAvatarColor, validatePassword } from "../../utils/chatUtils";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import "./HierarchyView.css";
@@ -461,11 +461,8 @@ function CreateUserPanel({ isSuperAdmin, preloadedDepts = null, defaultDeptId = 
       showToast("Department is required", "error");
       return;
     }
-    if (password.length < 8)             { showToast("Password: minimum 8 characters", "error"); return; }
-    if (!/[A-Z]/.test(password))         { showToast("Password: must contain uppercase letter", "error"); return; }
-    if (!/[a-z]/.test(password))         { showToast("Password: must contain lowercase letter", "error"); return; }
-    if (!/[0-9]/.test(password))         { showToast("Password: must contain a number", "error"); return; }
-    if (!/[^a-zA-Z0-9]/.test(password))  { showToast("Password: must contain a special character", "error"); return; }
+    const pwdError = validatePassword(password);
+    if (pwdError) { showToast(pwdError, "error"); return; }
     setSaving(true);
     try {
       await createUser({
@@ -530,7 +527,7 @@ function CreateUserPanel({ isSuperAdmin, preloadedDepts = null, defaultDeptId = 
             <div className="hi-form-field">
               <label className="hi-form-label">Password *</label>
               <input className="hi-form-input" type="password" value={password}
-                onChange={e => setPassword(e.target.value)} placeholder="Min. 6 characters" />
+                onChange={e => setPassword(e.target.value)} placeholder="Min. 8 characters" />
             </div>
             {isSuperAdmin && (
               <div className="hi-form-field">
@@ -714,17 +711,27 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
       .finally(() => setLoading(false));
   }, []);
 
-  // Node altındakı bütün User-ləri rekursiv say
-  const countUsers = (node) => {
-    if (node.type === "User") return 1;
-    return (node.children ?? []).reduce((sum, c) => sum + countUsers(c), 0);
-  };
-
-  // Node altındakı online User-ləri rekursiv say
-  const countOnlineUsers = (node) => {
-    if (node.type === "User") return node.isOnline ? 1 : 0;
-    return (node.children ?? []).reduce((sum, c) => sum + countOnlineUsers(c), 0);
-  };
+  // Memoize edilmiş recursive sayğaclar — hər render-də subtree yenidən sayılmasın
+  const { userCounts, onlineCounts } = useMemo(() => {
+    const userMap = new Map();
+    const onlineMap = new Map();
+    function countU(node) {
+      if (userMap.has(node.id)) return userMap.get(node.id);
+      let count = node.type === "User" ? 1 : 0;
+      for (const child of node.children ?? []) count += countU(child);
+      userMap.set(node.id, count);
+      return count;
+    }
+    function countO(node) {
+      if (onlineMap.has(node.id)) return onlineMap.get(node.id);
+      let count = node.type === "User" && node.isOnline ? 1 : 0;
+      for (const child of node.children ?? []) count += countO(child);
+      onlineMap.set(node.id, count);
+      return count;
+    }
+    for (const root of tree) { countU(root); countO(root); }
+    return { userCounts: userMap, onlineCounts: onlineMap };
+  }, [tree]);
 
   // Hierarchy tree-dən bütün department node-larını düzləndirilmiş siyahıya çevir (companyId ilə)
   const allDeptNodes = useMemo(() => {
@@ -880,7 +887,8 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
             onClick={() => onOpenUser?.(node.id, data.name)}>
             <Highlight text={data.name} query={search} />
           </span>
-          {data.positionName && <span className="hi-user-position">{data.positionName}</span>}
+          {/* Backend DTO-da sahə "position" ola bilər, geriyə uyğunluq üçün hər ikisi yoxlanır */}
+          {(data.position || data.positionName) && <span className="hi-user-position">{data.position || data.positionName}</span>}
         </div>
 
         {/* Badges */}
@@ -999,8 +1007,8 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
     const expanded    = isExpanded(node.id);
     const depts       = node.children?.filter(n => n.type === "Department") ?? [];
     const noDeptUsers = node.children?.filter(n => n.type === "User") ?? [];
-    const totalUsers   = (node.children ?? []).reduce((sum, c) => sum + countUsers(c), 0);
-    const onlineUsers  = (node.children ?? []).reduce((sum, c) => sum + countOnlineUsers(c), 0);
+    const totalUsers   = userCounts.get(node.id) || 0;
+    const onlineUsers  = onlineCounts.get(node.id) || 0;
 
     return (
       <div key={node.id} className={`hi-company-node${expanded ? " hi-expanded" : ""}`}>
@@ -1017,8 +1025,8 @@ function HierarchyView({ isSuperAdmin, onOpenUser }) {
               : getInitials(node.name)}
           </div>
           <span className="hi-company-name"><Highlight text={node.name} query={search} /></span>
-          {node.headOfDepartmentName && (
-            <span className="hi-company-head">Head: {node.headOfDepartmentName}</span>
+          {(node.headOfDepartmentName || node.headName) && (
+            <span className="hi-company-head">Head: {node.headOfDepartmentName || node.headName}</span>
           )}
           <span className="hi-company-count">{totalUsers} users</span>
           {onlineUsers > 0 && (

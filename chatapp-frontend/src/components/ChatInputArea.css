@@ -455,3 +455,11 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }
+
+/* ─── Mobil responsiv — kiçik ekranlarda emoji panel ölçüsü ─── */
+@media (max-width: 480px) {
+  .emoji-panel {
+    width: 280px;
+    max-height: 350px;
+  }
+}

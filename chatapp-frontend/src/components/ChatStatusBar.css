@@ -22,7 +22,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background: #a3bad4;
+  background: #6b8baa; /* WCAG AA — kontrast nisbəti artırıldı (əvvəlki #a3bad4 — 2.7:1) */
   border-radius: 10px;
   animation: statusBarIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }

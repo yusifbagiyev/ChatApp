@@ -6,7 +6,7 @@ import {
   getSupervisors, addSupervisor, removeSupervisor,
   getFileUrl,
 } from "../../services/api";
-import { getInitials, getAvatarColor } from "../../utils/chatUtils";
+import { getInitials, getAvatarColor, validatePassword } from "../../utils/chatUtils";
 import { useToast } from "../../context/ToastContext";
 import "./UserManagement.css";
 
@@ -41,9 +41,9 @@ const UserForm = memo(({ user: editUser, isSuperAdmin, onSave, onClose }) => {
       showToast("First name, last name and email are required", "error");
       return;
     }
-    if (isNew && !password.trim()) {
-      showToast("Password is required for new users", "error");
-      return;
+    if (isNew) {
+      const pwdError = validatePassword(password);
+      if (pwdError) { showToast(pwdError, "error"); return; }
     }
     setSaving(true);
     try {
@@ -103,7 +103,7 @@ const UserForm = memo(({ user: editUser, isSuperAdmin, onSave, onClose }) => {
           {isNew && (
             <div className="um-form-field">
               <label className="um-form-label">Password *</label>
-              <input className="um-form-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 6 characters" />
+              <input className="um-form-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" />
             </div>
           )}
           <div className="um-form-row">
@@ -150,7 +150,8 @@ const ResetPasswordModal = memo(({ user: targetUser, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newPw.trim()) { showToast("New password is required", "error"); return; }
+    const pwdError = validatePassword(newPw);
+    if (pwdError) { showToast(pwdError, "error"); return; }
     if (newPw !== confirm) { showToast("Passwords do not match", "error"); return; }
     setSaving(true);
     try {
@@ -176,7 +177,7 @@ const ResetPasswordModal = memo(({ user: targetUser, onClose }) => {
         <form className="um-form-body" onSubmit={handleSubmit}>
           <div className="um-form-field">
             <label className="um-form-label">New Password</label>
-            <input className="um-form-input" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="Minimum 6 characters" autoFocus />
+            <input className="um-form-input" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="Min. 8 characters" autoFocus />
           </div>
           <div className="um-form-field">
             <label className="um-form-label">Confirm Password</label>
@@ -395,11 +396,12 @@ function UserManagement({ isSuperAdmin }) {
               <tr key={u.id} className={`um-row${!u.isActive ? " um-row-inactive" : ""}`}>
                 <td>
                   <div className="um-user-cell">
-                    <div className="um-avatar" style={{ background: u.avatarUrl ? "transparent" : getAvatarColor(u.fullName) }}>
-                      {u.avatarUrl ? <img src={getFileUrl(u.avatarUrl)} alt="" className="um-avatar-img" /> : getInitials(u.fullName)}
+                    <div className="um-avatar" style={{ background: u.avatarUrl ? "transparent" : getAvatarColor(u.fullName || [u.firstName, u.lastName].filter(Boolean).join(" ") || "—") }}>
+                      {u.avatarUrl ? <img src={getFileUrl(u.avatarUrl)} alt="" className="um-avatar-img" /> : getInitials(u.fullName || [u.firstName, u.lastName].filter(Boolean).join(" ") || "—")}
                     </div>
                     <div className="um-user-meta">
-                      <span className="um-user-name">{u.fullName}</span>
+                      {/* Backend fullName göndərməsə firstName+lastName fallback */}
+                      <span className="um-user-name">{u.fullName || [u.firstName, u.lastName].filter(Boolean).join(" ") || "—"}</span>
                       <span className="um-user-email">{u.email}</span>
                     </div>
                   </div>

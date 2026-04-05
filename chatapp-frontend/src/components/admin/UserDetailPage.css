@@ -525,7 +525,7 @@
 .ud-skeleton-bar {
   height: 14px; border-radius: 4px;
   background: linear-gradient(90deg, #f0f2f5 25%, #e8eaed 50%, #f0f2f5 75%);
-  background-size: 200% 100%; animation: adm-shimmer 1.2s infinite;
+  background-size: 200% 100%; animation: shimmer 1.2s infinite;
 }
 .ud-skeleton-hero {
   display: flex; align-items: center; gap: 16px;
@@ -534,7 +534,7 @@
 }
 .ud-skeleton-hero .ud-skeleton-bar {
   background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.08) 75%);
-  background-size: 200% 100%; animation: adm-shimmer 1.2s infinite;
+  background-size: 200% 100%; animation: shimmer 1.2s infinite;
 }
 .ud-empty-note {
   font-size: 13px; color: #9ca3af; font-style: italic; text-align: center; padding: 12px 0;
@@ -544,7 +544,7 @@
 @keyframes dm-modal-in { from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 
 /* ─── Mobile Responsive ───────────────────────────────────────────────────── */
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .ud-root { max-width: 100%; padding: 12px; }
   .ud-hero { flex-direction: column; text-align: center; padding: 20px 16px; }
   .ud-hero-actions { margin-left: 0; justify-content: center; flex-wrap: wrap; }
@@ -554,4 +554,12 @@
   .ud-info-label { width: auto; }
   .ud-edit-row { flex-direction: column; }
   .ud-perm-grid { grid-template-columns: 1fr; }
+  /* Statistika grid — mobil üçün 2 sütun */
+  .ud-stats-row { grid-template-columns: repeat(2, 1fr); }
+  /* Əsas kontent grid — tək sütun */
+  .ud-content-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  /* Statistika grid — çox kiçik ekranlarda tək sütun */
+  .ud-stats-row { grid-template-columns: 1fr; }
 }

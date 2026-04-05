@@ -65,6 +65,20 @@ export function isAllowedFileExtension(fileName) {
   return ALLOWED_FILE_EXTENSIONS.has(ext);
 }
 
+// ─── Password Validation ─────────────────────────────────────────────────────
+// Bütün formlar üçün vahid şifrə doğrulaması — minimum 8 simvol
+export const MIN_PASSWORD_LENGTH = 8;
+export function validatePassword(password) {
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
+  }
+  if (!/[A-Z]/.test(password)) return "Password must contain an uppercase letter";
+  if (!/[a-z]/.test(password)) return "Password must contain a lowercase letter";
+  if (!/[0-9]/.test(password)) return "Password must contain a number";
+  if (!/[^a-zA-Z0-9]/.test(password)) return "Password must contain a special character";
+  return null; // keçərlidir
+}
+
 // ─── formatFileSize ─────────────────────────────────────────────────────────
 // Byte dəyərini oxunaqlı formata çevirir: "2.4 MB", "128 KB", "512 B"
 export function formatFileSize(bytes) {

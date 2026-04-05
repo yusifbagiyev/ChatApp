@@ -385,6 +385,17 @@ function DepartmentManagement() {
     return { total: depts.length, root: rootCount, withHead, withoutHead: depts.length - withHead };
   }, [depts]);
 
+  // O(n) əvvəlcədən hesabla — hər sətir üçün filter çağırmaq O(n²) yaradırdı
+  const childrenCountMap = useMemo(() => {
+    const map = new Map();
+    for (const d of depts) {
+      if (d.parentDepartmentId) {
+        map.set(d.parentDepartmentId, (map.get(d.parentDepartmentId) || 0) + 1);
+      }
+    }
+    return map;
+  }, [depts]);
+
   // Hamısını aç/bağla
   const expandAll = useCallback(() => setCollapsed(new Set()), []);
   const collapseAll = useCallback(() => {
@@ -585,7 +596,7 @@ function DepartmentManagement() {
             return (
               <div key={dept.id}
                 className={`dm-dept-row${isRowDeleteConfirm ? " dm-dept-row--confirm" : ""}${level === 0 ? " dm-dept-row--root" : ""}${isLastChild(dept) ? " dm-dept-row--last-child" : ""}`}
-                style={{ paddingLeft: `${level * 24 + 12}px` }}>
+                style={{ paddingLeft: `${Math.min(level, 6) * 24 + 12}px` }}>
                 {/* Tree connector lines */}
                 {level > 0 && (
                   <div className="dm-tree-connector" style={{ left: `${(level - 1) * 24 + 20}px` }}>
@@ -627,7 +638,7 @@ function DepartmentManagement() {
                         : <span style={{ color: "#d1d5db" }}>No head</span>}
                     </span>
                     <span className="dm-dept-sub-count">
-                      {!isLeaf ? `${depts.filter(d => d.parentDepartmentId === dept.id).length} sub-depts` : ""}
+                      {!isLeaf ? `${childrenCountMap.get(dept.id) || 0} sub-depts` : ""}
                     </span>
 
                     <div className="dm-row-actions">

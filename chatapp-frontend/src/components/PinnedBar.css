@@ -66,6 +66,7 @@
 }
 
 .pinned-bar-btn {
+  position: relative;
   width: 28px;
   height: 28px;
   border: none;
@@ -77,6 +78,16 @@
   color: var(--gray-400);
   cursor: pointer;
   transition: all var(--transition-fast);
+}
+/* A11y — toxunma sahəsi minimum 44px (vizual ölçü 28px) */
+.pinned-bar-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .pinned-bar-btn:hover {
@@ -224,4 +235,15 @@
 .pinned-expanded-unpin:hover {
   background: var(--gray-200);
   color: var(--error-color);
+}
+
+/* ─── Tablet responsiv — pinned bar kompakt görünüş ─── */
+@media (max-width: 768px) {
+  .pinned-bar {
+    padding: 4px 8px;
+  }
+
+  .pinned-bar-preview {
+    font-size: 13px;
+  }
 }

@@ -134,7 +134,7 @@
 .message-bubble.own .img-shimmer {
   background: linear-gradient(90deg, #c8e6c9 25%, #dcedc8 50%, #c8e6c9 75%);
   background-size: 200% 100%;
-  animation: imgShimmer 1.5s ease-in-out infinite;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
 /* Öz mesajında hover zona sola + aşağıya genişlənir */

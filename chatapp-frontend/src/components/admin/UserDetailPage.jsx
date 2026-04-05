@@ -8,7 +8,7 @@ import {
   getAllPositions,
   getFileUrl,
 } from "../../services/api";
-import { getInitials, getAvatarColor } from "../../utils/chatUtils";
+import { getInitials, getAvatarColor, validatePassword } from "../../utils/chatUtils";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { getConnection } from "../../services/signalr";
@@ -333,13 +333,9 @@ function UserDetailPage({ userId, onDeleted }) {
 
   const handlePwdSave = async (e) => {
     e.preventDefault();
-    if (!newPwd.trim()) { setPwdError("Password is required"); return; }
+    const pwdErr = validatePassword(newPwd);
+    if (pwdErr) { setPwdError(pwdErr); return; }
     if (newPwd !== confirmPwd) { setPwdError("Passwords do not match"); return; }
-    if (newPwd.length < 8)          { setPwdError("Minimum 8 characters"); return; }
-    if (!/[A-Z]/.test(newPwd))      { setPwdError("Must contain uppercase letter"); return; }
-    if (!/[a-z]/.test(newPwd))      { setPwdError("Must contain lowercase letter"); return; }
-    if (!/[0-9]/.test(newPwd))      { setPwdError("Must contain a number"); return; }
-    if (!/[^a-zA-Z0-9]/.test(newPwd)) { setPwdError("Must contain special character"); return; }
     setPwdSaving(true); setPwdError("");
     try {
       await adminChangePassword(userId, newPwd, confirmPwd);

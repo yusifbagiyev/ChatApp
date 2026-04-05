@@ -117,6 +117,9 @@ const ConversationItem = memo(function ConversationItem({
       className={`conversation-item${isSelected ? " selected" : ""}${conv.isPinned ? " pinned" : ""}`}
       onClick={() => onSelectChat(conv)}
       onContextMenu={(e) => onContextMenu(e, conv)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectChat(conv); } }}
     >
       <div className="conversation-avatar-wrapper">
         <div

@@ -71,6 +71,66 @@
 - Applies to: CreateUser, AdminChangePassword, ChangePassword (user self-service)
 - Always validate ALL rules on frontend before API call — `extractErrorMessage` in api.js will surface backend messages if missed
 
+## Audit Nəticəsi Qaydaları (2026-04-05)
+
+### Timer/Listener Cleanup — HƏR ZAMAN
+- `setTimeout`, `setInterval` qaytardığı ID-ləri ref-ə yaz
+- useEffect cleanup-da `clearTimeout(ref.current)` çağır
+- document-ə əlavə olunan `mousemove`, `mouseup` listener-ləri `dragCleanupRef` pattern ilə izlə
+- **Yoxlama:** Hər yeni timer/listener yaratdıqda özünə soruş: "unmount olsa nə olacaq?"
+
+### State Updater Funksiyalar — PURE OLMALIDIR
+- `setState(prev => { apiCall(); return prev; })` YASAQDIR — side effect yoxdur!
+- API çağırışları setState-dən KƏNARDA olmalıdır
+- Current state lazımdırsa → ref istifadə et (`selectedChatRef.current`)
+- **Nümunə:** K5 bug — `setSelectedChat` daxilində `apiGet` çağırılırdı → StrictMode-da dublikat
+
+### apiPost/apiPut body undefined — Yoxlama MÜTLƏQ
+- `apiPost(endpoint)` body olmadan çağırıldıqda `JSON.stringify(undefined)` → `"undefined"` göndərir
+- FIX: `body !== undefined` yoxlaması — body yoxdursa Content-Type header da olmamalı
+- **Nümunə:** K1 bug — 12 yerdə body olmadan apiPost çağırılırdı
+
+### SignalR connection — Reconnect zamanı null etmə
+- `onreconnecting` callback-ində `connection = null` YAZMA
+- Connection hələ keçərlidir, yalnız `onclose`-da null olmalıdır
+- **Nümunə:** K2 bug — reconnect zamanı getConnection() null qaytarırdı
+
+### useCallback — ConversationList prop-ları
+- ConversationList-ə ötürülən handler-lar `useCallback` olmalıdır
+- `selectedChat` dep-dən çıxart → functional updater `setSelectedChat(prev => ...)` istifadə et
+- **Nümunə:** P3 — handleToggle* funksiyalar hər render-də yeni ref → lazımsız re-render
+
+### Duplikat toast — Yoxla
+- İki ardıcıl `showToast()` çağırışı → istifadəçi iki toast görür
+- **Nümunə:** K6 — eyni xəta üçün iki toast (biri ingilis, biri azərbaycan dilində)
+
+### Z-index — CSS dəyişən istifadə et
+- Hardcoded z-index YASAQDIR → `var(--z-navbar)`, `var(--z-modal)`, `var(--z-toast)` istifadə et
+- Dəyişənlər `index.css :root`-da təyin olunub
+
+### Shimmer keyframe — VAHİD
+- Yeni shimmer yaratma → `shimmer` keyframe `index.css`-dədir, onu istifadə et
+- Login.css-nin öz `loginShimmer`-i var (fərqli animasiya)
+
+### Responsive — @media query MÜTLƏQ
+- Sabit px ölçülər (350px, 400px, 380px) → `calc(100vw - Xpx)` + `max-width`
+- Admin table-lar → `overflow-x: auto` wrapper
+- Tree indent → `Math.min(level, 6)` cap
+
+### Touch target — 44px minimum
+- Kiçik düymələr (20-28px) → `::before` pseudo-element ilə 44px touch area
+- Vizual ölçü dəyişmir, toxunma sahəsi böyüyür
+
+### İstifadəçiyə göstərilən mesajlar — YALNIZ İNGİLİS DİLİNDƏ
+- `showToast()`, `setActionError()`, `setInviteError()` — bütün xəta/warning/info mesajları İNGİLİS dilində olmalıdır
+- Azərbaycanca xəta mesajı YASAQDIR (istifadəçiyə göstərilən hər şey ingilis dilində)
+- Comment-lər Azərbaycanca ola bilər, amma istifadəçiyə görünən string-lər — yalnız ingilis dili
+- **Nümunə:** "Üzvü silmək mümkün olmadı" → "Failed to remove member"
+
+### O(n²) loop-lar — useMemo ilə pre-compute
+- `array.filter()` hər row üçün → O(n²). Əvvəlcədən Map/Set yarat
+- **Nümunə:** P5 — `depts.filter(d => d.parentDepartmentId === dept.id).length` hər sətirdə
+
 ## Patterns Noticed
 <!-- Emerging signals needing more data -->
 
@@ -78,10 +138,13 @@
 <!-- Why certain patterns were chosen -->
 
 ## Performance Insights
-<!-- Rendering patterns, bundle size findings -->
+- Chat.jsx 4436 sətir — P1/P2 refactoring hələ gözləyir (ayrı task)
+- MessageBubble inline closure-lar — Y3 optimization (React.memo + useCallback) gözləyir
+- X4: Empty state SVG (160 sətir) ayrı komponent olmalıdır — gözləyir
 
 ## Process Improvements
 <!-- How this agent's own workflow should improve -->
 
 ## Last Updated
+- 2026-04-05: Frontend audit nəticəsi — 78 problemdən 65+ həll olundu, qaydalar əlavə olundu
 - 2026-03-27: Added DTO field name verification rule, search vs list endpoint contract, backend constraint mirroring

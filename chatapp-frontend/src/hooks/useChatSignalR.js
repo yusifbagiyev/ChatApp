@@ -30,6 +30,7 @@ export default function useChatSignalR(
   messageCacheRef, // Message cache ref — yeni mesaj gəldikdə cache-i invalidasiya etmək üçün
   onNewFileMessageRef, // Sidebar — fayl mesajı gəldikdə Files & Media panelini yeniləmək üçün
   onChannelUpdatedRef, // Channel adı/avatarı dəyişdikdə selectedChat-ı yeniləmək üçün (ref)
+  setSelectedChat, // Channel-dan çıxdıqda selectedChat-ı təmizləmək üçün
 ) {
   // useEffect — komponentin mount olduğunda 1 dəfə işləyir
   // [userId] — dependency array: yalnız userId dəyişəndə yenidən işləyir
@@ -519,6 +520,30 @@ export default function useChatSignalR(
       });
     }
 
+    // ─── handleMemberLeftChannel ────────────────────────────────────────────────
+    // Server "MemberLeftChannel" event-i göndərir — bir üzv channel-dan çıxanda.
+    // Əgər çıxan user cari istifadəçidirsə — channel-ı siyahıdan sil və selectedChat-ı təmizlə.
+    // Əks halda yalnız memberCount-u yenilə.
+    function handleMemberLeftChannel(channelId, leavingUserId, newMemberCount) {
+      if (leavingUserId === userId) {
+        // Cari istifadəçi channel-dan çıxıb — conversation list-dən sil
+        setConversations((prev) => prev.filter((c) => c.id !== channelId));
+        // Əgər həmin channel açıq idisə — selectedChat-ı təmizlə
+        const current = selectedChatRef?.current;
+        if (current && current.id === channelId) {
+          setSelectedChat(null);
+          setMessages([]);
+        }
+      } else {
+        // Başqa user çıxıb — yalnız memberCount-u yenilə
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === channelId ? { ...c, memberCount: newMemberCount } : c,
+          ),
+        );
+      }
+    }
+
     // ─── SignalR Bağlantısını Qur + Handler-ları Register Et ─────────────────
     // startConnection() → Promise qaytarır → .then() ilə uğurlu bağlantıda handler-lar qur
     // conn.on("EventName", handlerFunction) — .NET-də: hub.On<T>("EventName", handler) kimi
@@ -544,18 +569,14 @@ export default function useChatSignalR(
       ["ChannelMessagesRead", handleChannelMessagesRead],
       ["AddedToChannel", handleAddedToChannel],
       ["ChannelUpdated", handleChannelUpdated],
+      ["MemberLeftChannel", handleMemberLeftChannel],
     ];
 
     startConnection()
       .then((c) => {
         if (aborted) return; // StrictMode: köhnə mount-un callback-i → skip
         conn = c; // cleanup üçün saxla
-        // Əvvəlcə bütün köhnə handler-ları sil (StrictMode/HMR dublikat qoruması)
-        // conn.off("EventName") — handler göstərilmədən çağırıldıqda bütün handler-ları silir
-        for (const [event] of eventHandlers) {
-          conn.off(event);
-        }
-        // Yeni handler-ları qeydiyyata al
+        // Yeni handler-ları qeydiyyata al (cleanup artıq spesifik handler-ları silir)
         for (const [event, handler] of eventHandlers) {
           conn.on(event, handler);
         }

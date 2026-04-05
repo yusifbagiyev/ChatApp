@@ -55,6 +55,8 @@ function ChatInputArea({
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   // Manual resize — drag handle istifadə olunanda auto-resize suppress olsun
   const manualResizeRef = useRef(false);
+  // Drag listener-ləri saxla ki, unmount zamanı təmizlənsin
+  const dragCleanupRef = useRef(null);
 
   // Səhifə yeniləndikdə saxlanılmış textarea hündürlüyünü bərpa et
   useEffect(() => {
@@ -75,6 +77,16 @@ function ChatInputArea({
     ro.observe(el);
     return () => ro.disconnect();
   }, [onInputResize]);
+
+  // Unmount zamanı aktiv drag listener-ləri təmizlə (memory leak qarşısını al)
+  useEffect(() => {
+    return () => {
+      if (dragCleanupRef.current) {
+        dragCleanupRef.current();
+        dragCleanupRef.current = null;
+      }
+    };
+  }, []);
 
   // handleResizeDrag — Bitrix-style drag handle: textarea hündürlüyünü manual dəyişmək
   // mousedown → mousemove ilə hündürlük artır/azalır → mouseup ilə bitir
@@ -101,6 +113,13 @@ function ChatInputArea({
       if (inputRef.current) {
         localStorage.setItem("chatInputHeight", inputRef.current.offsetHeight);
       }
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      dragCleanupRef.current = null;
+    };
+
+    // Cleanup funksiyasını saxla — unmount zamanı istifadə olunacaq
+    dragCleanupRef.current = () => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };

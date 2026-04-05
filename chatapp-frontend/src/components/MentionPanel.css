@@ -241,3 +241,11 @@
 .message-bubble.own .message-link {
   color: #1a4a7a;
 }
+
+/* ─── Mobil responsiv — mention panel ekrana sığır ─── */
+@media (max-width: 480px) {
+  .mention-panel {
+    width: calc(100vw - 32px);
+    max-width: 400px;
+  }
+}

@@ -85,7 +85,7 @@ export default function useChannelManagement(
         });
         await refreshChannelMembers(chat.id);
       } catch {
-        setActionError("Admin etmək mümkün olmadı");
+        setActionError("Failed to make admin");
       }
     },
     [refreshChannelMembers],
@@ -103,7 +103,7 @@ export default function useChannelManagement(
         });
         await refreshChannelMembers(chat.id);
       } catch {
-        setActionError("Admin statusunu silmək mümkün olmadı");
+        setActionError("Failed to remove admin role");
       }
     },
     [refreshChannelMembers],
@@ -119,7 +119,7 @@ export default function useChannelManagement(
         await apiDelete(`/api/channels/${chat.id}/members/${targetUserId}`);
         await refreshChannelMembers(chat.id);
       } catch {
-        setActionError("Üzvü silmək mümkün olmadı");
+        setActionError("Failed to remove member");
       }
     },
     [refreshChannelMembers],
@@ -153,7 +153,7 @@ export default function useChannelManagement(
       setAddMemberSelected(new Set());
       setAddMemberShowHistory(true);
     } catch {
-      setInviteError("Üzvləri dəvət edərkən xəta baş verdi");
+      setInviteError("Failed to invite members");
     } finally {
       setAddMemberInviting(false);
     }

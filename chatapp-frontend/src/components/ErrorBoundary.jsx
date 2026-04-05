@@ -7,7 +7,8 @@ import { Component } from "react";
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    // retryCount — təkrar cəhd sayını izləyir, sonsuz dövrün qarşısını alır
+    this.state = { hasError: false, error: null, retryCount: 0 };
   }
 
   static getDerivedStateFromError(error) {
@@ -19,7 +20,16 @@ class ErrorBoundary extends Component {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    // Maksimum 3 cəhd — ondan sonra səhifəni yeniləmək lazımdır
+    this.setState((prev) => ({
+      hasError: false,
+      error: null,
+      retryCount: prev.retryCount + 1,
+    }));
+  };
+
+  handleRefresh = () => {
+    window.location.reload();
   };
 
   render() {
@@ -41,29 +51,52 @@ class ErrorBoundary extends Component {
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>
-            Xəta baş verdi
+            Something went wrong
           </h2>
           <p style={{ margin: 0, fontSize: "14px", color: "#6b7280", maxWidth: "400px", textAlign: "center" }}>
-            Gözlənilməz xəta baş verdi. Yenidən cəhd edin.
+            {this.state.retryCount >= 3
+              ? "The error persists. Please refresh the page."
+              : "An unexpected error occurred. Please try again."}
           </p>
-          <button
-            onClick={this.handleRetry}
-            style={{
-              padding: "10px 24px",
-              borderRadius: "8px",
-              border: "none",
-              background: "#2fc6f6",
-              color: "#fff",
-              fontSize: "14px",
-              fontWeight: 500,
-              cursor: "pointer",
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => e.target.style.background = "#17b3e6"}
-            onMouseLeave={(e) => e.target.style.background = "#2fc6f6"}
-          >
-            Yenidən cəhd et
-          </button>
+          {this.state.retryCount >= 3 ? (
+            <button
+              onClick={this.handleRefresh}
+              style={{
+                padding: "10px 24px",
+                borderRadius: "8px",
+                border: "none",
+                background: "#ef4444",
+                color: "#fff",
+                fontSize: "14px",
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => e.target.style.background = "#dc2626"}
+              onMouseLeave={(e) => e.target.style.background = "#ef4444"}
+            >
+              Refresh page
+            </button>
+          ) : (
+            <button
+              onClick={this.handleRetry}
+              style={{
+                padding: "10px 24px",
+                borderRadius: "8px",
+                border: "none",
+                background: "#2fc6f6",
+                color: "#fff",
+                fontSize: "14px",
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => e.target.style.background = "#17b3e6"}
+              onMouseLeave={(e) => e.target.style.background = "#2fc6f6"}
+            >
+              Try again ({3 - this.state.retryCount} {3 - this.state.retryCount === 1 ? "attempt" : "attempts"} left)
+            </button>
+          )}
         </div>
       );
     }

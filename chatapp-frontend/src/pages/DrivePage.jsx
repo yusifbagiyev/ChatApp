@@ -40,14 +40,6 @@ import "./DrivePage.css";
 
 // ─── Yardımçı funksiyalar ────────────────────────────────────────────────────
 
-// Fayl ölçüsünü oxunaqlı formata çevir
-function formatSize(bytes) {
-  if (!bytes || bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
-
 // Tarixi oxunaqlı formata çevir
 function formatDate(dateStr) {
   if (!dateStr) return "";
@@ -344,7 +336,7 @@ const DriveFileCard = memo(function DriveFileCard({
           <span className="drive-card-name" title={name}>{name}</span>
         )}
         <span className="drive-card-meta">
-          {isFolder ? `${item.itemCount || 0} items` : formatSize(item.fileSizeInBytes)}
+          {isFolder ? `${item.itemCount || 0} items` : formatFileSize(item.fileSizeInBytes)}
           {!isFolder && item.createdAtUtc && ` · ${formatDate(item.createdAtUtc)}`}
         </span>
       </div>
@@ -518,7 +510,7 @@ const DriveListRow = memo(function DriveListRow({
         )}
       </div>
       <div className="drive-list-cell drive-list-size">
-        {isFolder ? `${item.itemCount || 0} items` : formatSize(item.fileSizeInBytes)}
+        {isFolder ? `${item.itemCount || 0} items` : formatFileSize(item.fileSizeInBytes)}
       </div>
       <div className="drive-list-cell drive-list-date">
         {formatDate(item.updatedAtUtc || item.createdAtUtc)}
@@ -600,7 +592,7 @@ const DriveDetailsPanel = memo(function DriveDetailsPanel({ item, isFolder, onCl
             <span className="drive-detail-sub">
               {isFolder
                 ? `${item.itemCount || 0} items`
-                : `${formatSize(item.fileSizeInBytes)} · ${item.contentType || ""}`}
+                : `${formatFileSize(item.fileSizeInBytes)} · ${item.contentType || ""}`}
             </span>
             <span className="drive-detail-date">
               {formatDate(item.createdAtUtc)}
@@ -937,7 +929,7 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
             <div className="drive-list-cell drive-list-actions">Actions</div>
           </div>
           {trashItems.map((item) => {
-            const name = item.name || item.originalFileName || "Unknown";
+            const name = item.name || "Unknown";
             const isFolder = item.type === "folder";
             const isSelected = selectedIds.has(item.id);
             return (
@@ -948,8 +940,6 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
                 <div className="drive-list-cell drive-list-icon">
                   {isFolder ? (
                     <FolderIcon size={24} />
-                  ) : item.serveUrl && isImageFile(name) ? (
-                    <img src={getFileUrl(item.serveUrl)} alt="" className="drive-trash-thumb" />
                   ) : (
                     <FileTypeIcon fileName={name} size={24} />
                   )}
@@ -958,7 +948,7 @@ const DriveRecycleBin = memo(function DriveRecycleBin({ onBack, onQuotaChange })
                   <span>{name}</span>
                 </div>
                 <div className="drive-list-cell drive-list-size">
-                  {isFolder ? "—" : formatSize(item.sizeInBytes)}
+                  {isFolder ? "—" : formatFileSize(item.sizeInBytes)}
                 </div>
                 <div className="drive-list-cell drive-list-date">{formatDate(item.deletedAtUtc)}</div>
                 <div className="drive-list-cell drive-list-actions">
@@ -1070,6 +1060,12 @@ export default function DrivePage() {
   const [newFolderDialog, setNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderSaving, setNewFolderSaving] = useState(false);
+
+  // Şəkil fayllarını cache-lə — hər renderdə filter olunmasın
+  const imageFiles = useMemo(
+    () => files.filter((f) => isImageFile(f.originalFileName) && f.serveUrl),
+    [files],
+  );
 
   // Debounced axtarış
   const searchTimerRef = useRef(null);
@@ -1388,7 +1384,7 @@ export default function DrivePage() {
         }
       },
     });
-  }, [selectedItems, showToast]);
+  }, [selectedItems, files, showToast]);
 
   // ── Yükləmə (download) ──
   const handleDownload = useCallback(async (item) => {
@@ -1462,7 +1458,7 @@ export default function DrivePage() {
     } catch {
       showToast("Failed to move item", "error");
     }
-  }, [moveDialog, showToast]);
+  }, [moveDialog, files, showToast]);
 
   // ── Drag & Drop ──
   const handleDragOver = useCallback((e) => {
@@ -1522,7 +1518,7 @@ export default function DrivePage() {
     }
   }, [selectedItems, getFirstSelectedItem]);
 
-  // ── Pagination — backend tərəfdən idarə olunur ──
+  // ── Pagination — folder-lər hər səhifədə göstərilir, amma pagination hesabında iştirak edir ──
   const totalItems = folders.length + totalFiles;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
   const needsPagination = totalItems > ITEMS_PER_PAGE;
@@ -1597,7 +1593,7 @@ export default function DrivePage() {
           </span>
           {totalFileSize > 0 && (
             <span className="drive-info-size">
-              {formatSize(totalFileSize)}
+              {formatFileSize(totalFileSize)}
             </span>
           )}
         </div>
@@ -1790,17 +1786,14 @@ export default function DrivePage() {
       )}
 
       {/* ImageViewer — conversation-dakı ilə eyni komponent */}
-      {imageViewerIndex !== null && (() => {
-        const imgFiles = files.filter((f) => isImageFile(f.originalFileName) && f.serveUrl);
-        return imgFiles.length > 0 ? (
-          <ImageViewer
-            images={imgFiles.map((f) => ({ id: f.id, fileUrl: f.serveUrl, originalFileName: f.originalFileName }))}
-            currentIndex={imageViewerIndex}
-            onClose={() => setImageViewerIndex(null)}
-            onNavigate={(idx) => setImageViewerIndex(idx)}
-          />
-        ) : null;
-      })()}
+      {imageViewerIndex !== null && imageFiles.length > 0 && (
+        <ImageViewer
+          images={imageFiles.map((f) => ({ id: f.id, fileUrl: f.serveUrl, originalFileName: f.originalFileName }))}
+          currentIndex={imageViewerIndex}
+          onClose={() => setImageViewerIndex(null)}
+          onNavigate={(idx) => setImageViewerIndex(idx)}
+        />
+      )}
 
       {confirmAction && (
         <ConfirmDialog

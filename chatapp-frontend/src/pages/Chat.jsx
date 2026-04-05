@@ -451,6 +451,7 @@ function Chat() {
     messageCacheRef, // Cache invalidasiya — yeni mesaj gəldikdə köhnə cache-i sil
     onNewFileMessageRef, // Sidebar — fayl mesajı gəldikdə Files & Media panelini yeniləmək üçün
     onChannelUpdatedRef, // Channel adı/avatarı dəyişdikdə selectedChat-ı yenilə
+    setSelectedChat, // Channel-dan çıxdıqda selectedChat-ı təmizləmək üçün
   );
 
   // ─── Network / Connection State Effect ──────────────────────────────────────
@@ -470,28 +471,26 @@ function Chat() {
           messageCacheRef.current.clear();
           loadConversations();
           // Açıq chat varsa — mesajları yenidən yüklə
-          setSelectedChat((current) => {
-            if (current) {
-              const msgBase = getChatEndpoint(
-                current.id,
-                current.type,
-                "/messages",
-              );
-              if (msgBase) {
-                apiGet(`${msgBase}?pageSize=${MESSAGE_PAGE_SIZE}`)
-                  .then((data) => {
-                    const msgs = Array.isArray(data) ? data : data?.items || [];
-                    if (msgs.length > 0) {
-                      setMessages(msgs);
-                      hasMoreRef.current = msgs.length >= MESSAGE_PAGE_SIZE;
-                      hasMoreDownRef.current = false;
-                    }
-                  })
-                  .catch(() => {});
-              }
+          const current = selectedChatRef?.current;
+          if (current) {
+            const msgBase = getChatEndpoint(
+              current.id,
+              current.type,
+              "/messages",
+            );
+            if (msgBase) {
+              apiGet(`${msgBase}?pageSize=${MESSAGE_PAGE_SIZE}`)
+                .then((data) => {
+                  const msgs = Array.isArray(data) ? data : data?.items || [];
+                  if (msgs.length > 0) {
+                    setMessages(msgs);
+                    hasMoreRef.current = msgs.length >= MESSAGE_PAGE_SIZE;
+                    hasMoreDownRef.current = false;
+                  }
+                })
+                .catch(() => {});
             }
-            return current;
-          });
+          }
           setToast(null);
           return;
         }
@@ -518,6 +517,9 @@ function Chat() {
       window.removeEventListener("offline", handleOffline);
       unsubscribe();
       if (capturedTimerId) clearTimeout(capturedTimerId);
+      if (readBatchTimerRef.current) clearTimeout(readBatchTimerRef.current);
+      if (scrollbarTimerRef.current) clearTimeout(scrollbarTimerRef.current);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1094,8 +1096,8 @@ function Chat() {
 
   // ─── Context menu handler-ləri ─────────────────────────────────────────────
 
-  // handleTogglePin — conversation-ı pin/unpin et
-  async function handleTogglePin(conv) {
+  // handleTogglePin — conversation-ı pin/unpin et (useCallback ilə sabit referans)
+  const handleTogglePin = useCallback(async (conv) => {
     try {
       const endpoint =
         conv.type === 1
@@ -1116,17 +1118,17 @@ function Chat() {
         }
         return prev;
       });
-      // Seçili chat eyni conversation-dırsa, selectedChat-ı da yenilə
-      if (selectedChat && selectedChat.id === conv.id) {
-        setSelectedChat((prev) => ({ ...prev, isPinned: result.isPinned }));
-      }
+      // Functional updater — selectedChat dep-dən çıxarılır
+      setSelectedChat((prev) =>
+        prev && prev.id === conv.id ? { ...prev, isPinned: result.isPinned } : prev,
+      );
     } catch (err) {
       showToast(err.message || "Failed to toggle pin", "error");
     }
-  }
+  }, [showToast]);
 
-  // handleToggleMute — conversation-ı mute/unmute et
-  async function handleToggleMute(conv) {
+  // handleToggleMute — conversation-ı mute/unmute et (useCallback ilə sabit referans)
+  const handleToggleMute = useCallback(async (conv) => {
     try {
       const endpoint =
         conv.type === 1
@@ -1138,17 +1140,17 @@ function Chat() {
           c.id === conv.id ? { ...c, isMuted: result.isMuted } : c,
         ),
       );
-      // Seçili chat eyni conversation-dırsa, selectedChat-ı da yenilə
-      if (selectedChat && selectedChat.id === conv.id) {
-        setSelectedChat((prev) => ({ ...prev, isMuted: result.isMuted }));
-      }
+      // Functional updater — selectedChat dep-dən çıxarılır
+      setSelectedChat((prev) =>
+        prev && prev.id === conv.id ? { ...prev, isMuted: result.isMuted } : prev,
+      );
     } catch (err) {
       showToast(err.message || "Failed to toggle mute", "error");
     }
-  }
+  }, [showToast]);
 
-  // handleToggleReadLater — conversation-ı "sonra oxu" işarələ / sil
-  async function handleToggleReadLater(conv) {
+  // handleToggleReadLater — conversation-ı "sonra oxu" işarələ / sil (useCallback ilə sabit referans)
+  const handleToggleReadLater = useCallback(async (conv) => {
     try {
       const endpoint =
         conv.type === 1
@@ -1162,20 +1164,19 @@ function Chat() {
             : c,
         ),
       );
-      // Seçili chat eyni conversation-dırsa, selectedChat-ı da yenilə
-      if (selectedChat && selectedChat.id === conv.id) {
-        setSelectedChat((prev) => ({
-          ...prev,
-          isMarkedReadLater: result.isMarkedReadLater,
-        }));
-      }
+      // Functional updater — selectedChat dep-dən çıxarılır
+      setSelectedChat((prev) =>
+        prev && prev.id === conv.id
+          ? { ...prev, isMarkedReadLater: result.isMarkedReadLater }
+          : prev,
+      );
     } catch (err) {
       showToast(err.message || "Failed to toggle read later", "error");
     }
-  }
+  }, [showToast]);
 
-  // handleToggleHide — conversation-ı hide/unhide toggle et
-  async function handleToggleHide(conv) {
+  // handleToggleHide — conversation-ı hide/unhide toggle et (useCallback ilə sabit referans)
+  const handleToggleHide = useCallback(async (conv) => {
     try {
       const endpoint =
         conv.type === 1
@@ -1198,14 +1199,15 @@ function Chat() {
         setConversations((prev) =>
           prev.map((c) => (c.id === conv.id ? { ...c, isHidden: false } : c)),
         );
-        if (selectedChat && selectedChat.id === conv.id) {
-          setSelectedChat((prev) => ({ ...prev, isHidden: false }));
-        }
+        // Functional updater — selectedChat dep-dən çıxarılır
+        setSelectedChat((prev) =>
+          prev && prev.id === conv.id ? { ...prev, isHidden: false } : prev,
+        );
       }
     } catch (err) {
       showToast(err.message || "Failed to toggle hide", "error");
     }
-  }
+  }, [showToast]);
 
   // handleLeaveChannel — channel-dan ayrıl
   const handleLeaveChannel = useCallback(
@@ -2047,7 +2049,7 @@ function Chat() {
             m.id === msg.id ? { ...m, isPinned: msg.isPinned } : m,
           ),
         );
-        showToast("Pin əməliyyatı uğursuz oldu", "error");
+        showToast("Failed to toggle pin", "error");
       }
     },
     [selectedChat, showToast, loadPinnedMessages],
@@ -2224,7 +2226,6 @@ function Chat() {
         );
       } catch (err) {
         showToast(err.message || "Failed to create conversation", "error");
-        showToast("Söhbət yaradıla bilmədi", "error");
         return;
       }
     }
@@ -3270,7 +3271,7 @@ function Chat() {
     <div className="main-layout">
       {/* Connection status toast — offline / reconnecting / disconnected */}
       {isOffline && (
-        <div className="connection-toast offline">
+        <div className="connection-toast offline" role="alert">
           <span className="toast-check">⚠</span>
           No internet connection
         </div>
@@ -3278,6 +3279,7 @@ function Chat() {
       {!isOffline && toast && (
         <div
           className={`connection-toast ${toast.type}${toast.hiding ? " toast-hide" : ""}`}
+          role="alert"
         >
           {toast.type === "connected" ? (
             <span className="toast-check">✓</span>
@@ -3627,6 +3629,7 @@ function Chat() {
                   <button
                     className={`scroll-to-bottom-btn${newUnreadCount > 0 ? " has-unread" : ""}`}
                     onClick={handleScrollToBottom}
+                    aria-label="Scroll to bottom"
                   >
                     {newUnreadCount > 0 && (
                       <span className="scroll-unread-badge">
