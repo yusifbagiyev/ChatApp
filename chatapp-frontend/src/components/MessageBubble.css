@@ -349,7 +349,7 @@
   border-radius: 10px;
   padding: 6px 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: var(--z-sidebar);
+  z-index: var(--zc-sidebar);
   min-width: 180px;
   white-space: nowrap;
 }

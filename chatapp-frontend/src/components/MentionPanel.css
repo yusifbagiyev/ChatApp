@@ -13,7 +13,7 @@
   background: var(--white);
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
-  z-index: var(--z-popup);
+  z-index: var(--zc-popup);
   display: flex;
   flex-direction: column;
   overflow: hidden;

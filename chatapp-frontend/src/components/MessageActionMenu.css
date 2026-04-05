@@ -6,7 +6,7 @@
 .bubble-more-wrap,
 .bubble-react-wrap {
   position: absolute;
-  z-index: var(--z-float);
+  z-index: var(--zc-float);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--transition-fast);
@@ -137,7 +137,7 @@
   border-radius: 10px;
   padding: 4px 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: var(--z-popover);
+  z-index: var(--zc-popover);
   min-width: 180px;
   overflow: hidden;
   animation: dropdownIn 0.15s ease-out;
@@ -193,7 +193,7 @@
   padding: 6px 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  z-index: var(--z-popover);
+  z-index: var(--zc-popover);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--transition-fast);

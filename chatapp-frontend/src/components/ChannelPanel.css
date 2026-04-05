@@ -552,7 +552,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   padding: 4px 0;
   overflow-y: auto;
-  z-index: var(--z-sidebar);
+  z-index: var(--zc-sidebar);
   animation: cpDropIn 220ms ease-out;
   transform-origin: top left;
 }

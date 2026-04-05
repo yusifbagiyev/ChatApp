@@ -26,7 +26,7 @@
   justify-content: center;
   opacity: 0;
   transition: opacity var(--transition-base);
-  z-index: var(--z-panel);
+  z-index: var(--zc-panel);
 }
 
 .message-input-area:hover .input-resize-handle {
@@ -206,7 +206,7 @@
   position: absolute;
   top: 8px;
   left: 8px;
-  z-index: var(--z-panel);
+  z-index: var(--zc-panel);
 }
 
 /* Sağ aşağı butonlar qrupu — emoji + send (absolute) */
@@ -220,7 +220,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  z-index: var(--z-panel);
+  z-index: var(--zc-panel);
   background: var(--white);
   padding: 6px 8px;
   border-radius: 0 0 22px 22px;
@@ -402,7 +402,7 @@
   background: var(--white);
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
-  z-index: var(--z-popup);
+  z-index: var(--zc-popup);
   overflow: hidden;
   animation: emojiPanelIn 0.18s ease-out;
 }

@@ -7,7 +7,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.92);
-  z-index: var(--z-image-viewer);
+  z-index: var(--zc-image-viewer);
   display: flex;
   flex-direction: column;
   animation: ivFadeIn 0.2s ease-out;

@@ -138,7 +138,7 @@
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.15),
     0 2px 6px rgba(0, 0, 0, 0.08);
-  z-index: var(--z-sidebar);
+  z-index: var(--zc-sidebar);
   overflow: hidden;
   animation: dropdownIn 0.15s ease-out;
   transform-origin: top right;
@@ -602,7 +602,7 @@
   background: var(--white);
   display: flex;
   flex-direction: column;
-  z-index: var(--z-dropdown);
+  z-index: var(--zc-dropdown);
 }
 
 .ds-favorites-header {
@@ -1237,7 +1237,7 @@
 .ds-fm-media-item:hover .ds-fm-media-more-wrap,
 .ds-fm-media-more-wrap:has(.ds-dropdown) {
   opacity: 1;
-  z-index: var(--z-modal);
+  z-index: var(--zc-modal);
 }
 
 .ds-fm-media-more-btn {
@@ -1280,14 +1280,14 @@
 .ds-fm-media-more-wrap .ds-dropdown {
   position: fixed;
   margin-top: 0;
-  z-index: var(--z-modal);
+  z-index: var(--zc-modal);
 }
 
 /* Dropdown overlay — arxanı bloklayır, dropdown önə çıxır */
 .ds-fm-dropdown-overlay {
   position: fixed;
   inset: 0;
-  z-index: calc(var(--z-modal) - 1);
+  z-index: calc(var(--zc-modal) - 1);
   background: transparent;
 }
 
@@ -1408,18 +1408,18 @@
 .ds-fm-file-item .ds-favorites-more-wrap .ds-dropdown {
   position: fixed;
   margin-top: 0;
-  z-index: var(--z-modal);
+  z-index: var(--zc-modal);
 }
 
 .ds-fm-file-item .ds-favorites-more-wrap:has(.ds-dropdown) {
-  z-index: var(--z-modal);
+  z-index: var(--zc-modal);
 }
 
 /* Add chat members — floating popup */
 .ds-am-overlay {
   position: fixed;
   inset: 0;
-  z-index: var(--z-popup);
+  z-index: var(--zc-popup);
 }
 
 .ds-am-popup {

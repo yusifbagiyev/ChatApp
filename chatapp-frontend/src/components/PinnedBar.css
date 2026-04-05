@@ -17,7 +17,7 @@
     min-height var(--transition-base);
   overflow: hidden;
   position: relative;
-  z-index: var(--z-panel);
+  z-index: var(--zc-panel);
 }
 
 .pinned-bar:hover {
@@ -107,7 +107,7 @@
   top: 56px;
   left: 0;
   right: 0;
-  z-index: var(--z-dropdown);
+  z-index: var(--zc-dropdown);
 }
 
 .pinned-expanded-header {
