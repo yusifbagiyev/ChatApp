@@ -29,6 +29,12 @@ let refreshPromise = null;
 // refreshTimerId: setTimeout qaytardığı ID — clearTimeout üçün lazımdır
 let refreshTimerId = null;
 
+// Son uğurlu refresh zamanı — race condition qorunması.
+// Refresh uğurlu oldukdan sonra 5 saniyə ərzində gələn 401-lər yeni refresh yaratmır
+// (çünki cookie artıq yenilənib, retry kifayətdir).
+let lastRefreshAt = 0;
+const REFRESH_COOLDOWN_MS = 5000;
+
 // sessionExpired: refresh uğursuz olduqda true olur — "kill switch"
 // true olduqda heç bir API call refresh cəhd etmir, dərhal throw edir.
 // Bu, 401 infinite retry loop-un qarşısını alır.
@@ -54,6 +60,10 @@ async function refreshToken() {
   // Artıq refresh işləyirsə — eyni promise-i qaytar (2 request göndərmə)
   if (refreshPromise) return refreshPromise;
 
+  // Cooldown — az öncə uğurlu refresh olubsa, yeni request yaratma.
+  // Gecikmişs 401-lər bu hala düşür: token artıq yenilənib, retry kifayətdir.
+  if (Date.now() - lastRefreshAt < REFRESH_COOLDOWN_MS) return;
+
   // fetch — brauzer-in daxili HTTP client funksiyası (.NET-də HttpClient.PostAsync kimi)
   // credentials: "include" — cookie-ni avtomatik göndər (BFF pattern üçün vacib!)
   refreshPromise = fetch(BASE_URL + "/api/auth/refresh", {
@@ -68,7 +78,8 @@ async function refreshToken() {
         throw new Error("Refresh failed");
       }
       sessionExpired = false;    // Uğurlu — əvvəlki expired flag-ı sıfırla
-      scheduleRefresh();         // Növbəti refresh-i planla (25 dəq sonra yenə)
+      lastRefreshAt = Date.now(); // Cooldown timer-i yenilə
+      scheduleRefresh();         // Növbəti refresh-i planla (12 dəq sonra yenə)
       return true;
     })
     .finally(() => {
@@ -113,6 +124,7 @@ function stopRefreshTimer() {
 // Əks halda istifadəçi yenidən login olsa belə, köhnə sessionExpired=true qalardı.
 function resetSessionExpired() {
   sessionExpired = false;
+  lastRefreshAt = 0;
 }
 
 // ─── visibilitychange — sleep/wake handler ────────────────────────────────────
