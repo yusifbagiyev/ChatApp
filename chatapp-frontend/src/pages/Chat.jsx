@@ -3348,6 +3348,55 @@ function Chat() {
     };
   }, [handleScroll, selectedChat]);
 
+  // Mesajlar dəyişəndə — scroll lazım olmayan chatda read detection
+  // Az mesaj olduqda scroll event fire olmur → unread mesajlar detect olunmur
+  // handleScroll-dan asılı deyil — throttle bypass edilir, birbaşa read detection
+  useEffect(() => {
+    const area = messagesAreaRef.current;
+    if (!area || !selectedChat || messages.length === 0) return;
+    // Yalnız scroll lazım olmadıqda (mesajlar ekrana sığır)
+    const gap = area.scrollHeight - area.scrollTop - area.clientHeight;
+    if (gap > 1) return;
+
+    // rAF — DOM paint olsun, sonra detect et
+    const rafId = requestAnimationFrame(() => {
+      const containerTop = area.getBoundingClientRect().top;
+      const containerBottom = containerTop + area.clientHeight;
+      const bubbles = area.querySelectorAll("[data-bubble-id]");
+      const uid = user?.id;
+      const curFlatItems = flatItemsRef.current;
+      const curMetadata = flatItemsMetadataRef.current;
+
+      for (const bubble of bubbles) {
+        const rect = bubble.getBoundingClientRect();
+        if (rect.top > containerBottom) break;
+        if (rect.bottom < containerTop) continue;
+
+        const msgId = bubble.getAttribute("data-bubble-id");
+        if (!msgId || processedMsgIdsRef.current.has(msgId)) continue;
+
+        const idx = curMetadata.msgIdToIndex.get(msgId);
+        if (idx === undefined) continue;
+        const item = curFlatItems[idx];
+        if (!item || item.type !== "message") continue;
+        const msg = item.message;
+        if (!msg.isRead && msg.senderId !== uid) {
+          processedMsgIdsRef.current.add(msg.id);
+          visibleUnreadRef.current.add(msg.id);
+          readBatchChatRef.current = {
+            chatId: msg.conversationId || msg.channelId,
+            chatType: String(selectedChat?.type),
+          };
+        }
+      }
+      if (visibleUnreadRef.current.size > 0) {
+        if (readBatchTimerRef.current) clearTimeout(readBatchTimerRef.current);
+        readBatchTimerRef.current = setTimeout(flushReadBatch, 300);
+      }
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [messages, selectedChat, user?.id]);
+
   // --- JSX RENDER ---
   return (
     <div className="main-layout">

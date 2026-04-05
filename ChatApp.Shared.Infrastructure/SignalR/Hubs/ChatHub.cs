@@ -1,6 +1,7 @@
 ﻿using ChatApp.Shared.Infrastructure.SignalR.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using System.Collections.Concurrent;
 using System.Security.Claims;
 
 namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
@@ -16,19 +17,22 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
         private readonly ISignalRNotificationService _signalRNotificationService;
         private readonly IChannelMemberCache _channelMemberCache;
         private readonly IUserRelationProvider _userRelationProvider;
+        private readonly IHubContext<ChatHub> _hubContext;
 
         public ChatHub(
             IConnectionManager connectionManager,
             IPresenceService presenceService,
             ISignalRNotificationService signalRNotificationService,
             IChannelMemberCache channelMemberCache,
-            IUserRelationProvider userRelationProvider)
+            IUserRelationProvider userRelationProvider,
+            IHubContext<ChatHub> hubContext)
         {
             _connectionManager= connectionManager;
             _presenceService= presenceService;
             _signalRNotificationService = signalRNotificationService;
             _channelMemberCache = channelMemberCache;
             _userRelationProvider = userRelationProvider;
+            _hubContext = hubContext;
         }
 
         public override async Task OnConnectedAsync()
@@ -37,6 +41,13 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
 
             if (userId != Guid.Empty)
             {
+                // Pending offline varsa ləğv et — user refresh etdi, hələ online-dır
+                if (_pendingOffline.TryRemove(userId, out var cts))
+                {
+                    cts.Cancel();
+                    cts.Dispose();
+                }
+
                 await _connectionManager.AddConnectionAsync(userId, Context.ConnectionId);
                 await _presenceService.UserConnectedAsync(userId, Context.ConnectionId);
 
@@ -47,6 +58,11 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
         }
 
 
+        // Grace period — refresh zamanı qısa disconnect-dən sonra dərhal offline göndərilməsin
+        private static readonly TimeSpan OfflineGracePeriod = TimeSpan.FromSeconds(10);
+        // Pending offline task-lar — user reconnect olduqda ləğv etmək üçün
+        private static readonly ConcurrentDictionary<Guid, CancellationTokenSource> _pendingOffline = new();
+
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             var userId = GetUserId();
@@ -56,13 +72,51 @@ namespace ChatApp.Shared.Infrastructure.SignalR.Hubs
                 await _connectionManager.RemoveConnectionAsync(Context.ConnectionId);
                 await _presenceService.UserDisconnectedAsync(Context.ConnectionId);
 
-                // Check if user is still online on other devices
                 var isStillOnline = await _connectionManager.IsUserOnlineAsync(userId);
-
                 if (!isStillOnline)
                 {
-                    // Notify only related users about user going offline
-                    await NotifyPresenceToRelatedUsersAsync(userId, "UserOffline");
+                    // Grace period — refresh/reconnect zamanı qısa fasilədə offline göndərməmək üçün
+                    var cts = new CancellationTokenSource();
+                    _pendingOffline[userId] = cts;
+
+                    // Hub context capture et — Hub dispose olduqdan sonra da işləyir
+                    var connectionManager = _connectionManager;
+                    var userRelationProvider = _userRelationProvider;
+                    var hubContext = _hubContext;
+
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Task.Delay(OfflineGracePeriod, cts.Token);
+                            // Grace period bitdi — hələ də offline-dırsa bildir
+                            var stillOffline = !await connectionManager.IsUserOnlineAsync(userId);
+                            if (stillOffline)
+                            {
+                                var relatedUserIds = await userRelationProvider.GetRelatedUserIdsAsync(userId);
+                                if (relatedUserIds.Count > 0)
+                                {
+                                    var allConnections = new List<string>();
+                                    foreach (var relatedUserId in relatedUserIds)
+                                    {
+                                        var connections = await connectionManager.GetUserConnectionsAsync(relatedUserId);
+                                        allConnections.AddRange(connections);
+                                    }
+                                    if (allConnections.Count > 0)
+                                    {
+                                        await hubContext.Clients.Clients(allConnections)
+                                            .SendAsync("UserOffline", userId);
+                                    }
+                                }
+                            }
+                        }
+                        catch (TaskCanceledException) { /* User reconnect oldu — ləğv */ }
+                        finally
+                        {
+                            _pendingOffline.TryRemove(userId, out _);
+                            cts.Dispose();
+                        }
+                    });
                 }
             }
             await base.OnDisconnectedAsync(exception);

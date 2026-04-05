@@ -624,8 +624,8 @@ namespace ChatApp.Modules.Files.Api.Controllers
             if (file == null)
                 return NotFound(new { error = "File not found" });
 
-            // Artıq drive faylıdırsa, dublikat yaratma
-            if (file.IsDriveFile)
+            // Öz faylıdır + artıq drive-da → dublikat yaratma
+            if (file.UploadedBy == userId && file.IsDriveFile)
                 return BadRequest(new { error = "File is already in your drive" });
 
             // Folder yoxlaması
@@ -642,7 +642,29 @@ namespace ChatApp.Modules.Files.Api.Controllers
             if (currentUsage + file.FileSizeInBytes > DriveQuotaBytes)
                 return BadRequest(new { error = "Storage quota exceeded. Limit: 3 GB" });
 
-            file.MarkAsDriveFile(folderId);
+            if (file.UploadedBy == userId)
+            {
+                // Öz faylı, hələ drive-da deyil → flag dəyiş
+                file.MarkAsDriveFile(folderId);
+            }
+            else
+            {
+                // Başqasının faylı → eyni StoragePath ilə yeni metadata yarat
+                var copy = new FileMetadata(
+                    file.FileName,
+                    file.OriginalFileName,
+                    file.ContentType,
+                    file.FileSizeInBytes,
+                    file.FileType,
+                    file.StoragePath,
+                    userId,
+                    file.CompanyId);
+                if (file.Width.HasValue && file.Height.HasValue)
+                    copy.SetImageDimensions(file.Width.Value, file.Height.Value);
+                copy.MarkAsDriveFile(folderId);
+                await unitOfWork.Files.AddAsync(copy, cancellationToken);
+            }
+
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation("File {FileId} saved to drive by user {UserId}", fileId, userId);

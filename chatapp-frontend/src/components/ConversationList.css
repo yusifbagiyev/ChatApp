@@ -105,7 +105,7 @@
 
 /* Search clear button — search mode-da input-un sağında X düyməsi */
 .search-clear-btn {
-  position: relative;
+  position: absolute;
   right: 8px;
   display: flex;
   align-items: center;
